@@ -2,7 +2,6 @@
 
 [![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/adamjs83/crestron_custom_component.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A Home Assistant custom component for integrating with Crestron control systems using the XSIG (External Signal) protocol. This integration provides bidirectional communication with Crestron processors, allowing Home Assistant to control and monitor Crestron devices.
