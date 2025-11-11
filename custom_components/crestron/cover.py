@@ -10,10 +10,6 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverDeviceClass,
     CoverEntityFeature,
-    STATE_OPENING,
-    STATE_OPEN,
-    STATE_CLOSING,
-    STATE_CLOSED,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE
 from .const import (
