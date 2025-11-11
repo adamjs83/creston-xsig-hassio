@@ -4,6 +4,7 @@ import voluptuous as vol
 import logging
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 import homeassistant.helpers.config_validation as cv
@@ -75,6 +76,17 @@ class CrestronSensor(SensorEntity, RestoreEntity):
     def unique_id(self):
         """Return unique ID for this entity."""
         return f"crestron_sensor_a{self._join}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
+            name="Crestron Control System",
+            manufacturer="Crestron Electronics",
+            model="XSIG Gateway",
+            sw_version="1.4.0",
+        )
 
     @property
     def should_poll(self):

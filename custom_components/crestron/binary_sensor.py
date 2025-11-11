@@ -4,6 +4,7 @@ import voluptuous as vol
 import logging
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_NAME, CONF_DEVICE_CLASS
 import homeassistant.helpers.config_validation as cv
@@ -67,6 +68,17 @@ class CrestronBinarySensor(BinarySensorEntity, RestoreEntity):
     def unique_id(self):
         """Return unique ID for this entity."""
         return f"crestron_binary_sensor_d{self._join}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
+            name="Crestron Control System",
+            manufacturer="Crestron Electronics",
+            model="XSIG Gateway",
+            sw_version="1.4.0",
+        )
 
     @property
     def device_class(self):

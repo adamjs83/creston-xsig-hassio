@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.4.0] - 2025-11-11
+
+### Added
+- Device registry integration - all Crestron entities now appear under a single "Crestron Control System" device
+- Device info metadata (manufacturer: Crestron Electronics, model: XSIG Gateway)
+- Foundation for future config flow implementation
+
+### Notes
+- This is a purely additive change with no breaking changes
+- All entities maintain their existing unique IDs and functionality
+- Upgrade from v1.3.0 is seamless - no configuration changes required
+- Device grouping improves UI organization and enables device-level diagnostics
+
 ## [1.3.0] - 2025-11-11
 
 ### Added

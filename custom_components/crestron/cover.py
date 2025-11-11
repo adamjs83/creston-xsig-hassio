@@ -5,6 +5,7 @@ import logging
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import call_later
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.cover import (
@@ -103,6 +104,17 @@ class CrestronShade(CoverEntity, RestoreEntity):
     def unique_id(self):
         """Return unique ID for this entity."""
         return f"crestron_cover_a{self._pos_join}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
+            name="Crestron Control System",
+            manufacturer="Crestron Electronics",
+            model="XSIG Gateway",
+            sw_version="1.4.0",
+        )
 
     @property
     def device_class(self):

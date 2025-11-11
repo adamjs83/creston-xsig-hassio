@@ -15,6 +15,7 @@ from homeassistant.components.climate.const import (
     FAN_AUTO,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
@@ -213,6 +214,17 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         return f"crestron_climate_a{self._heat_sp_join}"
 
     @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
+            name="Crestron Control System",
+            manufacturer="Crestron Electronics",
+            model="XSIG Gateway",
+            sw_version="1.4.0",
+        )
+
+    @property
     def hvac_modes(self):
         return self._hvac_modes
 
@@ -406,6 +418,17 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
         """Return unique ID for this entity."""
         # Use setpoint join as primary identifier
         return f"crestron_climate_a{self._sp_join}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
+            name="Crestron Control System",
+            manufacturer="Crestron Electronics",
+            model="XSIG Gateway",
+            sw_version="1.4.0",
+        )
 
     @property
     def should_poll(self):

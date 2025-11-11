@@ -8,6 +8,7 @@ from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
 )
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from homeassistant.const import (
@@ -101,6 +102,17 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
     def unique_id(self):
         """Return unique ID for this entity."""
         return f"crestron_media_player_a{self._source_number_join}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
+            name="Crestron Control System",
+            manufacturer="Crestron Electronics",
+            model="XSIG Gateway",
+            sw_version="1.4.0",
+        )
 
     @property
     def should_poll(self):
