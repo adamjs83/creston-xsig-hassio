@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.2] - 2025-11-11
+
+### Fixed
+- Fix ValueError: 'unavailable' is not a valid HVACMode in climate platform
+- Properly validate restored HVAC mode states before using them
+- Skip restoration of "unavailable" and "unknown" states
+
 ## [1.2.1] - 2025-11-11
 
 ### Fixed

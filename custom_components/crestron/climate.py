@@ -174,7 +174,15 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
-            self._restored_hvac_mode = last_state.state
+            # Only restore valid HVAC modes, not "unavailable" or "unknown"
+            if last_state.state not in (None, "unavailable", "unknown"):
+                try:
+                    # Validate it's a valid HVACMode
+                    self._restored_hvac_mode = HVACMode(last_state.state)
+                except ValueError:
+                    _LOGGER.warning(f"Invalid HVAC mode in restored state: {last_state.state}")
+                    self._restored_hvac_mode = None
+
             self._restored_fan_mode = last_state.attributes.get('fan_mode')
             self._restored_temp_low = last_state.attributes.get('target_temp_low')
             self._restored_temp_high = last_state.attributes.get('target_temp_high')
@@ -360,7 +368,15 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
-            self._restored_hvac_mode = last_state.state
+            # Only restore valid HVAC modes, not "unavailable" or "unknown"
+            if last_state.state not in (None, "unavailable", "unknown"):
+                try:
+                    # Validate it's a valid HVACMode
+                    self._restored_hvac_mode = HVACMode(last_state.state)
+                except ValueError:
+                    _LOGGER.warning(f"Invalid HVAC mode in restored state: {last_state.state}")
+                    self._restored_hvac_mode = None
+
             self._restored_target_temp = last_state.attributes.get('temperature')
             self._restored_current_temp = last_state.attributes.get('current_temperature')
             _LOGGER.debug(
