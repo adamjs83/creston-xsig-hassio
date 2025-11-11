@@ -198,9 +198,15 @@ class CrestronHub:
                             self.hub.set_serial(int(join[1:]), str(update_result))
 
     async def sync_joins_to_hub(self):
+        """Sync join values from HA to Crestron (only valid values)."""
         _LOGGER.debug("Syncing joins to control system")
         for join, template in self.to_hub.items():
             result = template.async_render()
+            # Only sync joins that have valid template values (not "None")
+            # This prevents sending zeros for uninitialized entities
+            if result == "None":
+                continue
+
             # Digital Join
             if join[:1] == "d":
                 value = None
@@ -214,17 +220,15 @@ class CrestronHub:
                     )
                     self.hub.set_digital(int(join[1:]), value)
             # Analog Join
-            if join[:1] == "a":
-                if result != "None":
-                    _LOGGER.debug(
-                        f"sync_joins_to_hub setting analog join {int(join[1:])} to {int(result)}"
-                    )
-                    self.hub.set_analog(int(join[1:]), int(result))
+            elif join[:1] == "a":
+                _LOGGER.debug(
+                    f"sync_joins_to_hub setting analog join {int(join[1:])} to {int(result)}"
+                )
+                self.hub.set_analog(int(join[1:]), int(result))
             # Serial Join
-            if join[:1] == "s":
-                if result != "None":
-                    _LOGGER.debug(
-                        f"sync_joins_to_hub setting serial join {int(join[1:])} to {str(result)}"
-                    )
-                    self.hub.set_serial(int(join[1:]), str(result))
+            elif join[:1] == "s":
+                _LOGGER.debug(
+                    f"sync_joins_to_hub setting serial join {int(join[1:])} to {str(result)}"
+                )
+                self.hub.set_serial(int(join[1:]), str(result))
 

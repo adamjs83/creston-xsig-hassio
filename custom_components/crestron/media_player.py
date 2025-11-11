@@ -8,6 +8,7 @@ from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
 )
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from homeassistant.const import (
     CONF_NAME,
@@ -44,7 +45,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(entity)
 
 
-class CrestronRoom(MediaPlayerEntity):
+class CrestronRoom(MediaPlayerEntity, RestoreEntity):
     def __init__(self, hub, config):
         self._hub = hub
         self._name = config.get(CONF_NAME, "Unnamed Device")
@@ -60,8 +61,27 @@ class CrestronRoom(MediaPlayerEntity):
         self._source_number_join = config.get(CONF_SOURCE_NUM_JOIN)
         self._sources = config.get(CONF_SOURCES, {})
 
+        # State restoration variables
+        self._restored_state = None
+        self._restored_source = None
+        self._restored_volume = None
+        self._restored_is_muted = None
+
     async def async_added_to_hass(self):
+        """Register callbacks and restore state."""
+        await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
+
+        # Restore last state if available
+        if (last_state := await self.async_get_last_state()) is not None:
+            self._restored_state = last_state.state
+            self._restored_source = last_state.attributes.get('source')
+            self._restored_volume = last_state.attributes.get('volume_level')
+            self._restored_is_muted = last_state.attributes.get('is_volume_muted')
+            _LOGGER.debug(
+                f"Restored {self.name}: state={self._restored_state}, "
+                f"source={self._restored_source}, volume={self._restored_volume}"
+            )
 
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)
@@ -76,6 +96,11 @@ class CrestronRoom(MediaPlayerEntity):
     @property
     def name(self):
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return unique ID for this entity."""
+        return f"crestron_media_player_a{self._source_number_join}"
 
     @property
     def should_poll(self):
@@ -97,27 +122,39 @@ class CrestronRoom(MediaPlayerEntity):
 
     @property
     def source(self):
+        """Return the current input source."""
         if not self._source_number_join or not self._sources:
             return None
-        source_num = self._hub.get_analog(self._source_number_join)
-        if source_num == 0 or source_num not in self._sources:
-            return None
-        return self._sources[source_num]
+        if self._hub.has_analog_value(self._source_number_join):
+            source_num = self._hub.get_analog(self._source_number_join)
+            if source_num == 0 or source_num not in self._sources:
+                return None
+            return self._sources[source_num]
+        return self._restored_source
 
     @property
     def state(self):
-        if self._hub.get_analog(self._source_number_join) == 0:
-            return STATE_OFF
-        else:
-            return STATE_ON
+        """Return the state of the media player."""
+        if self._hub.has_analog_value(self._source_number_join):
+            if self._hub.get_analog(self._source_number_join) == 0:
+                return STATE_OFF
+            else:
+                return STATE_ON
+        return self._restored_state
 
     @property
     def is_volume_muted(self):
-        return self._hub.get_digital(self._mute_join)
+        """Return if volume is muted."""
+        if self._hub.has_digital_value(self._mute_join):
+            return self._hub.get_digital(self._mute_join)
+        return self._restored_is_muted
 
     @property
     def volume_level(self):
-        return self._hub.get_analog(self._volume_join) / 65535
+        """Return the volume level (0-1)."""
+        if self._hub.has_analog_value(self._volume_join):
+            return self._hub.get_analog(self._volume_join) / 65535
+        return self._restored_volume
 
     async def async_mute_volume(self, mute):
         self._hub.set_digital(self._mute_join, mute)

@@ -15,6 +15,7 @@ from homeassistant.components.climate.const import (
     FAN_AUTO,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
     HUB,
@@ -118,7 +119,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 # Standard HVAC Thermostat (unchanged functional logic)
 # ----------------------------
 
-class CrestronThermostat(ClimateEntity):
+class CrestronThermostat(ClimateEntity, RestoreEntity):
     def __init__(self, hub, config, unit):
         self._hub = hub
         self._hvac_modes = [
@@ -159,8 +160,29 @@ class CrestronThermostat(ClimateEntity):
         self._hvac_action_cool_join = config.get(CONF_HVAC_ACTION_COOL_JOIN, 0)
         self._hvac_action_idle_join = config.get(CONF_HVAC_ACTION_IDLE_JOIN, 0)
 
+        # State restoration variables
+        self._restored_hvac_mode = None
+        self._restored_fan_mode = None
+        self._restored_temp_low = None
+        self._restored_temp_high = None
+        self._restored_current_temp = None
+
     async def async_added_to_hass(self):
+        """Register callbacks and restore state."""
+        await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
+
+        # Restore last state if available
+        if (last_state := await self.async_get_last_state()) is not None:
+            self._restored_hvac_mode = last_state.state
+            self._restored_fan_mode = last_state.attributes.get('fan_mode')
+            self._restored_temp_low = last_state.attributes.get('target_temp_low')
+            self._restored_temp_high = last_state.attributes.get('target_temp_high')
+            self._restored_current_temp = last_state.attributes.get('current_temperature')
+            _LOGGER.debug(
+                f"Restored {self.name}: mode={self._restored_hvac_mode}, "
+                f"fan={self._restored_fan_mode}, temps={self._restored_temp_low}/{self._restored_temp_high}"
+            )
 
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)
@@ -175,6 +197,12 @@ class CrestronThermostat(ClimateEntity):
     @property
     def name(self):
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return unique ID for this entity."""
+        # Use heat setpoint join as primary identifier
+        return f"crestron_climate_a{self._heat_sp_join}"
 
     @property
     def hvac_modes(self):
@@ -198,33 +226,56 @@ class CrestronThermostat(ClimateEntity):
 
     @property
     def current_temperature(self):
-        return self._hub.get_analog(self._reg_temp_join) / 10
+        """Return the current temperature."""
+        if self._hub.has_analog_value(self._reg_temp_join):
+            return self._hub.get_analog(self._reg_temp_join) / 10
+        return self._restored_current_temp
 
     @property
     def target_temperature_high(self):
-        return self._hub.get_analog(self._cool_sp_join) / 10
+        """Return the high target temperature."""
+        if self._hub.has_analog_value(self._cool_sp_join):
+            return self._hub.get_analog(self._cool_sp_join) / 10
+        return self._restored_temp_high
 
     @property
     def target_temperature_low(self):
-        return self._hub.get_analog(self._heat_sp_join) / 10
+        """Return the low target temperature."""
+        if self._hub.has_analog_value(self._heat_sp_join):
+            return self._hub.get_analog(self._heat_sp_join) / 10
+        return self._restored_temp_low
 
     @property
     def hvac_mode(self):
-        if self._hub.get_digital(self._mode_auto_join):
-            return HVACMode.HEAT_COOL
-        if self._hub.get_digital(self._mode_heat_join):
-            return HVACMode.HEAT
-        if self._hub.get_digital(self._mode_cool_join):
-            return HVACMode.COOL
-        if self._hub.get_digital(self._mode_off_join):
-            return HVACMode.OFF
+        """Return the current HVAC mode."""
+        # Use real values from Crestron if available
+        if self._hub.has_digital_value(self._mode_auto_join):
+            if self._hub.get_digital(self._mode_auto_join):
+                return HVACMode.HEAT_COOL
+        if self._hub.has_digital_value(self._mode_heat_join):
+            if self._hub.get_digital(self._mode_heat_join):
+                return HVACMode.HEAT
+        if self._hub.has_digital_value(self._mode_cool_join):
+            if self._hub.get_digital(self._mode_cool_join):
+                return HVACMode.COOL
+        if self._hub.has_digital_value(self._mode_off_join):
+            if self._hub.get_digital(self._mode_off_join):
+                return HVACMode.OFF
+        # Use restored mode if available
+        return self._restored_hvac_mode
 
     @property
     def fan_mode(self):
-        if self._hub.get_digital(self._fan_auto_join):
-            return FAN_AUTO
-        if self._hub.get_digital(self._fan_on_join):
-            return FAN_ON
+        """Return the current fan mode."""
+        # Use real values from Crestron if available
+        if self._hub.has_digital_value(self._fan_auto_join):
+            if self._hub.get_digital(self._fan_auto_join):
+                return FAN_AUTO
+        if self._hub.has_digital_value(self._fan_on_join):
+            if self._hub.get_digital(self._fan_on_join):
+                return FAN_ON
+        # Use restored fan mode if available
+        return self._restored_fan_mode
 
     @property
     def hvac_action(self):
@@ -266,14 +317,15 @@ class CrestronThermostat(ClimateEntity):
             self._hub.set_digital(self._fan_on_join, True)
 
     async def async_set_temperature(self, **kwargs):
-        self._hub.set_analog(self._heat_sp_join, int(kwargs["target_temp_low"]) * 10)
-        self._hub.set_analog(self._cool_sp_join, int(kwargs["target_temp_high"]) * 10)
+        """Set target temperatures."""
+        self._hub.set_analog(self._heat_sp_join, int(round(kwargs["target_temp_low"] * 10)))
+        self._hub.set_analog(self._cool_sp_join, int(round(kwargs["target_temp_high"] * 10)))
 
 # ----------------------------
 # Floor-Warming Thermostat
 # ----------------------------
 
-class CrestronFloorWarmingThermostat(ClimateEntity):
+class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     """Floor-warming-only thermostat: Off/Heat modes, single setpoint, floor temp readback."""
 
     def __init__(self, hub, config, unit):
@@ -296,8 +348,25 @@ class CrestronFloorWarmingThermostat(ClimateEntity):
             | ClimateEntityFeature.TURN_OFF
         )
 
+        # State restoration variables
+        self._restored_hvac_mode = None
+        self._restored_target_temp = None
+        self._restored_current_temp = None
+
     async def async_added_to_hass(self):
+        """Register callbacks and restore state."""
+        await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
+
+        # Restore last state if available
+        if (last_state := await self.async_get_last_state()) is not None:
+            self._restored_hvac_mode = last_state.state
+            self._restored_target_temp = last_state.attributes.get('temperature')
+            self._restored_current_temp = last_state.attributes.get('current_temperature')
+            _LOGGER.debug(
+                f"Restored {self.name}: mode={self._restored_hvac_mode}, "
+                f"target={self._restored_target_temp}, current={self._restored_current_temp}"
+            )
 
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)
@@ -315,6 +384,12 @@ class CrestronFloorWarmingThermostat(ClimateEntity):
     @property
     def name(self):
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return unique ID for this entity."""
+        # Use setpoint join as primary identifier
+        return f"crestron_climate_a{self._sp_join}"
 
     @property
     def should_poll(self):
@@ -336,22 +411,30 @@ class CrestronFloorWarmingThermostat(ClimateEntity):
 
     @property
     def current_temperature(self):
-        # floor temp in tenths of a degree
-        return self._hub.get_analog(self._temp_join) / 10
+        """Return the current floor temperature."""
+        if self._hub.has_analog_value(self._temp_join):
+            return self._hub.get_analog(self._temp_join) / 10
+        return self._restored_current_temp
 
     @property
     def target_temperature(self):
-        # use setpoint feedback (tenths)
-        return self._hub.get_analog(self._sp_fb_join) / 10
+        """Return the target temperature."""
+        if self._hub.has_analog_value(self._sp_fb_join):
+            return self._hub.get_analog(self._sp_fb_join) / 10
+        return self._restored_target_temp
 
     # ----- modes & action -----
 
     @property
     def hvac_mode(self):
-        mode_val = self._hub.get_analog(self._mode_fb_join)
-        if mode_val == 2:
-            return HVACMode.HEAT
-        return HVACMode.OFF
+        """Return the current HVAC mode."""
+        if self._hub.has_analog_value(self._mode_fb_join):
+            mode_val = self._hub.get_analog(self._mode_fb_join)
+            if mode_val == 2:
+                return HVACMode.HEAT
+            return HVACMode.OFF
+        # Use restored mode if available
+        return self._restored_hvac_mode
 
     @property
     def hvac_action(self):

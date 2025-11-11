@@ -10,6 +10,10 @@ class CrestronXsig:
         self._digital = {}
         self._analog = {}
         self._serial = {}
+        # Track which joins have received data from Crestron
+        self._digital_received = set()
+        self._analog_received = set()
+        self._serial_received = set()
         self._writer = None
         self._callbacks = set()
         self._server = None
@@ -78,6 +82,7 @@ class CrestronXsig:
                         join = ((header[0] & 0b00011111) << 7 | header[1]) + 1
                         value = ~header[0] >> 5 & 0b1
                         self._digital[join] = True if value == 1 else False
+                        self._digital_received.add(join)  # Mark as received
                         _LOGGER.debug(f"Got Digital: {join} = {value}")
                         for callback in self._callbacks:
                             await callback(f"d{join}", str(value))
@@ -93,6 +98,7 @@ class CrestronXsig:
                             (header[0] & 0b00110000) << 10 | header[2] << 7 | header[3]
                         )
                         self._analog[join] = value
+                        self._analog_received.add(join)  # Mark as received
                         _LOGGER.debug(f"Got Analog: {join} = {value}")
                         for callback in self._callbacks:
                             await callback(f"a{join}", str(value))
@@ -106,6 +112,7 @@ class CrestronXsig:
                         join = ((header[0] & 0b00000111) << 7 | header[1]) + 1
                         string = data[2:-1].decode("utf-8")
                         self._serial[join] = string
+                        self._serial_received.add(join)  # Mark as received
                         _LOGGER.debug(f"Got String: {join} = {string}")
                         for callback in self._callbacks:
                             await callback(f"s{join}", string)
@@ -133,6 +140,18 @@ class CrestronXsig:
     def get_serial(self, join):
         """ Return serial value for join"""
         return self._serial.get(join, "")
+
+    def has_analog_value(self, join):
+        """ Check if analog join has received valid data from Crestron """
+        return join in self._analog_received
+
+    def has_digital_value(self, join):
+        """ Check if digital join has received valid data from Crestron """
+        return join in self._digital_received
+
+    def has_serial_value(self, join):
+        """ Check if serial join has received valid data from Crestron """
+        return join in self._serial_received
 
     def set_analog(self, join, value):
         """ Send Analog Join to Crestron XSIG symbol """
