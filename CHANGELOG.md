@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## [1.2.0] - 2025-11-11
+
+### Changed
+- Phase 1: Critical functionality fixes - join tracking, RestoreEntity, unique IDs
+
 ## [1.1.2] - 2025-11-11
 
 ### Fixed
