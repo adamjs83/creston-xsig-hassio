@@ -49,5 +49,25 @@ known_devices.yaml
 *.db-shm
 *.db-wal
 
-# Claude settings (keep local only)
+# Claude settings and working documents (keep local only)
 .claude/settings.local.json
+.claude/WORKING*.md
+.claude/NOTES*.md
+.claude/DRAFT*.md
+.claude/TODO*.md
+.claude/scratch/
+.claude/temp/
+
+# Development working documents
+WORKING*.md
+NOTES*.md
+DRAFT*.md
+scratch/
+temp/
+
+# Internal documentation (keep local only)
+ROADMAP.md
+VERSIONING.md
+.claude/JOIN_PRESENCE_SPEC.md
+.claude/commands/bump-version.md
+scripts/

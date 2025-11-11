@@ -38,6 +38,27 @@ All configuration is done in `configuration.yaml`:
 - Include comprehensive logging for debugging
 - Write clear docstrings for all classes and methods
 
+### Documentation Policy
+**IMPORTANT:** Keep internal documentation LOCAL ONLY
+
+**What gets pushed to git:**
+- Code files in `custom_components/crestron/`
+- HACS documentation: `README.md`, `info.md`, `hacs.json`
+- User-facing files: `CHANGELOG.md`, `LICENSE`
+- GitHub workflows: `.github/workflows/`
+- Basic `.claude/project.md` and `.claude/commands/*.md` (for other contributors)
+
+**What stays LOCAL (never pushed):**
+- `ROADMAP.md` - Internal development roadmap
+- `VERSIONING.md` - Internal versioning documentation
+- `.claude/JOIN_PRESENCE_SPEC.md` - Technical specifications
+- `.claude/commands/bump-version.md` - Internal commands
+- `scripts/` - Internal automation scripts
+- Working documents: `WORKING_*.md`, `NOTES_*.md`, `DRAFT_*.md`
+- Scratch directories: `.claude/scratch/`, `.claude/temp/`
+
+**Rationale:** Internal planning and development docs are for local use only. Public repository shows clean, user-focused documentation. All internal docs are in `.gitignore`.
+
 ### Testing
 - Test via HACS installation in Home Assistant
 - Test with actual Crestron hardware/simulator
