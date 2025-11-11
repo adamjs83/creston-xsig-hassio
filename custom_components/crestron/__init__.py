@@ -6,7 +6,7 @@ import logging
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.discovery import async_load_platform
+from homeassistant.helpers import discovery
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.script import Script
@@ -79,9 +79,13 @@ async def async_setup(hass, config):
         await hub.start()
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, hub.stop)
 
-        for platform in PLATFORMS:
-            # Use async_create_task to properly run platform loading in the background
-            hass.async_create_task(async_load_platform(hass, platform, DOMAIN, {}, config))
+        # Load all platforms in parallel and wait for completion
+        await asyncio.gather(
+            *[
+                discovery.async_load_platform(hass, platform, DOMAIN, {}, config)
+                for platform in PLATFORMS
+            ]
+        )
 
     return True
 

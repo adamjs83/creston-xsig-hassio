@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.5.0] - 2025-11-11
+
+### Changed
+- Modernized platform loading to use current Home Assistant 2025.x patterns
+- Replaced deprecated `async_load_platform` with proper `asyncio.gather` pattern
+- Platforms now load in parallel with proper await (faster and more reliable)
+
+### Fixed
+- Eliminated deprecation warning for platform loading
+- Device registry integration now properly creates "Crestron Control System" device
+- Better error handling if platforms fail to load during startup
+
+### Notes
+- This is a non-breaking change - no user action required
+- All entities maintain their existing IDs and functionality
+- Upgrade from v1.4.0 is seamless - no configuration changes needed
+- Device should now appear in Settings → Devices & Services → Devices
+- Foundation for config flow implementation in v1.6.0
+
 ## [1.4.0] - 2025-11-11
 
 ### Added

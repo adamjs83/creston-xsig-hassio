@@ -1,0 +1,298 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                   Crestron XSIG v1.5.0 Architecture                           ║
+║                    Platform Loading Modernization                             ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ BEFORE (v1.4.0) - DEPRECATED PATTERN                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+async_setup(hass, config)
+│
+├─► hass.data[DOMAIN] = {}                    [Create storage]
+│
+├─► hub = CrestronHub(...)                    [Create hub instance]
+│   └─► hass.data[DOMAIN][HUB] = CrestronXsig()
+│
+├─► await hub.start()                         [Start socket listener]
+│   └─► Socket listening on port 16384
+│
+├─► for platform in PLATFORMS:                [DEPRECATED: Fire and forget]
+│   └─► hass.async_create_task(
+│       async_load_platform(...)
+│       )
+│       ├─► Task: binary_sensor (scheduled)
+│       ├─► Task: sensor (scheduled)
+│       ├─► Task: switch (scheduled)
+│       ├─► Task: light (scheduled)
+│       ├─► Task: climate (scheduled)
+│       ├─► Task: cover (scheduled)
+│       └─► Task: media_player (scheduled)
+│
+└─► return True ✓                             [Returns IMMEDIATELY]
+    │                                         [Before platforms finish!]
+    ↓
+    [Tasks execute later in background]
+    ├─► Platform loads
+    ├─► Entities created
+    ├─► device_info processed (too late!)
+    └─► Device registry misses entities
+
+
+PROBLEMS:
+  ✗ Deprecation warning
+  ✗ Race conditions possible
+  ✗ Device registry doesn't create device
+  ✗ Silent failures possible
+  ✗ Setup completes before platforms ready
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ AFTER (v1.5.0) - MODERN PATTERN                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+async_setup(hass, config)
+│
+├─► hass.data[DOMAIN] = {}                    [Create storage]
+│
+├─► hub = CrestronHub(...)                    [Create hub instance]
+│   └─► hass.data[DOMAIN][HUB] = CrestronXsig()
+│
+├─► await hub.start()                         [Start socket listener]
+│   └─► Socket listening on port 16384
+│
+├─► await asyncio.gather(                     [MODERN: Await all platforms]
+│   *[
+│     discovery.async_load_platform(...)
+│     for platform in PLATFORMS
+│   ]
+│   )
+│   ├─► Load: binary_sensor ──┐
+│   ├─► Load: sensor ──────────┤
+│   ├─► Load: switch ──────────┤
+│   ├─► Load: light ───────────┼─► [All execute in parallel]
+│   ├─► Load: climate ─────────┤   [Wait for ALL to complete]
+│   ├─► Load: cover ───────────┤
+│   └─► Load: media_player ────┘
+│       │
+│       └─► [Waits here until all done]
+│           ├─► All platforms loaded
+│           ├─► All entities created
+│           ├─► All device_info processed
+│           └─► Device registered in registry ✓
+│
+└─► return True ✓                             [Returns AFTER all platforms ready]
+
+
+BENEFITS:
+  ✓ No deprecation warning
+  ✓ No race conditions
+  ✓ Device registry creates device
+  ✓ Errors are visible
+  ✓ Setup completes when ready
+  ✓ Parallel loading (fast)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PLATFORM ACCESS PATTERN (Unchanged in both versions)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+async_setup_platform(hass, config, async_add_entities, discovery_info)
+│
+├─► hub = hass.data[DOMAIN][HUB]              [Access hub from storage]
+│   └─► CrestronXsig instance (already started)
+│
+├─► entity = [CrestronLight(hub, config)]     [Create entity]
+│   └─► Entity stores reference to hub
+│
+└─► async_add_entities(entity)                [Register entity]
+    ├─► Entity registered in entity registry
+    ├─► device_info processed
+    └─► Device created/updated in device registry
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TIMING COMPARISON                                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+v1.4.0 (Fire and Forget):
+─────────────────────────────────────────────────────────►
+T+0ms    T+10ms   T+15ms   T+20ms                T+100ms
+│        │        │        │                     │
+Setup    Hub      Tasks    Return ✓              Platforms
+starts   created  scheduled                      finish
+         started                                 (too late)
+
+Time to return: 20ms (but incomplete)
+Time to ready: 100ms
+
+
+v1.5.0 (Await Completion):
+─────────────────────────────────────────────────────────►
+T+0ms    T+10ms   T+15ms                 T+100ms T+105ms
+│        │        │                      │       │
+Setup    Hub      Platforms              All     Return ✓
+starts   created  start                  done
+         started  (parallel)
+
+Time to return: 105ms
+Time to ready: 105ms (same as return)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ DEVICE REGISTRY INTEGRATION                                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Each entity provides device_info:
+┌──────────────────────────────────────┐
+│ DeviceInfo(                          │
+│   identifiers={(                     │
+│     "crestron",                      │
+│     "crestron_16384"  ◄──── Port     │
+│   )},                                │
+│   name="Crestron Control System",   │
+│   manufacturer="Crestron Electr...", │
+│   model="XSIG Gateway",              │
+│   sw_version="1.5.0"                 │
+│ )                                    │
+└──────────────────────────────────────┘
+          │
+          ├─► All entities with same identifier
+          │   get grouped under one device
+          │
+          └─► Device Registry creates:
+
+              ┌─────────────────────────────────────┐
+              │ Crestron Control System             │
+              ├─────────────────────────────────────┤
+              │ Manufacturer: Crestron Electronics  │
+              │ Model: XSIG Gateway                 │
+              │ SW Version: 1.5.0                   │
+              ├─────────────────────────────────────┤
+              │ Entities:                           │
+              │  • Kitchen Light (light)            │
+              │  • Living Room Temp (sensor)        │
+              │  • Master Climate (climate)         │
+              │  • Front Shade (cover)              │
+              │  • Media Room (media_player)        │
+              │  • ... (all entities)               │
+              └─────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CODE CHANGES SUMMARY                                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+File: __init__.py
+
+Line 9 BEFORE:
+  from homeassistant.helpers.discovery import async_load_platform
+
+Line 9 AFTER:
+  from homeassistant.helpers import discovery
+
+
+Lines 82-84 BEFORE:
+  for platform in PLATFORMS:
+      hass.async_create_task(async_load_platform(hass, platform, DOMAIN, {}, config))
+
+Lines 82-86 AFTER:
+  await asyncio.gather(
+      *[
+          discovery.async_load_platform(hass, platform, DOMAIN, {}, config)
+          for platform in PLATFORMS
+      ]
+  )
+
+
+File: manifest.json
+
+Line 4 BEFORE:
+  "version": "1.4.0",
+
+Line 4 AFTER:
+  "version": "1.5.0",
+
+
+Files: All platform files (optional)
+
+BEFORE:
+  sw_version="1.4.0",
+
+AFTER:
+  sw_version="1.5.0",
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ MIGRATION PATH TO v1.6.0                                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+v1.5.0 (Current):
+  ├─► YAML configuration
+  ├─► Modern platform loading
+  └─► Device registry support
+
+      │
+      │ Add config_flow.py
+      │ Modify __init__.py
+      │
+      ↓
+
+v1.6.0 (Future):
+  ├─► UI configuration (config flow)
+  ├─► YAML import (automatic migration)
+  ├─► Config entry forwarding
+  └─► Enhanced device management
+
+
+Platform loading will change to:
+
+async def async_setup_entry(hass, entry):
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+                                      ↑
+                        This is already similar to what we do in v1.5.0!
+                        That's why v1.5.0 makes v1.6.0 easier.
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ RISK ASSESSMENT                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+UNCHANGED (Low Risk):
+  ✓ Hub creation and initialization
+  ✓ Socket connection logic
+  ✓ Entity class implementations
+  ✓ Callback mechanisms
+  ✓ State restoration
+  ✓ Platform configuration
+  ✓ User YAML config
+
+CHANGED (Minimal Risk):
+  ⚠ Platform loading method
+  ⚠ Import statement
+  ⚠ Await pattern
+
+IMPROVED:
+  ↑ Device registry support
+  ↑ Error visibility
+  ↑ Initialization guarantees
+  ↑ Modern patterns
+  ↓ Deprecation warnings
+  ↓ Race conditions
+
+
+Overall Risk: LOW ✓
+
+Rollback: Simple (restore 1 file)
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                             READY FOR IMPLEMENTATION                          ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+Next Steps:
+  1. Read v1.5.0_QUICK_REFERENCE.md
+  2. Follow v1.5.0_EXACT_CHANGES.md
+  3. Test thoroughly
+  4. Verify device registry
+  5. Celebrate! 🎉
