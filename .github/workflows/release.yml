@@ -1,0 +1,137 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on any tag starting with 'v'
+
+permissions:
+  contents: write  # Required to create releases
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Remove 'v' prefix from tag
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if this is a pre-release (alpha, beta, rc)
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Read manifest.json
+        id: manifest
+        run: |
+          MANIFEST_VERSION=$(jq -r '.version' custom_components/crestron/manifest.json)
+          echo "manifest_version=$MANIFEST_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate version match
+        run: |
+          if [ "${{ steps.version.outputs.version }}" != "${{ steps.manifest.outputs.manifest_version }}" ]; then
+            echo "ERROR: Tag version (${{ steps.version.outputs.version }}) does not match manifest.json version (${{ steps.manifest.outputs.manifest_version }})"
+            exit 1
+          fi
+          echo "✓ Version validation passed"
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract section for this version
+            NOTES=$(awk "/## \[$VERSION\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md)
+
+            if [ -z "$NOTES" ]; then
+              NOTES="Release $VERSION"
+            fi
+          else
+            NOTES="Release $VERSION"
+          fi
+
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release Notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          cat > release_notes.md << 'NOTES_EOF'
+          # Crestron XSIG Integration v${{ steps.version.outputs.version }}
+
+          ${{ steps.changelog.outputs.changelog }}
+
+          ---
+
+          ## Installation
+
+          ### Via HACS (Recommended)
+
+          1. Open HACS in Home Assistant
+          2. Go to Integrations → ⋮ → Custom repositories
+          3. Add: `https://github.com/adamjs83/crestron_custom_component`
+          4. Category: Integration
+          5. Search for "Crestron XSIG Integration"
+          6. Click "Download"
+          7. Restart Home Assistant
+
+          ### Manual Installation
+
+          1. Download the [Source Code (zip)](https://github.com/adamjs83/crestron_custom_component/archive/refs/tags/v${{ steps.version.outputs.version }}.zip)
+          2. Extract the archive
+          3. Copy `custom_components/crestron` to your Home Assistant `custom_components` directory
+          4. Restart Home Assistant
+
+          ## Documentation
+
+          - [README](https://github.com/adamjs83/crestron_custom_component/blob/main/README.md)
+          - [Configuration Guide](https://github.com/adamjs83/crestron_custom_component/blob/main/README.md#configuration)
+          - [CHANGELOG](https://github.com/adamjs83/crestron_custom_component/blob/main/CHANGELOG.md)
+
+          ## Support
+
+          - [Report Issues](https://github.com/adamjs83/crestron_custom_component/issues)
+
+          ---
+
+          🤖 Created with [Claude Code](https://claude.com/claude-code)
+
+          **Credits:** Forked from [@npope's work](https://github.com/npope/home-assistant-crestron-component)
+          NOTES_EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Crestron XSIG v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          generate_release_notes: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Release Created Successfully! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pre-release**: ${{ steps.version.outputs.prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF#refs/tags/}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "HACS will detect this release within 5-10 minutes." >> $GITHUB_STEP_SUMMARY
