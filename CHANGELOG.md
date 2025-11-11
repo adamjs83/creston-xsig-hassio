@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.1] - 2025-11-11
+
+### Fixed
+- Fix socket exception when trying to send to Crestron before connection established
+- Remove excessive debug logging that flooded logs (200+ messages)
+- Add proper error handling around all socket write operations
+- Mark connection as dead when socket write fails
+
 ## [1.2.0] - 2025-11-11
 
 ### Changed

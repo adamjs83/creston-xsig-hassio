@@ -83,7 +83,8 @@ class CrestronXsig:
                         value = ~header[0] >> 5 & 0b1
                         self._digital[join] = True if value == 1 else False
                         self._digital_received.add(join)  # Mark as received
-                        _LOGGER.debug(f"Got Digital: {join} = {value}")
+                        # Removed excessive debug logging that floods logs
+                        # _LOGGER.debug(f"Got Digital: {join} = {value}")
                         for callback in self._callbacks:
                             await callback(f"d{join}", str(value))
                     # Analog Join
@@ -99,7 +100,8 @@ class CrestronXsig:
                         )
                         self._analog[join] = value
                         self._analog_received.add(join)  # Mark as received
-                        _LOGGER.debug(f"Got Analog: {join} = {value}")
+                        # Removed excessive debug logging that floods logs
+                        # _LOGGER.debug(f"Got Analog: {join} = {value}")
                         for callback in self._callbacks:
                             await callback(f"a{join}", str(value))
                     # Serial Join
@@ -113,7 +115,8 @@ class CrestronXsig:
                         string = data[2:-1].decode("utf-8")
                         self._serial[join] = string
                         self._serial_received.add(join)  # Mark as received
-                        _LOGGER.debug(f"Got String: {join} = {string}")
+                        # Removed excessive debug logging that floods logs
+                        # _LOGGER.debug(f"Got String: {join} = {string}")
                         for callback in self._callbacks:
                             await callback(f"s{join}", string)
                     else:
@@ -156,43 +159,61 @@ class CrestronXsig:
     def set_analog(self, join, value):
         """ Send Analog Join to Crestron XSIG symbol """
         if self._writer:
-            data = struct.pack(
-                ">BBBB",
-                0b11000000 | (value >> 10 & 0b00110000) | (join - 1) >> 7,
-                (join - 1) & 0b01111111,
-                value >> 7 & 0b01111111,
-                value & 0b01111111,
-            )
-            self._writer.write(data)
-            _LOGGER.debug(f"Sending Analog: {join}, {value}")
+            try:
+                data = struct.pack(
+                    ">BBBB",
+                    0b11000000 | (value >> 10 & 0b00110000) | (join - 1) >> 7,
+                    (join - 1) & 0b01111111,
+                    value >> 7 & 0b01111111,
+                    value & 0b01111111,
+                )
+                self._writer.write(data)
+                # Removed excessive debug logging
+                # _LOGGER.debug(f"Sending Analog: {join}, {value}")
+            except Exception as err:
+                _LOGGER.warning(f"Failed to send analog join {join}: {err}")
+                self._writer = None  # Mark connection as dead
+                self._available = False
         else:
-            _LOGGER.info("Could not send.  No connection to hub")
+            _LOGGER.debug("Could not send analog. No connection to hub")
 
     def set_digital(self, join, value):
         """ Send Digital Join to Crestron XSIG symbol """
         if self._writer:
-            data = struct.pack(
-                ">BB",
-                0b10000000 | (~value << 5 & 0b00100000) | (join - 1) >> 7,
-                (join - 1) & 0b01111111,
-            )
-            self._writer.write(data)
-            _LOGGER.debug(f"Sending Digital: {join}, {value}")
+            try:
+                data = struct.pack(
+                    ">BB",
+                    0b10000000 | (~value << 5 & 0b00100000) | (join - 1) >> 7,
+                    (join - 1) & 0b01111111,
+                )
+                self._writer.write(data)
+                # Removed excessive debug logging
+                # _LOGGER.debug(f"Sending Digital: {join}, {value}")
+            except Exception as err:
+                _LOGGER.warning(f"Failed to send digital join {join}: {err}")
+                self._writer = None  # Mark connection as dead
+                self._available = False
         else:
-            _LOGGER.info("Could not send.  No connection to hub")
+            _LOGGER.debug("Could not send digital. No connection to hub")
 
     def set_serial(self, join, string):
         """ Send String Join to Crestron XSIG symbol """
         if len(string) > 252:
-            _LOGGER.info(f"Could not send. String too long ({len(string)}>252)")
+            _LOGGER.warning(f"Could not send serial. String too long ({len(string)}>252)")
             return
         elif self._writer:
-            data = struct.pack(
-                ">BB", 0b11001000 | ((join - 1) >> 7), (join - 1) & 0b01111111
-            )
-            data += string.encode()
-            data += b"\xff"
-            self._writer.write(data)
-            _LOGGER.debug(f"Sending Serial: {join}, {string}")
+            try:
+                data = struct.pack(
+                    ">BB", 0b11001000 | ((join - 1) >> 7), (join - 1) & 0b01111111
+                )
+                data += string.encode()
+                data += b"\xff"
+                self._writer.write(data)
+                # Removed excessive debug logging
+                # _LOGGER.debug(f"Sending Serial: {join}, {string}")
+            except Exception as err:
+                _LOGGER.warning(f"Failed to send serial join {join}: {err}")
+                self._writer = None  # Mark connection as dead
+                self._available = False
         else:
-            _LOGGER.info("Could not send.  No connection to hub")
+            _LOGGER.debug("Could not send serial. No connection to hub")
