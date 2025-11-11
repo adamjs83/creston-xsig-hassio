@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.3.0] - 2025-11-11
+
+### Added
+- Unique IDs for all entity types (light, switch, climate, cover, media_player, sensor, binary_sensor)
+- Entity registry support enables UI-based entity renaming and customization
+- Stable entity IDs that persist across Home Assistant restarts
+
+### Notes
+- This release restores unique ID functionality for users who downgraded from v1.2.x
+- Existing entity registry entries will be automatically linked
+- No configuration changes required
+
 ## [1.2.2] - 2025-11-11
 
 ### Fixed
