@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.5.1] - 2025-11-11
+
+### Fixed
+- **CRITICAL:** Fix AttributeError when device_info property accessed
+- CrestronXsig object now properly stores port attribute
+- Fixes compatibility issues with other integrations (e.g., versatile_thermostat)
+- No breaking changes - purely additive fix
+
+### Technical Details
+- Added `self.port = None` to CrestronXsig.__init__()
+- Added `self.port = port` to CrestronXsig.listen()
+- Fixes: `AttributeError: 'CrestronXsig' object has no attribute 'port'`
+
+### Impact
+- All entity device_info properties now work correctly
+- Device identifiers include port number as designed
+- Zero user action required - automatic on upgrade
+
 ## [1.5.0] - 2025-11-11
 
 ### Changed

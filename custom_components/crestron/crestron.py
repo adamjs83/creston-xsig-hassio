@@ -19,9 +19,11 @@ class CrestronXsig:
         self._server = None
         self._available = False
         self._sync_all_joins_callback = None
+        self.port = None
 
     async def listen(self, port):
         """ Start TCP XSIG server listening on configured port """
+        self.port = port
         server = await asyncio.start_server(self.handle_connection, "0.0.0.0", port)
         self._server = server
         addr = server.sockets[0].getsockname()
