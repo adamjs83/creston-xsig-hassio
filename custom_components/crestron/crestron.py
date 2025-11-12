@@ -198,6 +198,26 @@ class CrestronXsig:
         else:
             _LOGGER.debug("Could not send digital. No connection to hub")
 
+    async def async_set_digital(self, join, value):
+        """ Send Digital Join to Crestron XSIG symbol and ensure it's transmitted """
+        if self._writer:
+            try:
+                data = struct.pack(
+                    ">BB",
+                    0b10000000 | (~value << 5 & 0b00100000) | (join - 1) >> 7,
+                    (join - 1) & 0b01111111,
+                )
+                self._writer.write(data)
+                await self._writer.drain()  # Ensure data is actually sent
+                # Removed excessive debug logging
+                # _LOGGER.debug(f"Sending Digital: {join}, {value}")
+            except Exception as err:
+                _LOGGER.warning(f"Failed to send digital join {join}: {err}")
+                self._writer = None  # Mark connection as dead
+                self._available = False
+        else:
+            _LOGGER.debug("Could not send digital. No connection to hub")
+
     def set_serial(self, join, string):
         """ Send String Join to Crestron XSIG symbol """
         if len(string) > 252:

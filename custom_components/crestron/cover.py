@@ -166,6 +166,6 @@ class CrestronShade(CoverEntity, RestoreEntity):
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
-        self._hub.set_digital(self._stop_join, 1)
+        await self._hub.async_set_digital(self._stop_join, 1)
         await asyncio.sleep(0.2)
-        self._hub.set_digital(self._stop_join, 0)
+        await self._hub.async_set_digital(self._stop_join, 0)
