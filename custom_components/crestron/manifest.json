@@ -1,7 +1,7 @@
 {
   "domain": "crestron",
   "name": "Crestron XSIG Integration",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "documentation": "https://github.com/adamjs83/crestron_custom_component/blob/main/README.md",
   "issue_tracker": "https://github.com/adamjs83/crestron_custom_component/issues",
   "dependencies": [],
