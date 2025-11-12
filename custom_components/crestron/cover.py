@@ -6,7 +6,6 @@ import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.event import call_later
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.cover import (
     CoverEntity,
@@ -166,5 +165,7 @@ class CrestronShade(CoverEntity, RestoreEntity):
         self._hub.set_analog(self._pos_join, 0)
 
     async def async_stop_cover(self, **kwargs):
+        """Stop the cover."""
         self._hub.set_digital(self._stop_join, 1)
-        call_later(self.hass, 0.2, lambda _: self._hub.set_digital(self._stop_join, 0))
+        await asyncio.sleep(0.2)
+        self._hub.set_digital(self._stop_join, 0)
