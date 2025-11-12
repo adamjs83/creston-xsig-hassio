@@ -165,7 +165,32 @@ class CrestronShade(CoverEntity, RestoreEntity):
         self._hub.set_analog(self._pos_join, 0)
 
     async def async_stop_cover(self, **kwargs):
-        """Stop the cover."""
+        """Stop the cover and clear direction state.
+
+        This function does two things:
+        1. Sends a stop pulse via the digital stop join
+        2. Clears the analog position join to a neutral value
+
+        Clearing the analog join is critical because:
+        - async_open_cover() sets it to 0xFFFF (65535)
+        - async_close_cover() sets it to 0
+        - If we don't clear it, the next same-direction command won't register
+          as a change and the Crestron system won't respond
+
+        We use the current position (or mid-point) as the neutral value so the
+        cover stays at its stopped position.
+        """
+        # Send stop pulse
         await self._hub.async_set_digital(self._stop_join, 1)
         await asyncio.sleep(0.2)
         await self._hub.async_set_digital(self._stop_join, 0)
+
+        # Clear the direction state by setting analog to current position
+        # This allows immediate direction changes after stopping
+        current_pos = self.current_cover_position
+        if current_pos is not None:
+            # Set to current position (convert percentage back to analog value)
+            self._hub.set_analog(self._pos_join, int(current_pos * 655.35))
+        else:
+            # If we don't have a position, use mid-point (50%)
+            self._hub.set_analog(self._pos_join, 32767)
