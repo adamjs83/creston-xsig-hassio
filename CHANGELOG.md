@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [1.5.2] - 2025-11-11
+
+### Changed
+- Fix event loop error in cover stop action
+
 ## [1.5.1] - 2025-11-11
 
 ### Fixed
