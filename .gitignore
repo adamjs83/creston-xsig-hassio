@@ -56,8 +56,12 @@ known_devices.yaml
 WORKING*.md
 NOTES*.md
 DRAFT*.md
+*_FIX.md
+*_TEST*.md
+*_PLAN*.md
 scratch/
 temp/
+conversation.txt
 
 # Internal documentation (keep local only)
 ROADMAP.md
