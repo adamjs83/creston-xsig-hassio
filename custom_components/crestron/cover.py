@@ -167,4 +167,4 @@ class CrestronShade(CoverEntity, RestoreEntity):
 
     async def async_stop_cover(self, **kwargs):
         self._hub.set_digital(self._stop_join, 1)
-        call_later(self.hass, 0.2, self._hub.set_digital(self._stop_join, 0))
+        call_later(self.hass, 0.2, lambda _: self._hub.set_digital(self._stop_join, 0))
