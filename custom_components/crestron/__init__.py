@@ -6,7 +6,8 @@ import logging
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
-from homeassistant.config_entries import ConfigEntry
+from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.core import HomeAssistant, callback, Context
 from homeassistant.helpers import discovery, device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -75,8 +76,69 @@ async def async_setup(hass, config):
     """Set up a the crestron component."""
 
     if config.get(DOMAIN) is not None:
+        # v1.7.0: Check if YAML should be imported to config entry
+        yaml_config = config[DOMAIN]
+        yaml_port = yaml_config.get(CONF_PORT)
+
+        # Check if already imported (don't re-import on every restart!)
+        existing_entries = hass.config_entries.async_entries(DOMAIN)
+        already_imported = any(
+            entry.data.get(CONF_PORT) == yaml_port
+            for entry in existing_entries
+        )
+
+        if not already_imported and yaml_port is not None:
+            # Trigger one-time import flow for automatic migration
+            _LOGGER.info(
+                "Crestron YAML configuration detected on port %s. "
+                "Triggering automatic import to config entry.",
+                yaml_port
+            )
+
+            # Count to_joins and from_joins for logging
+            to_joins_count = len(yaml_config.get(CONF_TO_HUB, []))
+            from_joins_count = len(yaml_config.get(CONF_FROM_HUB, []))
+
+            _LOGGER.info(
+                "Importing hub configuration: port=%s, to_joins=%d, from_joins=%d",
+                yaml_port,
+                to_joins_count,
+                from_joins_count
+            )
+
+            # Trigger import flow (runs async)
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": SOURCE_IMPORT},
+                    data=yaml_config  # Pass full config including to_joins/from_joins
+                )
+            )
+
+            # Show notification to user about successful import
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "message": (
+                        f"Your Crestron XSIG configuration (port {yaml_port}) has been "
+                        "automatically imported to a config entry."
+                        f"\n\n**Imported:** {to_joins_count} to_joins, {from_joins_count} from_joins"
+                        "\n\nYou can now **optionally** remove the 'crestron:' section from "
+                        "configuration.yaml and restart Home Assistant. The integration "
+                        "will continue to work from the config entry with full bidirectional "
+                        "communication preserved."
+                        "\n\nUntil you remove the YAML configuration, both will coexist "
+                        "(YAML takes precedence for hub, entities stay in their platform sections)."
+                    ),
+                    "title": "Crestron Configuration Imported ✓",
+                    "notification_id": f"crestron_yaml_imported_{yaml_port}"
+                }
+            )
+
+        # Continue with YAML setup (backward compatibility - YAML still works!)
         hass.data[DOMAIN] = {}
-        hub = CrestronHub(hass, config[DOMAIN])
+        hub = CrestronHub(hass, yaml_config)
 
         await hub.start()
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, hub.stop)
@@ -135,8 +197,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # But we won't create a second hub
             return True
 
-    # Create minimal hub config (port only for v1.6.0)
+    # Create hub config from entry data
+    # v1.6.0 entries (UI): Only port
+    # v1.7.0 entries (import): Port + to_joins + from_joins
     hub_config = {CONF_PORT: entry.data[CONF_PORT]}
+
+    # Preserve to_joins if exists (from v1.7.0 import)
+    if CONF_TO_HUB in entry.data:
+        hub_config[CONF_TO_HUB] = entry.data[CONF_TO_HUB]
+        _LOGGER.info(
+            "Config entry has %d to_joins - bidirectional communication enabled",
+            len(entry.data[CONF_TO_HUB])
+        )
+
+    # Preserve from_joins if exists (from v1.7.0 import)
+    if CONF_FROM_HUB in entry.data:
+        hub_config[CONF_FROM_HUB] = entry.data[CONF_FROM_HUB]
+        _LOGGER.info(
+            "Config entry has %d from_joins - Crestron→HA scripts enabled",
+            len(entry.data[CONF_FROM_HUB])
+        )
 
     # Create and start hub
     # set_hub_key=False prevents overwriting YAML's hub if it exists

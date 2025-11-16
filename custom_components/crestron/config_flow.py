@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN, CONF_PORT
+from .const import DOMAIN, CONF_PORT, CONF_TO_HUB, CONF_FROM_HUB
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,8 +110,68 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_import(self, import_data: dict[str, Any]) -> FlowResult:
+        """Import YAML configuration.
+
+        This flow is triggered automatically when YAML configuration is detected
+        on startup and no matching config entry exists.
+
+        Args:
+            import_data: Dict from YAML config (contains port, to_joins, from_joins)
+
+        Returns:
+            FlowResult creating entry or aborting if already configured
+        """
+        _LOGGER.info(
+            "Importing Crestron YAML configuration on port %s",
+            import_data.get(CONF_PORT)
+        )
+
+        port = import_data[CONF_PORT]
+
+        # Validate port (but allow if YAML is using it - that's the import case!)
+        try:
+            info = await validate_port(self.hass, port)
+        except (PortInUse, InvalidPort) as err:
+            _LOGGER.warning("YAML import validation note: %s", err)
+            # For import, create entry anyway - YAML is using the port
+            # The existing conflict detection in async_setup_entry will handle it
+            info = {"title": f"Crestron XSIG (Port {port}) - Imported from YAML"}
+
+        # Check if already imported (prevent duplicates on restart)
+        await self.async_set_unique_id(f"crestron_{port}")
+        self._abort_if_unique_id_configured()
+
+        # Store FULL config including to_joins and from_joins
+        # This preserves all hub-level configuration
+        entry_data = {CONF_PORT: port}
+
+        # Preserve to_joins if exists
+        if CONF_TO_HUB in import_data:
+            entry_data[CONF_TO_HUB] = import_data[CONF_TO_HUB]
+            _LOGGER.info(
+                "Imported %d to_joins for bidirectional communication",
+                len(import_data[CONF_TO_HUB])
+            )
+
+        # Preserve from_joins if exists
+        if CONF_FROM_HUB in import_data:
+            entry_data[CONF_FROM_HUB] = import_data[CONF_FROM_HUB]
+            _LOGGER.info(
+                "Imported %d from_joins for Crestron→HA scripts",
+                len(import_data[CONF_FROM_HUB])
+            )
+
+        _LOGGER.info("YAML import complete - creating config entry with full configuration")
+
+        # Create entry with full hub configuration
+        return self.async_create_entry(
+            title=info["title"],
+            data=entry_data,
+        )
+
     # Options flow removed for v1.6.0 - no options to configure yet
-    # Will be added in v1.7.0+ when entity configuration via UI is implemented
+    # Will be added in v2.0+ when entity configuration via UI is implemented
 
 
 class PortInUse(HomeAssistantError):
