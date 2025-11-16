@@ -246,8 +246,24 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
         current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
 
-        to_joins_yaml = yaml.dump(current_to_joins, default_flow_style=False) if current_to_joins else ""
-        from_joins_yaml = yaml.dump(current_from_joins, default_flow_style=False) if current_from_joins else ""
+        # Format as proper YAML with explicit style settings
+        to_joins_yaml = yaml.dump(
+            current_to_joins,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+            explicit_start=False,
+            width=1000,  # Prevent line wrapping
+        ) if current_to_joins else ""
+
+        from_joins_yaml = yaml.dump(
+            current_from_joins,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+            explicit_start=False,
+            width=1000,  # Prevent line wrapping
+        ) if current_from_joins else ""
 
         # Show form
         options_schema = vol.Schema(
