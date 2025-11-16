@@ -66,5 +66,8 @@ claude.md
 
 # Internal documentation (keep local only)
 ROADMAP.md
+UPDATED_ROADMAP.md
 VERSIONING.md
+V*.md
+TESTING*.md
 scripts/
