@@ -135,7 +135,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hub_config = {CONF_PORT: entry.data[CONF_PORT]}
 
     # Create and start hub
-    hub_wrapper = CrestronHub(hass, hub_config)
+    # set_hub_key=False prevents overwriting YAML's hub if it exists
+    hub_wrapper = CrestronHub(hass, hub_config, set_hub_key=False)
     await hub_wrapper.start()
 
     # Store hub under entry ID (not at HUB key - that's for YAML)
@@ -217,14 +218,20 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 class CrestronHub:
     ''' Wrapper for the CrestronXsig library '''
-    def __init__(self, hass, config):
+    def __init__(self, hass, config, set_hub_key=True):
         self.hass = hass
-        self.hub = hass.data[DOMAIN][HUB] = CrestronXsig()
+        self.hub = CrestronXsig()
         self.port = config.get(CONF_PORT)
         self.context = Context()
         self.to_hub = {}
         self.tracker = None  # Initialize tracker to None
         self.from_hub = None  # Initialize from_hub to None
+
+        # Only set the HUB key if requested (YAML sets it, config entry doesn't)
+        # This prevents config entry from overwriting YAML's hub
+        if set_hub_key:
+            hass.data[DOMAIN][HUB] = self.hub
+
         self.hub.register_sync_all_joins_callback(self.sync_joins_to_hub)
         if CONF_TO_HUB in config:
             track_templates = []

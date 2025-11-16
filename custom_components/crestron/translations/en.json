@@ -20,13 +20,5 @@
     "abort": {
       "already_configured": "This port is already configured. Use a different port for multiple Crestron systems."
     }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Crestron XSIG Options",
-        "description": "Options flow coming in v1.7.0. For now, entity configuration remains in YAML."
-      }
-    }
   }
 }

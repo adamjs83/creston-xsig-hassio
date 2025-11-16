@@ -110,26 +110,8 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> config_entries.OptionsFlow:
-        """Get the options flow for this handler."""
-        return CrestronOptionsFlowHandler(config_entry)
-
-
-class CrestronOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle Crestron options (placeholder for future)."""
-
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Manage the options (future expansion)."""
-        # For v1.6.0, no options to configure
-        # v1.7.0+ can add entity configuration here
-        # Note: config_entry is available as self.config_entry from base class
-        return self.async_show_form(step_id="init")
+    # Options flow removed for v1.6.0 - no options to configure yet
+    # Will be added in v1.7.0+ when entity configuration via UI is implemented
 
 
 class PortInUse(HomeAssistantError):
