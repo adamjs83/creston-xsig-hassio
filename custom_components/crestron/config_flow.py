@@ -185,6 +185,52 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
+    def _format_joins_as_yaml(self, joins: list) -> str:
+        """Format joins list as readable YAML.
+
+        Manually formats to ensure proper structure:
+        - join: d15
+          entity_id: light.master_bedroom_main_lights
+        - join: d19
+          entity_id: light.100w_tune_color_3
+
+        Args:
+            joins: List of join dictionaries
+
+        Returns:
+            Formatted YAML string
+        """
+        if not joins:
+            return ""
+
+        lines = []
+        for join_config in joins:
+            # Start each join with dash
+            lines.append(f"- join: {join_config.get('join', '')}")
+
+            # Add other fields with proper indentation
+            for key, value in join_config.items():
+                if key == 'join':
+                    continue  # Already added above
+
+                # Handle different value types
+                if key == 'script' and isinstance(value, list):
+                    # For from_joins with script actions
+                    lines.append(f"  {key}:")
+                    for action in value:
+                        lines.append("    - " + yaml.dump(action, default_flow_style=False).strip().replace('\n', '\n      '))
+                elif key == 'value_template' or isinstance(value, str):
+                    # String values (might need quoting if they contain special chars)
+                    if ':' in str(value) or '{' in str(value):
+                        lines.append(f"  {key}: \"{value}\"")
+                    else:
+                        lines.append(f"  {key}: {value}")
+                else:
+                    # Other values
+                    lines.append(f"  {key}: {value}")
+
+        return '\n'.join(lines)
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -246,24 +292,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
         current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
 
-        # Format as proper YAML with explicit style settings
-        to_joins_yaml = yaml.dump(
-            current_to_joins,
-            default_flow_style=False,
-            sort_keys=False,
-            allow_unicode=True,
-            explicit_start=False,
-            width=1000,  # Prevent line wrapping
-        ) if current_to_joins else ""
-
-        from_joins_yaml = yaml.dump(
-            current_from_joins,
-            default_flow_style=False,
-            sort_keys=False,
-            allow_unicode=True,
-            explicit_start=False,
-            width=1000,  # Prevent line wrapping
-        ) if current_from_joins else ""
+        # Format to_joins as readable YAML (manually to ensure proper formatting)
+        to_joins_yaml = self._format_joins_as_yaml(current_to_joins)
+        from_joins_yaml = self._format_joins_as_yaml(current_from_joins)
 
         # Show form
         options_schema = vol.Schema(
