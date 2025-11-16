@@ -169,6 +169,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN] = {}
 
     # Check if YAML configuration exists on same port
+    notification_id = f"crestron_dual_config_{entry.data[CONF_PORT]}"
+
     if HUB in hass.data[DOMAIN]:
         yaml_hub = hass.data[DOMAIN][HUB]
         # Check if it's the same port
@@ -190,12 +192,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                                    entry.data[CONF_PORT]
                                ),
                     "title": "Crestron Dual Configuration",
-                    "notification_id": f"crestron_dual_config_{entry.data[CONF_PORT]}"
+                    "notification_id": notification_id
                 }
             )
             # Still return True so entry isn't marked failed
             # But we won't create a second hub
             return True
+    else:
+        # No YAML hub exists, dismiss any previous dual config notification
+        await hass.services.async_call(
+            "persistent_notification",
+            "dismiss",
+            {"notification_id": notification_id}
+        )
 
     # Create hub config from entry data
     # v1.6.0 entries (UI): Only port
