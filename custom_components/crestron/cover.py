@@ -21,6 +21,7 @@ from .const import (
     CONF_IS_CLOSED_JOIN,
     CONF_STOP_JOIN,
     CONF_POS_JOIN,
+    CONF_COVERS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,11 +48,57 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Crestron covers from a config entry.
 
-    For v1.6.0, entities are still configured via YAML.
-    This stub enables device registry linkage for future entity options flow.
+    v1.8.0+: Entities can be configured via UI (stored in entry.data[CONF_COVERS])
+    YAML platform setup (above) still works for backward compatibility.
     """
-    # No entities added from config entry in v1.6.0
-    # YAML platform setup (above) handles entity creation
+    # Get the hub - try entry-specific first, fall back to HUB key
+    hub = hass.data[DOMAIN].get(entry.entry_id) or hass.data[DOMAIN].get(HUB)
+
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for cover entities")
+        return False
+
+    # Get cover configurations from config entry
+    cover_configs = entry.data.get(CONF_COVERS, [])
+
+    if not cover_configs:
+        _LOGGER.debug("No cover entities configured in config entry")
+        return True
+
+    # Parse join strings to integers and create entities
+    entities = []
+    for cover_config in cover_configs:
+        # Parse joins from string format ("a30", "d31") to integers
+        parsed_config = {
+            CONF_NAME: cover_config.get(CONF_NAME),
+            CONF_TYPE: cover_config.get(CONF_TYPE, "shade"),
+        }
+
+        # Parse position join (required, analog)
+        pos_join_str = cover_config.get(CONF_POS_JOIN)
+        if pos_join_str and pos_join_str[0] == 'a':
+            parsed_config[CONF_POS_JOIN] = int(pos_join_str[1:])
+        else:
+            _LOGGER.warning(
+                "Skipping cover %s: invalid pos_join format %s",
+                cover_config.get(CONF_NAME),
+                pos_join_str
+            )
+            continue
+
+        # Parse optional digital joins
+        for join_key in [CONF_IS_OPENING_JOIN, CONF_IS_CLOSING_JOIN,
+                        CONF_IS_CLOSED_JOIN, CONF_STOP_JOIN]:
+            join_str = cover_config.get(join_key)
+            if join_str and join_str[0] == 'd':
+                parsed_config[join_key] = int(join_str[1:])
+
+        entities.append(CrestronShade(hub, parsed_config))
+
+    if entities:
+        async_add_entities(entities)
+        _LOGGER.info("Added %d cover entities from config entry", len(entities))
+
     return True
 
 

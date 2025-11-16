@@ -12,7 +12,19 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import selector
 
-from .const import DOMAIN, CONF_PORT, CONF_TO_HUB, CONF_FROM_HUB
+from .const import (
+    DOMAIN,
+    CONF_PORT,
+    CONF_TO_HUB,
+    CONF_FROM_HUB,
+    CONF_COVERS,
+    CONF_POS_JOIN,
+    CONF_IS_OPENING_JOIN,
+    CONF_IS_CLOSING_JOIN,
+    CONF_IS_CLOSED_JOIN,
+    CONF_STOP_JOIN,
+)
+from homeassistant.const import CONF_NAME, CONF_TYPE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -194,7 +206,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Handle menu selection
             next_step = user_input.get("action")
-            if next_step == "add_to_join":
+            if next_step == "add_cover":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_cover()
+            elif next_step == "add_to_join":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
             elif next_step == "add_from_join":
@@ -202,8 +217,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_add_from_join()
             elif next_step == "edit_joins":
                 return await self.async_step_select_join_to_edit()
+            elif next_step == "edit_entities":
+                return await self.async_step_select_entity_to_edit()
             elif next_step == "remove_joins":
                 return await self.async_step_remove_joins()
+            elif next_step == "remove_entities":
+                return await self.async_step_remove_entities()
             else:
                 # Done
                 return self.async_create_entry(title="", data={})
@@ -211,6 +230,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Get current counts
         current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
         current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+        current_covers = self.config_entry.data.get(CONF_COVERS, [])
 
         # Show menu
         menu_schema = vol.Schema(
@@ -218,10 +238,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required("action"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
+                            {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
                             {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
                             {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
                             {"label": "Edit joins", "value": "edit_joins"},
+                            {"label": "Edit entities", "value": "edit_entities"},
                             {"label": "Remove joins", "value": "remove_joins"},
+                            {"label": "Remove entities", "value": "remove_entities"},
                             {"label": "Done", "value": "done"},
                         ],
                         mode=selector.SelectSelectorMode.LIST,
@@ -586,6 +609,273 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="select_join_to_edit",
             data_schema=select_schema,
+        )
+
+    async def async_step_add_cover(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add or edit a cover entity."""
+        errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME)
+                pos_join = user_input.get(CONF_POS_JOIN)
+                entity_type = user_input.get(CONF_TYPE, "shade")
+                is_opening_join = user_input.get(CONF_IS_OPENING_JOIN, "").strip()
+                is_closing_join = user_input.get(CONF_IS_CLOSING_JOIN, "").strip()
+                is_closed_join = user_input.get(CONF_IS_CLOSED_JOIN, "").strip()
+                stop_join = user_input.get(CONF_STOP_JOIN, "").strip()
+
+                # Validate pos_join format (must be analog)
+                if not pos_join or not (pos_join[0] == 'a' and pos_join[1:].isdigit()):
+                    errors[CONF_POS_JOIN] = "invalid_join_format"
+
+                # Validate optional joins format (must be digital if provided)
+                for join_field, join_value in [
+                    (CONF_IS_OPENING_JOIN, is_opening_join),
+                    (CONF_IS_CLOSING_JOIN, is_closing_join),
+                    (CONF_IS_CLOSED_JOIN, is_closed_join),
+                    (CONF_STOP_JOIN, stop_join),
+                ]:
+                    if join_value and not (join_value[0] == 'd' and join_value[1:].isdigit()):
+                        errors[join_field] = "invalid_join_format"
+
+                # Check for duplicate entity name
+                current_covers = self.config_entry.data.get(CONF_COVERS, [])
+                old_name = self._editing_join.get(CONF_NAME) if is_editing else None
+                if name != old_name and any(c.get(CONF_NAME) == name for c in current_covers):
+                    errors[CONF_NAME] = "entity_already_exists"
+
+                if not errors:
+                    # Build new cover entry
+                    new_cover = {
+                        CONF_NAME: name,
+                        CONF_POS_JOIN: pos_join,
+                        CONF_TYPE: entity_type,
+                    }
+
+                    # Add optional joins
+                    if is_opening_join:
+                        new_cover[CONF_IS_OPENING_JOIN] = is_opening_join
+                    if is_closing_join:
+                        new_cover[CONF_IS_CLOSING_JOIN] = is_closing_join
+                    if is_closed_join:
+                        new_cover[CONF_IS_CLOSED_JOIN] = is_closed_join
+                    if stop_join:
+                        new_cover[CONF_STOP_JOIN] = stop_join
+
+                    if is_editing:
+                        # Replace existing cover
+                        updated_covers = [
+                            new_cover if c.get(CONF_NAME) == old_name else c
+                            for c in current_covers
+                        ]
+                        _LOGGER.info("Updated cover %s", name)
+                    else:
+                        # Append new cover
+                        updated_covers = current_covers + [new_cover]
+                        _LOGGER.info("Added cover %s", name)
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_COVERS] = updated_covers
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+                    # Clear editing state and return to menu
+                    self._editing_join = None
+                    return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error adding/updating cover: %s", err)
+                errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            default_values = {
+                CONF_NAME: self._editing_join.get(CONF_NAME, ""),
+                CONF_POS_JOIN: self._editing_join.get(CONF_POS_JOIN, ""),
+                CONF_TYPE: self._editing_join.get(CONF_TYPE, "shade"),
+                CONF_IS_OPENING_JOIN: self._editing_join.get(CONF_IS_OPENING_JOIN, ""),
+                CONF_IS_CLOSING_JOIN: self._editing_join.get(CONF_IS_CLOSING_JOIN, ""),
+                CONF_IS_CLOSED_JOIN: self._editing_join.get(CONF_IS_CLOSED_JOIN, ""),
+                CONF_STOP_JOIN: self._editing_join.get(CONF_STOP_JOIN, ""),
+            }
+
+        # Show form
+        add_cover_schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_POS_JOIN, default=default_values.get(CONF_POS_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Optional(CONF_TYPE, default=default_values.get(CONF_TYPE, "shade")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[{"label": "Shade", "value": "shade"}],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_IS_OPENING_JOIN, default=default_values.get(CONF_IS_OPENING_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Optional(CONF_IS_CLOSING_JOIN, default=default_values.get(CONF_IS_CLOSING_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Optional(CONF_IS_CLOSED_JOIN, default=default_values.get(CONF_IS_CLOSED_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Optional(CONF_STOP_JOIN, default=default_values.get(CONF_STOP_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_cover",
+            data_schema=add_cover_schema,
+            errors=errors,
+        )
+
+    async def async_step_select_entity_to_edit(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select which entity to edit."""
+        if user_input is not None:
+            selected_entity = user_input.get("entity_to_edit")
+
+            if selected_entity:
+                # Find the entity in our data
+                current_covers = self.config_entry.data.get(CONF_COVERS, [])
+
+                # Check if it's a cover
+                for cover in current_covers:
+                    if cover.get(CONF_NAME) == selected_entity:
+                        self._editing_join = cover
+                        return await self.async_step_add_cover()
+
+            # Not found, return to menu
+            return await self.async_step_init()
+
+        # Build list of all entities for editing
+        current_covers = self.config_entry.data.get(CONF_COVERS, [])
+
+        entity_options = []
+        for c in current_covers:
+            entity_options.append({
+                "label": f"{c.get(CONF_NAME)} (Cover - {c.get(CONF_POS_JOIN)})",
+                "value": c.get(CONF_NAME)
+            })
+
+        if not entity_options:
+            # No entities to edit, return to menu
+            return await self.async_step_init()
+
+        # Show selection form
+        select_schema = vol.Schema(
+            {
+                vol.Required("entity_to_edit"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=entity_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="select_entity_to_edit",
+            data_schema=select_schema,
+        )
+
+    async def async_step_remove_entities(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Remove entities by selecting from a list."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                entities_to_remove = user_input.get("entities_to_remove", [])
+
+                if entities_to_remove:
+                    current_covers = self.config_entry.data.get(CONF_COVERS, [])
+
+                    # Filter out selected entities
+                    updated_covers = [c for c in current_covers if c.get(CONF_NAME) not in entities_to_remove]
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_COVERS] = updated_covers
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+                    _LOGGER.info("Removed %d entities", len(entities_to_remove))
+
+                # Return to menu
+                return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error removing entities: %s", err)
+                errors["base"] = "unknown"
+
+        # Build list of all entities for removal selection
+        current_covers = self.config_entry.data.get(CONF_COVERS, [])
+
+        entity_options = []
+        for c in current_covers:
+            entity_options.append({
+                "label": f"{c.get(CONF_NAME)} (Cover - {c.get(CONF_POS_JOIN)})",
+                "value": c.get(CONF_NAME)
+            })
+
+        if not entity_options:
+            # No entities to remove, return to menu
+            return await self.async_step_init()
+
+        # Show removal form
+        remove_schema = vol.Schema(
+            {
+                vol.Optional("entities_to_remove"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=entity_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="remove_entities",
+            data_schema=remove_schema,
+            errors=errors,
         )
 
 

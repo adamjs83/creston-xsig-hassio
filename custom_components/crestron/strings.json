@@ -73,11 +73,48 @@
         "data": {
           "joins_to_remove": "Joins to Remove"
         }
+      },
+      "add_cover": {
+        "title": "Add Cover Entity",
+        "description": "Create a cover (shade/blind) entity. Position join is required (analog). Optional joins add feedback and control features.",
+        "data": {
+          "name": "Entity Name",
+          "pos_join": "Position Join",
+          "type": "Type",
+          "is_opening_join": "Opening State Join (optional)",
+          "is_closing_join": "Closing State Join (optional)",
+          "is_closed_join": "Closed State Join (optional)",
+          "stop_join": "Stop Command Join (optional)"
+        },
+        "data_description": {
+          "name": "Friendly name for this cover (e.g., Living Room Shade)",
+          "pos_join": "Analog join for position control (e.g., a30)",
+          "type": "Device type (shade for window shades/blinds)",
+          "is_opening_join": "Digital join for opening state feedback (e.g., d31)",
+          "is_closing_join": "Digital join for closing state feedback (e.g., d32)",
+          "is_closed_join": "Digital join for closed state feedback (e.g., d33)",
+          "stop_join": "Digital join for stop command (e.g., d34)"
+        }
+      },
+      "select_entity_to_edit": {
+        "title": "Select Entity to Edit",
+        "description": "Choose an entity to edit. The form will be pre-filled with current values.",
+        "data": {
+          "entity_to_edit": "Entity to Edit"
+        }
+      },
+      "remove_entities": {
+        "title": "Remove Entities",
+        "description": "Select one or more entities to remove. The integration will reload after removal.",
+        "data": {
+          "entities_to_remove": "Entities to Remove"
+        }
       }
     },
     "error": {
       "invalid_join_format": "Join must be in format: d1-d250, a1-a250, or s1-s250 (e.g., d15, a10, s5)",
       "join_already_exists": "This join number is already configured. Remove it first or use a different join number.",
+      "entity_already_exists": "An entity with this name already exists. Choose a different name.",
       "unknown": "An unexpected error occurred. Check the logs for details."
     }
   }

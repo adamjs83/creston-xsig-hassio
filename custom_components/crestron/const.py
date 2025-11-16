@@ -34,6 +34,9 @@ CONF_VALUE_JOIN = "value_join"
 CONF_DIVISOR = "divisor"
 CONF_SWITCH_JOIN = "switch_join"
 
+# Entity storage (v1.8.0+)
+CONF_COVERS = "covers"
+
 # Climate additional constants
 CONF_MODE_HEAT_COOL_JOIN = "mode_heat_cool_join"
 CONF_FAN_MODE_AUTO_JOIN = "fan_mode_auto_join"
