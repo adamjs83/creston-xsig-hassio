@@ -122,16 +122,13 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class CrestronOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Crestron options (placeholder for future)."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options (future expansion)."""
         # For v1.6.0, no options to configure
         # v1.7.0+ can add entity configuration here
+        # Note: config_entry is available as self.config_entry from base class
         return self.async_show_form(step_id="init")
 
 
