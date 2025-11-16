@@ -186,133 +186,120 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    def _format_joins_as_yaml(self, joins: list) -> str:
-        """Format joins list as readable YAML.
-
-        Manually formats to ensure proper structure:
-        - join: d15
-          entity_id: light.master_bedroom_main_lights
-        - join: d19
-          entity_id: light.100w_tune_color_3
-
-        Args:
-            joins: List of join dictionaries
-
-        Returns:
-            Formatted YAML string
-        """
-        if not joins:
-            return ""
-
-        lines = []
-        for join_config in joins:
-            # Start each join with dash
-            lines.append(f"- join: {join_config.get('join', '')}")
-
-            # Add other fields with proper indentation
-            for key, value in join_config.items():
-                if key == 'join':
-                    continue  # Already added above
-
-                # Handle different value types
-                if key == 'script' and isinstance(value, list):
-                    # For from_joins with script actions
-                    lines.append(f"  {key}:")
-                    for action in value:
-                        lines.append("    - " + yaml.dump(action, default_flow_style=False).strip().replace('\n', '\n      '))
-                elif key == 'value_template' or isinstance(value, str):
-                    # String values (might need quoting if they contain special chars)
-                    if ':' in str(value) or '{' in str(value):
-                        lines.append(f"  {key}: \"{value}\"")
-                    else:
-                        lines.append(f"  {key}: {value}")
-                else:
-                    # Other values
-                    lines.append(f"  {key}: {value}")
-
-        return '\n'.join(lines)
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the options for to_joins and from_joins."""
+        """Main menu for managing joins."""
+        if user_input is not None:
+            # Handle menu selection
+            next_step = user_input.get("action")
+            if next_step == "add_to_join":
+                return await self.async_step_add_to_join()
+            elif next_step == "add_from_join":
+                return await self.async_step_add_from_join()
+            elif next_step == "remove_joins":
+                return await self.async_step_remove_joins()
+            else:
+                # Done
+                return self.async_create_entry(title="", data={})
+
+        # Get current counts
+        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+
+        # Show menu
+        menu_schema = vol.Schema(
+            {
+                vol.Required("action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
+                            {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
+                            {"label": "Remove joins", "value": "remove_joins"},
+                            {"label": "Done", "value": "done"},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=menu_schema,
+        )
+
+    async def async_step_add_to_join(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add a single to_join with entity picker."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             try:
-                # Parse to_joins YAML
-                to_joins = None
-                if user_input.get("to_joins_yaml", "").strip():
-                    try:
-                        to_joins = yaml.safe_load(user_input["to_joins_yaml"])
-                        if to_joins is not None and not isinstance(to_joins, list):
-                            errors["to_joins_yaml"] = "invalid_yaml_format"
-                    except yaml.YAMLError as err:
-                        _LOGGER.error("Invalid YAML in to_joins: %s", err)
-                        errors["to_joins_yaml"] = "invalid_yaml"
+                join_num = user_input.get("join")
+                entity_id = user_input.get("entity_id")
+                attribute = user_input.get("attribute", "").strip()
+                value_template = user_input.get("value_template", "").strip()
 
-                # Parse from_joins YAML
-                from_joins = None
-                if user_input.get("from_joins_yaml", "").strip():
-                    try:
-                        from_joins = yaml.safe_load(user_input["from_joins_yaml"])
-                        if from_joins is not None and not isinstance(from_joins, list):
-                            errors["from_joins_yaml"] = "invalid_yaml_format"
-                    except yaml.YAMLError as err:
-                        _LOGGER.error("Invalid YAML in from_joins: %s", err)
-                        errors["from_joins_yaml"] = "invalid_yaml"
+                # Validate join format
+                if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
+                    errors["join"] = "invalid_join_format"
 
-                # If no errors, update the config entry
+                # Check for duplicate join
+                current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+                if any(j.get("join") == join_num for j in current_to_joins):
+                    errors["join"] = "join_already_exists"
+
                 if not errors:
-                    # Build new data dict
-                    new_data = {CONF_PORT: self.config_entry.data[CONF_PORT]}
+                    # Build new join entry
+                    new_join = {"join": join_num}
 
-                    if to_joins is not None:
-                        new_data[CONF_TO_HUB] = to_joins
-                        _LOGGER.info("Updated to_joins: %d entries", len(to_joins))
+                    if entity_id:
+                        new_join["entity_id"] = entity_id
+                    if attribute:
+                        new_join["attribute"] = attribute
+                    if value_template:
+                        new_join["value_template"] = value_template
 
-                    if from_joins is not None:
-                        new_data[CONF_FROM_HUB] = from_joins
-                        _LOGGER.info("Updated from_joins: %d entries", len(from_joins))
+                    # Append to existing to_joins
+                    updated_to_joins = current_to_joins + [new_join]
 
                     # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_TO_HUB] = updated_to_joins
+
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, data=new_data
                     )
 
-                    # Reload the integration to apply changes
+                    # Reload the integration
                     await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
-                    return self.async_create_entry(title="", data={})
+                    _LOGGER.info("Added to_join %s for %s", join_num, entity_id)
+
+                    # Return to menu
+                    return await self.async_step_init()
 
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected error in options flow: %s", err)
+                _LOGGER.exception("Error adding to_join: %s", err)
                 errors["base"] = "unknown"
 
-        # Get current values as YAML strings
-        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
-        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
-
-        # Format to_joins as readable YAML (manually to ensure proper formatting)
-        to_joins_yaml = self._format_joins_as_yaml(current_to_joins)
-        from_joins_yaml = self._format_joins_as_yaml(current_from_joins)
-
-        # Show form with multi-line text areas
-        options_schema = vol.Schema(
+        # Show form
+        add_to_join_schema = vol.Schema(
             {
-                vol.Optional(
-                    "to_joins_yaml",
-                    description={"suggested_value": to_joins_yaml},
-                ): selector.TextSelector(
+                vol.Required("join"): selector.TextSelector(
                     selector.TextSelectorConfig(
-                        multiline=True,
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional(
-                    "from_joins_yaml",
-                    description={"suggested_value": from_joins_yaml},
-                ): selector.TextSelector(
+                vol.Optional("entity_id"): selector.EntitySelector(),
+                vol.Optional("attribute"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Optional("value_template"): selector.TextSelector(
                     selector.TextSelectorConfig(
                         multiline=True,
                         type=selector.TextSelectorType.TEXT,
@@ -322,13 +309,171 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
 
         return self.async_show_form(
-            step_id="init",
-            data_schema=options_schema,
+            step_id="add_to_join",
+            data_schema=add_to_join_schema,
             errors=errors,
-            description_placeholders={
-                "to_joins_count": str(len(current_to_joins)),
-                "from_joins_count": str(len(current_from_joins)),
-            },
+        )
+
+    async def async_step_add_from_join(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add a single from_join."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                join_num = user_input.get("join")
+                service = user_input.get("service")
+                target_entity = user_input.get("target_entity")
+
+                # Validate join format
+                if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
+                    errors["join"] = "invalid_join_format"
+
+                # Check for duplicate join
+                current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+                if any(j.get("join") == join_num for j in current_from_joins):
+                    errors["join"] = "join_already_exists"
+
+                if not errors:
+                    # Build script action
+                    script_action = {
+                        "service": service,
+                    }
+                    if target_entity:
+                        script_action["target"] = {"entity_id": target_entity}
+
+                    # Build new join entry
+                    new_join = {
+                        "join": join_num,
+                        "script": [script_action]
+                    }
+
+                    # Append to existing from_joins
+                    updated_from_joins = current_from_joins + [new_join]
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_FROM_HUB] = updated_from_joins
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+                    _LOGGER.info("Added from_join %s with service %s", join_num, service)
+
+                    # Return to menu
+                    return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error adding from_join: %s", err)
+                errors["base"] = "unknown"
+
+        # Show form
+        add_from_join_schema = vol.Schema(
+            {
+                vol.Required("join"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required("service"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Optional("target_entity"): selector.EntitySelector(),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_from_join",
+            data_schema=add_from_join_schema,
+            errors=errors,
+        )
+
+    async def async_step_remove_joins(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Remove joins by selecting from a list."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                joins_to_remove = user_input.get("joins_to_remove", [])
+
+                if joins_to_remove:
+                    current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+                    current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+
+                    # Filter out selected joins
+                    updated_to_joins = [j for j in current_to_joins if j.get("join") not in joins_to_remove]
+                    updated_from_joins = [j for j in current_from_joins if j.get("join") not in joins_to_remove]
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_TO_HUB] = updated_to_joins
+                    new_data[CONF_FROM_HUB] = updated_from_joins
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+                    _LOGGER.info("Removed %d joins", len(joins_to_remove))
+
+                # Return to menu
+                return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error removing joins: %s", err)
+                errors["base"] = "unknown"
+
+        # Build list of all joins for removal selection
+        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+
+        join_options = []
+        for j in current_to_joins:
+            entity = j.get("entity_id", j.get("value_template", "N/A"))
+            join_options.append({
+                "label": f"{j.get('join')} → {entity} (to_join)",
+                "value": j.get("join")
+            })
+
+        for j in current_from_joins:
+            script_info = "script" if "script" in j else "N/A"
+            join_options.append({
+                "label": f"{j.get('join')} → {script_info} (from_join)",
+                "value": j.get("join")
+            })
+
+        if not join_options:
+            # No joins to remove, return to menu
+            return await self.async_step_init()
+
+        # Show removal form
+        remove_schema = vol.Schema(
+            {
+                vol.Optional("joins_to_remove"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=join_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="remove_joins",
+            data_schema=remove_schema,
+            errors=errors,
         )
 
 

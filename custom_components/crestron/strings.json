@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Set up Crestron XSIG",
-        "description": "Configure the port for your Crestron XSIG gateway. Entity configuration will continue to use YAML (for now).",
+        "description": "Configure the port for your Crestron XSIG gateway. Join configuration can be done after setup via the Configure button.",
         "data": {
           "port": "XSIG Port"
         },
@@ -24,21 +24,53 @@
   "options": {
     "step": {
       "init": {
-        "title": "Edit Crestron Hub Configuration",
-        "description": "Edit to_joins (HA→Crestron feedback) and from_joins (Crestron→HA scripts) in YAML format.\n\nCurrently: {to_joins_count} to_joins, {from_joins_count} from_joins\n\nLeave blank to remove all joins of that type.",
+        "title": "Manage Crestron Joins",
+        "description": "Choose an action to manage your to_joins (HA→Crestron feedback) and from_joins (Crestron→HA scripts).",
         "data": {
-          "to_joins_yaml": "to_joins (YAML format)",
-          "from_joins_yaml": "from_joins (YAML format)"
+          "action": "Action"
+        }
+      },
+      "add_to_join": {
+        "title": "Add to_join (HA → Crestron)",
+        "description": "Send Home Assistant state to Crestron for feedback. The join will update Crestron whenever the entity state changes.",
+        "data": {
+          "join": "Join Number",
+          "entity_id": "Entity",
+          "attribute": "Attribute (optional)",
+          "value_template": "Value Template (optional)"
         },
         "data_description": {
-          "to_joins_yaml": "Sends Home Assistant state to Crestron (feedback). Example:\n- join: d1\n  entity_id: light.kitchen\n- join: a1\n  entity_id: light.kitchen\n  attribute: brightness",
-          "from_joins_yaml": "Runs Home Assistant scripts from Crestron (macros). Example:\n- join: d100\n  script:\n    - service: light.toggle\n      target:\n        entity_id: light.kitchen"
+          "join": "Join number (e.g., d15 for digital, a10 for analog, s5 for serial)",
+          "entity_id": "Entity to monitor (e.g., light.master_bedroom)",
+          "attribute": "Entity attribute to send (e.g., brightness). Leave blank to send state.",
+          "value_template": "Advanced: Jinja2 template for custom value logic"
+        }
+      },
+      "add_from_join": {
+        "title": "Add from_join (Crestron → HA)",
+        "description": "Run a Home Assistant service when Crestron triggers this join. Useful for button presses and macros.",
+        "data": {
+          "join": "Join Number",
+          "service": "Service",
+          "target_entity": "Target Entity (optional)"
+        },
+        "data_description": {
+          "join": "Join number (e.g., d100 for digital button press)",
+          "service": "Service to call (e.g., light.toggle, script.goodnight)",
+          "target_entity": "Entity to target (optional, e.g., light.kitchen)"
+        }
+      },
+      "remove_joins": {
+        "title": "Remove Joins",
+        "description": "Select one or more joins to remove. The integration will reload after removal.",
+        "data": {
+          "joins_to_remove": "Joins to Remove"
         }
       }
     },
     "error": {
-      "invalid_yaml": "Invalid YAML syntax. Please check your formatting.",
-      "invalid_yaml_format": "YAML must be a list format. Example:\n- join: d1\n  entity_id: light.kitchen",
+      "invalid_join_format": "Join must be in format: d1-d250, a1-a250, or s1-s250 (e.g., d15, a10, s5)",
+      "join_already_exists": "This join number is already configured. Remove it first or use a different join number.",
       "unknown": "An unexpected error occurred. Check the logs for details."
     }
   }
