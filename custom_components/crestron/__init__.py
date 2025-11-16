@@ -370,7 +370,7 @@ class CrestronHub:
     async def start(self):
         await self.hub.listen(self.port)
 
-    def stop(self, event):
+    async def stop(self, event):
         """Remove callback(s) and template trackers."""
         # Only remove from_hub callback if it was registered
         if self.from_hub is not None:
@@ -380,7 +380,7 @@ class CrestronHub:
         if self.tracker is not None:
             self.tracker.async_remove()
 
-        self.hub.stop()
+        await self.hub.stop()
 
     async def join_change_callback(self, cbtype, value):
         """ Call service for tracked join change (from_hub)"""

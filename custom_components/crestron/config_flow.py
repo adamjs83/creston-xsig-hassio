@@ -199,6 +199,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self._editing_join = None  # Track which join we're editing
 
+    async def _async_reload_integration(self) -> None:
+        """Safely reload the integration, handling platforms that aren't loaded."""
+        try:
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+        except ValueError:
+            # Some platforms were never loaded, do a full setup cycle
+            _LOGGER.debug("Some platforms not loaded, performing unload/setup cycle")
+            try:
+                await self.hass.config_entries.async_unload(self.config_entry.entry_id)
+            except ValueError:
+                pass  # Ignore if nothing was loaded
+            await self.hass.config_entries.async_setup(self.config_entry.entry_id)
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -314,7 +327,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
 
                     # Reload the integration
-                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                    await self._async_reload_integration()
 
                     # Clear editing state and return to menu
                     self._editing_join = None
@@ -421,7 +434,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
 
                     # Reload the integration
-                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                    await self._async_reload_integration()
 
                     # Clear editing state and return to menu
                     self._editing_join = None
@@ -492,7 +505,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
 
                     # Reload the integration
-                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                    await self._async_reload_integration()
 
                     _LOGGER.info("Removed %d joins", len(joins_to_remove))
 
@@ -687,7 +700,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
 
                     # Reload the integration
-                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                    await self._async_reload_integration()
 
                     # Clear editing state and return to menu
                     self._editing_join = None
@@ -834,7 +847,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
 
                     # Reload the integration
-                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                    await self._async_reload_integration()
 
                     _LOGGER.info("Removed %d entities", len(entities_to_remove))
 
