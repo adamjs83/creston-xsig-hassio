@@ -1,6 +1,6 @@
 # Crestron XSIG Integration for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
+[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -8,12 +8,14 @@ A Home Assistant custom component for integrating with Crestron control systems 
 
 ## Features
 
-- **YAML-based configuration** for flexible setup
+- **UI-based configuration** with automatic YAML import (v1.7.0+)
+- **Options Flow join management** - Add, edit, and remove joins via UI (v1.7.0+)
 - **Bidirectional join communication** (digital, analog, and serial)
 - **Multiple platform support**: lights, switches, climate, covers, media players, sensors, binary sensors
 - **Template-based state synchronization** (Home Assistant → Crestron)
 - **Script execution** from join changes (Crestron → Home Assistant)
 - **Automatic reconnection** on connection loss
+- **No restart required** for join changes (v1.7.0+)
 
 ## Installation
 
@@ -36,20 +38,66 @@ A Home Assistant custom component for integrating with Crestron control systems 
 
 ## Configuration
 
-### UI Configuration (v1.6.0+)
+### UI Configuration (v1.7.0+)
 
-The integration now supports UI-based setup for the Crestron hub:
+The integration supports both UI-based setup and automatic YAML import.
+
+#### Fresh Installation
 
 1. Go to Settings → Devices & Services → Add Integration
 2. Search for "Crestron XSIG"
 3. Enter the XSIG port number (typically 16384)
 4. Click Submit
+5. Use the **Configure** button to manage joins (to_joins and from_joins)
 
-**Note**: In v1.6.0, entity configuration (lights, switches, etc.) is still done via `configuration.yaml`. Full UI entity configuration is planned for v1.7.0+.
+#### Automatic YAML Import (Migration from YAML)
 
-### YAML Configuration
+If you have an existing YAML configuration, v1.7.0 will automatically import it on first restart:
 
-Entity configuration is currently done via `configuration.yaml`.
+1. Upgrade to v1.7.0
+2. Restart Home Assistant
+3. **Automatic import** - Your YAML configuration (port, to_joins, from_joins) will be imported
+4. A notification confirms the import with counts
+5. **YAML continues working** - Both configurations coexist until you remove YAML
+6. **Optional**: Remove the `crestron:` section from `configuration.yaml` after testing
+7. Restart HA - The dual configuration warning will disappear
+
+**Example Import Notification:**
+```
+Crestron Configuration Imported ✓
+Your Crestron XSIG configuration (port 16384) has been automatically imported
+to the UI. You can now manage joins via the Configure button.
+
+Imported: 47 to_joins, 2 from_joins
+
+Your YAML configuration will continue to work. To complete the migration,
+remove the 'crestron:' section from configuration.yaml and restart.
+```
+
+#### Managing Joins (Options Flow)
+
+After setup, click the **Configure** button on your Crestron integration to:
+
+- **Add to_join (HA→Crestron)** - Send HA state to Crestron for feedback
+  - Select entity from picker
+  - Specify join number (d15, a10, s5, etc.)
+  - Optional: attribute, value template
+
+- **Add from_join (Crestron→HA)** - Run HA services when Crestron triggers
+  - Specify join number
+  - Select service to call
+  - Optional: target entity
+
+- **Edit joins** - Modify existing joins with pre-filled forms
+
+- **Remove joins** - Delete one or more joins
+
+**No restart required** - Changes take effect immediately after reload.
+
+### YAML Configuration (Optional)
+
+Entity configuration (lights, switches, climate, etc.) is still done via `configuration.yaml`.
+YAML hub configuration is optional in v1.7.0+ (use UI instead).
 
 ### Basic Configuration
 
@@ -317,6 +365,9 @@ logger:
 This component is forked from the excellent work by [@npope](https://github.com/npope) - [home-assistant-crestron-component](https://github.com/npope/home-assistant-crestron-component)
 
 ### Enhancements in this fork:
+- **v1.7.0**: UI-based join management with Options Flow
+- **v1.7.0**: Automatic YAML import for seamless migration
+- **v1.6.0+**: UI-based configuration with Config Flow
 - HACS compatibility and automated releases
 - Enhanced climate platform with floor warming support
 - Improved documentation and examples
