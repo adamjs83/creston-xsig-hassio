@@ -4,6 +4,7 @@ import socket
 from typing import Any
 
 import voluptuous as vol
+import yaml
 
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
@@ -170,8 +171,107 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data=entry_data,
         )
 
-    # Options flow removed for v1.6.0 - no options to configure yet
-    # Will be added in v2.0+ when entity configuration via UI is implemented
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for Crestron XSIG integration."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options for to_joins and from_joins."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                # Parse to_joins YAML
+                to_joins = None
+                if user_input.get("to_joins_yaml", "").strip():
+                    try:
+                        to_joins = yaml.safe_load(user_input["to_joins_yaml"])
+                        if to_joins is not None and not isinstance(to_joins, list):
+                            errors["to_joins_yaml"] = "invalid_yaml_format"
+                    except yaml.YAMLError as err:
+                        _LOGGER.error("Invalid YAML in to_joins: %s", err)
+                        errors["to_joins_yaml"] = "invalid_yaml"
+
+                # Parse from_joins YAML
+                from_joins = None
+                if user_input.get("from_joins_yaml", "").strip():
+                    try:
+                        from_joins = yaml.safe_load(user_input["from_joins_yaml"])
+                        if from_joins is not None and not isinstance(from_joins, list):
+                            errors["from_joins_yaml"] = "invalid_yaml_format"
+                    except yaml.YAMLError as err:
+                        _LOGGER.error("Invalid YAML in from_joins: %s", err)
+                        errors["from_joins_yaml"] = "invalid_yaml"
+
+                # If no errors, update the config entry
+                if not errors:
+                    # Build new data dict
+                    new_data = {CONF_PORT: self.config_entry.data[CONF_PORT]}
+
+                    if to_joins is not None:
+                        new_data[CONF_TO_HUB] = to_joins
+                        _LOGGER.info("Updated to_joins: %d entries", len(to_joins))
+
+                    if from_joins is not None:
+                        new_data[CONF_FROM_HUB] = from_joins
+                        _LOGGER.info("Updated from_joins: %d entries", len(from_joins))
+
+                    # Update config entry
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration to apply changes
+                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+                    return self.async_create_entry(title="", data={})
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected error in options flow: %s", err)
+                errors["base"] = "unknown"
+
+        # Get current values as YAML strings
+        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+
+        to_joins_yaml = yaml.dump(current_to_joins, default_flow_style=False) if current_to_joins else ""
+        from_joins_yaml = yaml.dump(current_from_joins, default_flow_style=False) if current_from_joins else ""
+
+        # Show form
+        options_schema = vol.Schema(
+            {
+                vol.Optional(
+                    "to_joins_yaml",
+                    description={"suggested_value": to_joins_yaml},
+                ): str,
+                vol.Optional(
+                    "from_joins_yaml",
+                    description={"suggested_value": from_joins_yaml},
+                ): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            errors=errors,
+            description_placeholders={
+                "to_joins_count": str(len(current_to_joins)),
+                "from_joins_count": str(len(current_from_joins)),
+            },
+        )
 
 
 class PortInUse(HomeAssistantError):

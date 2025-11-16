@@ -20,5 +20,26 @@
     "abort": {
       "already_configured": "This port is already configured. Use a different port for multiple Crestron systems."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit Crestron Hub Configuration",
+        "description": "Edit to_joins (HA→Crestron feedback) and from_joins (Crestron→HA scripts) in YAML format.\n\nCurrently: {to_joins_count} to_joins, {from_joins_count} from_joins\n\nLeave blank to remove all joins of that type.",
+        "data": {
+          "to_joins_yaml": "to_joins (YAML format)",
+          "from_joins_yaml": "from_joins (YAML format)"
+        },
+        "data_description": {
+          "to_joins_yaml": "Sends Home Assistant state to Crestron (feedback). Example:\n- join: d1\n  entity_id: light.kitchen\n- join: a1\n  entity_id: light.kitchen\n  attribute: brightness",
+          "from_joins_yaml": "Runs Home Assistant scripts from Crestron (macros). Example:\n- join: d100\n  script:\n    - service: light.toggle\n      target:\n        entity_id: light.kitchen"
+        }
+      }
+    },
+    "error": {
+      "invalid_yaml": "Invalid YAML syntax. Please check your formatting.",
+      "invalid_yaml_format": "YAML must be a list format. Example:\n- join: d1\n  entity_id: light.kitchen",
+      "unknown": "An unexpected error occurred. Check the logs for details."
+    }
   }
 }
