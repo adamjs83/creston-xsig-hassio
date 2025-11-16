@@ -219,17 +219,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     # Create and start hub
-    # set_hub_key=False prevents overwriting YAML's hub if it exists
-    hub_wrapper = CrestronHub(hass, hub_config, set_hub_key=False)
+    # v1.7.0: Allow hub to set HUB key if no YAML hub exists
+    # This enables YAML platform entities to use config entry hub after YAML removal
+    yaml_hub_exists = HUB in hass.data[DOMAIN]
+    hub_wrapper = CrestronHub(hass, hub_config, set_hub_key=(not yaml_hub_exists))
     await hub_wrapper.start()
 
-    # Store hub under entry ID (not at HUB key - that's for YAML)
+    # Store hub under entry ID for config entry management
     hass.data[DOMAIN][entry.entry_id] = {
         HUB: hub_wrapper.hub,  # Store CrestronXsig instance
         'port': entry.data[CONF_PORT],
         'entry': entry,
         'hub_wrapper': hub_wrapper,  # Store wrapper for cleanup
     }
+
+    # If no YAML hub, this config entry hub will serve YAML platform entities
+    if not yaml_hub_exists:
+        _LOGGER.info(
+            "Config entry hub serving YAML platform entities (no YAML crestron: section)"
+        )
 
     # Register stop handler
     entry.async_on_unload(
