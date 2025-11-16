@@ -60,6 +60,13 @@
           "target_entity": "Entity to target (optional, e.g., light.kitchen)"
         }
       },
+      "select_join_to_edit": {
+        "title": "Select Join to Edit",
+        "description": "Choose a join to edit. The form will be pre-filled with current values.",
+        "data": {
+          "join_to_edit": "Join to Edit"
+        }
+      },
       "remove_joins": {
         "title": "Remove Joins",
         "description": "Select one or more joins to remove. The integration will reload after removal.",

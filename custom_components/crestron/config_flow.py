@@ -185,6 +185,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
+        self._editing_join = None  # Track which join we're editing
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -194,9 +195,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Handle menu selection
             next_step = user_input.get("action")
             if next_step == "add_to_join":
+                self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
             elif next_step == "add_from_join":
+                self._editing_join = None  # Clear editing state
                 return await self.async_step_add_from_join()
+            elif next_step == "edit_joins":
+                return await self.async_step_select_join_to_edit()
             elif next_step == "remove_joins":
                 return await self.async_step_remove_joins()
             else:
@@ -215,6 +220,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         options=[
                             {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
                             {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
+                            {"label": "Edit joins", "value": "edit_joins"},
                             {"label": "Remove joins", "value": "remove_joins"},
                             {"label": "Done", "value": "done"},
                         ],
@@ -232,8 +238,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_add_to_join(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Add a single to_join with entity picker."""
+        """Add or edit a single to_join with entity picker."""
         errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
 
         if user_input is not None:
             try:
@@ -246,9 +253,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
                     errors["join"] = "invalid_join_format"
 
-                # Check for duplicate join
+                # Check for duplicate join (exclude current join if editing)
                 current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
-                if any(j.get("join") == join_num for j in current_to_joins):
+                old_join_num = self._editing_join.get("join") if is_editing else None
+                if join_num != old_join_num and any(j.get("join") == join_num for j in current_to_joins):
                     errors["join"] = "join_already_exists"
 
                 if not errors:
@@ -262,8 +270,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     if value_template:
                         new_join["value_template"] = value_template
 
-                    # Append to existing to_joins
-                    updated_to_joins = current_to_joins + [new_join]
+                    if is_editing:
+                        # Replace existing join
+                        updated_to_joins = [
+                            new_join if j.get("join") == old_join_num else j
+                            for j in current_to_joins
+                        ]
+                        _LOGGER.info("Updated to_join %s for %s", join_num, entity_id)
+                    else:
+                        # Append new join
+                        updated_to_joins = current_to_joins + [new_join]
+                        _LOGGER.info("Added to_join %s for %s", join_num, entity_id)
 
                     # Update config entry
                     new_data = dict(self.config_entry.data)
@@ -276,30 +293,39 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     # Reload the integration
                     await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
-                    _LOGGER.info("Added to_join %s for %s", join_num, entity_id)
-
-                    # Return to menu
+                    # Clear editing state and return to menu
+                    self._editing_join = None
                     return await self.async_step_init()
 
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.exception("Error adding to_join: %s", err)
+                _LOGGER.exception("Error adding/editing to_join: %s", err)
                 errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            default_values = {
+                "join": self._editing_join.get("join", ""),
+                "entity_id": self._editing_join.get("entity_id", ""),
+                "attribute": self._editing_join.get("attribute", ""),
+                "value_template": self._editing_join.get("value_template", ""),
+            }
 
         # Show form
         add_to_join_schema = vol.Schema(
             {
-                vol.Required("join"): selector.TextSelector(
+                vol.Required("join", default=default_values.get("join", "")): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional("entity_id"): selector.EntitySelector(),
-                vol.Optional("attribute"): selector.TextSelector(
+                vol.Optional("entity_id", default=default_values.get("entity_id", "")): selector.EntitySelector(),
+                vol.Optional("attribute", default=default_values.get("attribute", "")): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional("value_template"): selector.TextSelector(
+                vol.Optional("value_template", default=default_values.get("value_template", "")): selector.TextSelector(
                     selector.TextSelectorConfig(
                         multiline=True,
                         type=selector.TextSelectorType.TEXT,
@@ -317,8 +343,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_add_from_join(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Add a single from_join."""
+        """Add or edit a single from_join."""
         errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
 
         if user_input is not None:
             try:
@@ -330,9 +357,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
                     errors["join"] = "invalid_join_format"
 
-                # Check for duplicate join
+                # Check for duplicate join (exclude current join if editing)
                 current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
-                if any(j.get("join") == join_num for j in current_from_joins):
+                old_join_num = self._editing_join.get("join") if is_editing else None
+                if join_num != old_join_num and any(j.get("join") == join_num for j in current_from_joins):
                     errors["join"] = "join_already_exists"
 
                 if not errors:
@@ -349,8 +377,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         "script": [script_action]
                     }
 
-                    # Append to existing from_joins
-                    updated_from_joins = current_from_joins + [new_join]
+                    if is_editing:
+                        # Replace existing join
+                        updated_from_joins = [
+                            new_join if j.get("join") == old_join_num else j
+                            for j in current_from_joins
+                        ]
+                        _LOGGER.info("Updated from_join %s with service %s", join_num, service)
+                    else:
+                        # Append new join
+                        updated_from_joins = current_from_joins + [new_join]
+                        _LOGGER.info("Added from_join %s with service %s", join_num, service)
 
                     # Update config entry
                     new_data = dict(self.config_entry.data)
@@ -363,29 +400,38 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     # Reload the integration
                     await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
-                    _LOGGER.info("Added from_join %s with service %s", join_num, service)
-
-                    # Return to menu
+                    # Clear editing state and return to menu
+                    self._editing_join = None
                     return await self.async_step_init()
 
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.exception("Error adding from_join: %s", err)
+                _LOGGER.exception("Error adding/editing from_join: %s", err)
                 errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            script_action = self._editing_join.get("script", [{}])[0] if self._editing_join.get("script") else {}
+            default_values = {
+                "join": self._editing_join.get("join", ""),
+                "service": script_action.get("service", ""),
+                "target_entity": script_action.get("target", {}).get("entity_id", ""),
+            }
 
         # Show form
         add_from_join_schema = vol.Schema(
             {
-                vol.Required("join"): selector.TextSelector(
+                vol.Required("join", default=default_values.get("join", "")): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Required("service"): selector.TextSelector(
+                vol.Required("service", default=default_values.get("service", "")): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional("target_entity"): selector.EntitySelector(),
+                vol.Optional("target_entity", default=default_values.get("target_entity", "")): selector.EntitySelector(),
             }
         )
 
@@ -474,6 +520,72 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="remove_joins",
             data_schema=remove_schema,
             errors=errors,
+        )
+
+    async def async_step_select_join_to_edit(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select which join to edit."""
+        if user_input is not None:
+            selected_join = user_input.get("join_to_edit")
+
+            if selected_join:
+                # Find the join in our data
+                current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+                current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+
+                # Check if it's a to_join or from_join
+                for join in current_to_joins:
+                    if join.get("join") == selected_join:
+                        self._editing_join = join
+                        return await self.async_step_add_to_join()
+
+                for join in current_from_joins:
+                    if join.get("join") == selected_join:
+                        self._editing_join = join
+                        return await self.async_step_add_from_join()
+
+            # If no join selected, return to menu
+            return await self.async_step_init()
+
+        # Build list of all joins for editing
+        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+
+        join_options = []
+        for j in current_to_joins:
+            entity = j.get("entity_id", j.get("value_template", "N/A"))
+            join_options.append({
+                "label": f"{j.get('join')} → {entity} (to_join)",
+                "value": j.get("join")
+            })
+
+        for j in current_from_joins:
+            script_info = "script" if "script" in j else "N/A"
+            join_options.append({
+                "label": f"{j.get('join')} → {script_info} (from_join)",
+                "value": j.get("join")
+            })
+
+        if not join_options:
+            # No joins to edit, return to menu
+            return await self.async_step_init()
+
+        # Show selection form
+        select_schema = vol.Schema(
+            {
+                vol.Required("join_to_edit"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=join_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="select_join_to_edit",
+            data_schema=select_schema,
         )
 
 
