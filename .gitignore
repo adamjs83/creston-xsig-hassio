@@ -62,6 +62,7 @@ DRAFT*.md
 scratch/
 temp/
 conversation.txt
+claude.md
 
 # Internal documentation (keep local only)
 ROADMAP.md
