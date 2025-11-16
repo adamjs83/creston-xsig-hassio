@@ -10,6 +10,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import selector
 
 from .const import DOMAIN, CONF_PORT, CONF_TO_HUB, CONF_FROM_HUB
 
@@ -296,17 +297,27 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         to_joins_yaml = self._format_joins_as_yaml(current_to_joins)
         from_joins_yaml = self._format_joins_as_yaml(current_from_joins)
 
-        # Show form
+        # Show form with multi-line text areas
         options_schema = vol.Schema(
             {
                 vol.Optional(
                     "to_joins_yaml",
                     description={"suggested_value": to_joins_yaml},
-                ): str,
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
                 vol.Optional(
                     "from_joins_yaml",
                     description={"suggested_value": from_joins_yaml},
-                ): str,
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
             }
         )
 
