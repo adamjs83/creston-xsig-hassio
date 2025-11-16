@@ -6,11 +6,13 @@ import logging
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers import discovery
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback, Context
+from homeassistant.helpers import discovery, device_registry as dr
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.script import Script
-from homeassistant.core import callback, Context
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
@@ -89,6 +91,130 @@ async def async_setup(hass, config):
 
     return True
 
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Crestron XSIG from a config entry.
+
+    Args:
+        hass: Home Assistant instance
+        entry: Config entry containing port configuration
+
+    Returns:
+        True if setup successful, False otherwise
+    """
+    # Initialize domain data if not exists
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {}
+
+    # Check if YAML configuration exists on same port
+    if HUB in hass.data[DOMAIN]:
+        yaml_hub = hass.data[DOMAIN][HUB]
+        # Check if it's the same port
+        if hasattr(yaml_hub, 'port') and yaml_hub.port == entry.data[CONF_PORT]:
+            _LOGGER.warning(
+                "Crestron hub already configured via YAML on port %s. "
+                "YAML configuration takes precedence. "
+                "Remove YAML config to use UI configuration.",
+                entry.data[CONF_PORT]
+            )
+            # Create a persistent notification to inform user
+            hass.components.persistent_notification.async_create(
+                "Crestron XSIG is configured via both YAML and UI on port {}. "
+                "YAML configuration is being used. To use UI configuration, "
+                "remove the 'crestron:' section from configuration.yaml and restart.".format(
+                    entry.data[CONF_PORT]
+                ),
+                title="Crestron Dual Configuration",
+                notification_id=f"crestron_dual_config_{entry.data[CONF_PORT]}"
+            )
+            # Still return True so entry isn't marked failed
+            # But we won't create a second hub
+            return True
+
+    # Create minimal hub config (port only for v1.6.0)
+    hub_config = {CONF_PORT: entry.data[CONF_PORT]}
+
+    # Create and start hub
+    hub_wrapper = CrestronHub(hass, hub_config)
+    await hub_wrapper.start()
+
+    # Store hub under entry ID (not at HUB key - that's for YAML)
+    hass.data[DOMAIN][entry.entry_id] = {
+        HUB: hub_wrapper.hub,  # Store CrestronXsig instance
+        'port': entry.data[CONF_PORT],
+        'entry': entry,
+        'hub_wrapper': hub_wrapper,  # Store wrapper for cleanup
+    }
+
+    # Register stop handler
+    entry.async_on_unload(
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, hub_wrapper.stop)
+    )
+
+    # Create device in registry
+    device_registry = dr.async_get(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"crestron_{entry.data[CONF_PORT]}")},
+        name="Crestron Control System",
+        manufacturer="Crestron Electronics",
+        model="XSIG Gateway",
+        sw_version="1.6.0",
+    )
+
+    # Forward entry setup to platforms
+    # Note: For v1.6.0, platforms will just create device linkage
+    # Actual entities still come from YAML configuration
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    _LOGGER.info(
+        "Crestron XSIG config entry setup complete on port %s",
+        entry.data[CONF_PORT]
+    )
+
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry.
+
+    Args:
+        hass: Home Assistant instance
+        entry: Config entry to unload
+
+    Returns:
+        True if unload successful, False otherwise
+    """
+    _LOGGER.debug("Unloading Crestron config entry for port %s", entry.data[CONF_PORT])
+
+    # Unload platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+    if unload_ok:
+        # Get hub data
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id, None)
+
+        if entry_data:
+            # Stop the hub
+            hub_wrapper = entry_data.get('hub_wrapper')
+            if hub_wrapper:
+                # Create a dummy event for stop method
+                class StopEvent:
+                    pass
+                hub_wrapper.stop(StopEvent())
+                _LOGGER.info(
+                    "Stopped Crestron hub on port %s",
+                    entry_data.get('port')
+                )
+
+        # Dismiss dual config notification if exists
+        hass.components.persistent_notification.async_dismiss(
+            f"crestron_dual_config_{entry.data[CONF_PORT]}"
+        )
+
+    return unload_ok
+
+
 class CrestronHub:
     ''' Wrapper for the CrestronXsig library '''
     def __init__(self, hass, config):
@@ -97,6 +223,8 @@ class CrestronHub:
         self.port = config.get(CONF_PORT)
         self.context = Context()
         self.to_hub = {}
+        self.tracker = None  # Initialize tracker to None
+        self.from_hub = None  # Initialize from_hub to None
         self.hub.register_sync_all_joins_callback(self.sync_joins_to_hub)
         if CONF_TO_HUB in config:
             track_templates = []
@@ -133,9 +261,15 @@ class CrestronHub:
         await self.hub.listen(self.port)
 
     def stop(self, event):
-        """ remove callback(s) and template trackers """
-        self.hub.remove_callback(self.join_change_callback)
-        self.tracker.async_remove()
+        """Remove callback(s) and template trackers."""
+        # Only remove from_hub callback if it was registered
+        if self.from_hub is not None:
+            self.hub.remove_callback(self.join_change_callback)
+
+        # Only remove tracker if it was created
+        if self.tracker is not None:
+            self.tracker.async_remove()
+
         self.hub.stop()
 
     async def join_change_callback(self, cbtype, value):

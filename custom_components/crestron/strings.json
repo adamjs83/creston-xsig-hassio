@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Crestron XSIG",
+        "description": "Configure the port for your Crestron XSIG gateway. Entity configuration will continue to use YAML (for now).",
+        "data": {
+          "port": "XSIG Port"
+        },
+        "data_description": {
+          "port": "The UDP port for the XSIG gateway (typically 16384)"
+        }
+      }
+    },
+    "error": {
+      "port_in_use": "Port is already in use. Please choose a different port or stop the service using it.",
+      "invalid_port": "Port must be between 1024 and 65535.",
+      "unknown": "An unexpected error occurred. Check the logs for details."
+    },
+    "abort": {
+      "already_configured": "This port is already configured. Use a different port for multiple Crestron systems."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Crestron XSIG Options",
+        "description": "Options flow coming in v1.7.0. For now, entity configuration remains in YAML."
+      }
+    }
+  }
+}

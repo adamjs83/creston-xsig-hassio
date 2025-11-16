@@ -43,6 +43,18 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     entity = [CrestronShade(hub, config)]
     async_add_entities(entity)
 
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up Crestron covers from a config entry.
+
+    For v1.6.0, entities are still configured via YAML.
+    This stub enables device registry linkage for future entity options flow.
+    """
+    # No entities added from config entry in v1.6.0
+    # YAML platform setup (above) handles entity creation
+    return True
+
+
 class CrestronShade(CoverEntity, RestoreEntity):
     def __init__(self, hub, config):
         self._hub = hub
@@ -112,7 +124,7 @@ class CrestronShade(CoverEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.4.0",
+            sw_version="1.6.0",
         )
 
     @property

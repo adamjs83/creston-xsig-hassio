@@ -1,20 +1,53 @@
 # Updated Crestron Integration Roadmap
 
-**Version:** 2.0 (Architectural Focus)
-**Date:** 2025-11-11
-**Current Version:** v1.3.0
+**Version:** 2.1 (Architectural Focus)
+**Date:** 2025-11-16 (Updated)
+**Original Date:** 2025-11-11
+**Current Version:** v1.5.5
 **Strategy:** Architecture-first, incremental releases, zero rework
 
 ---
 
 ## Executive Summary
 
-- **Current state:** v1.3.0 - YAML configuration with RestoreEntity and unique IDs fully implemented
-- **Total releases planned:** 8 micro-releases across 3 phases
-- **Estimated timeline:** 12-16 weeks (conservative)
-- **Key architectural decision:** Device registry → Entity categories → Config flow (in that order)
+- **Current state:** v1.5.5 - Foundation complete, ready for config flow
+- **Completed releases:** v1.4.0, v1.5.0-v1.5.5 (Phase 1 complete!)
+- **Remaining releases:** 5 micro-releases (v1.6.0-v1.8.0, v1.10.0-v1.11.0)
+- **Estimated timeline:** 8-10 weeks (conservative)
+- **Key architectural decision:** Device registry → Platform loading → Config flow (✅ First two done!)
 
 **Critical Success Factor:** We already have the foundation (unique IDs + RestoreEntity). Now we modernize the architecture without breaking what works.
+
+---
+
+## Recent Progress (Since Original Roadmap)
+
+**✅ COMPLETED (2025-11-11):**
+
+1. **v1.4.0 - Device Registry Integration** ✅
+   - Added device_info to all 7 platforms
+   - Device appears in UI under Settings → Devices
+   - Foundation for config entries complete
+
+2. **v1.5.0 - Platform Loading Modernization** ✅
+   - Replaced deprecated async_load_platform
+   - Uses modern asyncio.gather pattern
+   - No more deprecation warnings
+
+3. **v1.5.1 - Port Attribute Fix** ✅
+   - Fixed CrestronXsig.port attribute
+   - Device identifiers now work correctly
+
+4. **v1.5.2-v1.5.5 - Cover Stop Bug Fixed** ✅
+   - Fixed async event loop errors
+   - Proper digital signal transmission
+   - Cleared analog state after stop
+   - **BONUS:** v1.9.0 no longer needed!
+
+**🎯 NEXT UP: v1.6.0 - Config Flow Hub Setup**
+- Detailed implementation plan ready
+- All prerequisites met
+- Target: UI-based hub configuration
 
 ---
 
@@ -32,8 +65,9 @@
 - ✅ RestoreEntity is DONE and WORKING - don't touch it
 - ✅ Unique IDs are stable - leave them alone
 - ✅ Join tracking works - no changes needed
-- ⚠️ Small bugs exist (cover stop, sync_joins) but they're isolated
-- 🔴 Deprecated patterns block future Home Assistant versions
+- ✅ Cover stop bug FIXED (v1.5.2-v1.5.5)
+- ⚠️ Small optimization opportunity (sync_joins) but not critical
+- ✅ Deprecated patterns FIXED (v1.5.0)
 
 ---
 
@@ -76,10 +110,9 @@
 
 **Nice-to-haves that don't cause rework and fix known issues.**
 
-6. **Fix Cover Stop Bug** (v1.9.0)
-   - **Why now:** Small, isolated bug fix
-   - **Enables:** Proper cover stop functionality
-   - **Rework risk:** NONE
+6. **~~Fix Cover Stop Bug~~** (~~v1.9.0~~) ✅ **ALREADY FIXED IN v1.5.2-v1.5.5**
+   - **Status:** COMPLETE - No longer needed as separate release
+   - **Fixed:** Async event loop errors, signal transmission, state clearing
 
 7. **Optimize Sync Callback** (v1.10.0)
    - **Why now:** After config flow proven stable
@@ -95,13 +128,15 @@
 
 ## Detailed Release Plan
 
-### Phase 1: Architecture Foundation (v1.4.0 - v1.5.0)
+### Phase 1: Architecture Foundation (v1.4.0 - v1.5.0) ✅ COMPLETE
 
 **Goal:** Modernize base architecture to support config flow
 
+**Status:** ✅ **COMPLETED** (2025-11-11)
+
 ---
 
-#### v1.4.0: Device Registry Integration
+#### v1.4.0: Device Registry Integration ✅ COMPLETE
 
 **What:** Add `device_info` property to all entity classes, creating a single Crestron device per hub.
 
@@ -151,7 +186,7 @@ def device_info(self):
 
 ---
 
-#### v1.5.0: Migrate from async_load_platform to Modern Setup
+#### v1.5.0: Migrate from async_load_platform to Modern Setup ✅ COMPLETE
 
 **What:** Replace deprecated `async_load_platform` with proper platform forwarding, preparing for config entries.
 
@@ -370,46 +405,29 @@ def entity_category(self):
 
 ---
 
-#### v1.9.0: Fix Cover Stop Bug
+#### ~~v1.9.0: Fix Cover Stop Bug~~ ✅ ALREADY COMPLETE (v1.5.2-v1.5.5)
 
-**What:** Fix the `async_stop_cover` callback signature issue (line 158 in cover.py).
+**Status:** ✅ **FIXED IN v1.5.2-v1.5.5** - This release is no longer needed!
 
-**Why Now:** Small, isolated bug fix that's been waiting.
+**What Was Fixed:** The `async_stop_cover` callback and state management issues.
 
-**Risk:** LOW
-**Complexity:** 10 minutes coding, 2-3 days testing
-**Lines Changed:** ~3
+**Completed Changes:**
+- v1.5.2: Fixed event loop error (use asyncio.sleep)
+- v1.5.3: Additional async fixes
+- v1.5.4: Ensure digital signals transmitted
+- v1.5.5: Clear analog state after stop to allow direction changes
 
 **Success Criteria:**
-- [ ] Cover stop command works correctly
-- [ ] No errors in logs
-- [ ] Stop pulse properly times out
+- [x] Cover stop command works correctly
+- [x] No errors in logs
+- [x] Stop pulse properly times out
+- [x] Direction changes work after stop
 
-**Enables:**
-- Proper cover stop functionality
-- Cleaner code
-
-**Rework Risk:** NONE
-
-**Current Bug:**
-```python
-# Line 158 - WRONG
-call_later(self.hass, 0.2, self._hub.set_digital(self._stop_join, 0))
-```
-
-**Fix:**
-```python
-# Create a proper callback function
-async def _stop_pulse_off(now):
-    self._hub.set_digital(self._stop_join, 0)
-
-call_later(self.hass, 0.2, _stop_pulse_off)
-```
-
-**Testing Focus:**
-- Test cover stop command multiple times
-- Verify digital join pulses correctly
-- Check logs for errors
+**Result:**
+- ✅ Proper cover stop functionality working
+- ✅ Cleaner code
+- ✅ Bug fixed ahead of schedule!
+- ✅ No separate release needed
 
 ---
 
@@ -855,40 +873,42 @@ If working full-time:
 
 ## Next Steps
 
-### Immediate Actions (This Week)
+### ✅ COMPLETED (2025-11-11)
 
-1. ✅ Review this roadmap
-2. ✅ Validate current v1.3.0 state
-3. ✅ Set up test environment
-4. ⬜ Create feature branch for v1.4.0
-5. ⬜ Draft device_info implementation
-6. ⬜ Write tests for device registry integration
+1. ✅ Review roadmap
+2. ✅ Validate current state (v1.5.5)
+3. ✅ Implement v1.4.0 (device registry)
+4. ✅ Implement v1.5.0 (platform loading)
+5. ✅ Fix v1.5.1-v1.5.5 (port attribute, cover stop)
+6. ✅ Test extensively (all platforms working)
+7. ✅ Update documentation
+8. ✅ Phase 1 COMPLETE!
 
-### Week 2
+### 🎯 NEXT: v1.6.0 Implementation (This Week/Next Week)
 
-1. ⬜ Implement v1.4.0 (device registry)
-2. ⬜ Test extensively (all 7 platforms)
-3. ⬜ Update documentation
-4. ⬜ Release v1.4.0
-5. ⬜ Monitor for issues (48 hours)
+**Status:** Ready to begin
 
-### Month 2
+1. ⬜ Review v1.6.0_CONFIG_FLOW_PLAN.md (updated)
+2. ⬜ Create feature branch `feature/v1.6.0-config-flow`
+3. ⬜ Implement Step 1-9 (config flow, async_setup_entry, platforms)
+4. ⬜ Execute Test #1-9 (comprehensive testing)
+5. ⬜ Update CHANGELOG.md and README.md
+6. ⬜ Release v1.6.0
+7. ⬜ Monitor for 48 hours
 
-1. ⬜ Release v1.5.0 (platform loading)
-2. ⬜ Release v1.6.0 (config flow)
-3. ⬜ Monitor stability
+### Then: v1.7.0 - YAML Import (2-3 weeks later)
 
-### Month 3
+1. ⬜ Implement YAML import flow
+2. ⬜ Test migration paths
+3. ⬜ Release v1.7.0
 
-1. ⬜ Release v1.7.0 (YAML import)
-2. ⬜ Begin Phase 3 work
-3. ⬜ Polish and bug fixes
+### Then: v1.8.0, v1.10.0, v1.11.0 - Polish (4-6 weeks)
 
-### Month 4
-
-1. ⬜ Complete Phase 3 releases
-2. ⬜ Final testing and documentation
-3. ⬜ Celebrate! 🎉
+1. ⬜ v1.8.0: Entity categories
+2. ⬜ v1.10.0: Sync optimization
+3. ⬜ v1.11.0: Type hints
+4. ⬜ Final testing and documentation
+5. ⬜ Celebrate! 🎉
 
 ---
 
