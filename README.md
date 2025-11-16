@@ -1,6 +1,6 @@
 # Crestron XSIG Integration for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-1.5.1-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -36,7 +36,20 @@ A Home Assistant custom component for integrating with Crestron control systems 
 
 ## Configuration
 
-All configuration is done via `configuration.yaml`. There is no UI configuration flow.
+### UI Configuration (v1.6.0+)
+
+The integration now supports UI-based setup for the Crestron hub:
+
+1. Go to Settings → Devices & Services → Add Integration
+2. Search for "Crestron XSIG"
+3. Enter the XSIG port number (typically 16384)
+4. Click Submit
+
+**Note**: In v1.6.0, entity configuration (lights, switches, etc.) is still done via `configuration.yaml`. Full UI entity configuration is planned for v1.7.0+.
+
+### YAML Configuration
+
+Entity configuration is currently done via `configuration.yaml`.
 
 ### Basic Configuration
 
