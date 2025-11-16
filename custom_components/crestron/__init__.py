@@ -118,14 +118,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 entry.data[CONF_PORT]
             )
             # Create a persistent notification to inform user
-            hass.components.persistent_notification.async_create(
-                "Crestron XSIG is configured via both YAML and UI on port {}. "
-                "YAML configuration is being used. To use UI configuration, "
-                "remove the 'crestron:' section from configuration.yaml and restart.".format(
-                    entry.data[CONF_PORT]
-                ),
-                title="Crestron Dual Configuration",
-                notification_id=f"crestron_dual_config_{entry.data[CONF_PORT]}"
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "message": "Crestron XSIG is configured via both YAML and UI on port {}. "
+                               "YAML configuration is being used. To use UI configuration, "
+                               "remove the 'crestron:' section from configuration.yaml and restart.".format(
+                                   entry.data[CONF_PORT]
+                               ),
+                    "title": "Crestron Dual Configuration",
+                    "notification_id": f"crestron_dual_config_{entry.data[CONF_PORT]}"
+                }
             )
             # Still return True so entry isn't marked failed
             # But we won't create a second hub
@@ -209,8 +213,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
 
         # Dismiss dual config notification if exists
-        hass.components.persistent_notification.async_dismiss(
-            f"crestron_dual_config_{entry.data[CONF_PORT]}"
+        await hass.services.async_call(
+            "persistent_notification",
+            "dismiss",
+            {"notification_id": f"crestron_dual_config_{entry.data[CONF_PORT]}"}
         )
 
     return unload_ok
