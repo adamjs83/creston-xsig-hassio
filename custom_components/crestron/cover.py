@@ -52,7 +52,17 @@ async def async_setup_entry(hass, entry, async_add_entities):
     YAML platform setup (above) still works for backward compatibility.
     """
     # Get the hub - try entry-specific first, fall back to HUB key
-    hub = hass.data[DOMAIN].get(entry.entry_id) or hass.data[DOMAIN].get(HUB)
+    hub_data = hass.data[DOMAIN].get(entry.entry_id)
+
+    if hub_data:
+        # Hub data is stored as dict with HUB key
+        if isinstance(hub_data, dict):
+            hub = hub_data.get(HUB)
+        else:
+            hub = hub_data  # Fallback for direct hub reference
+    else:
+        # Fallback to global HUB key
+        hub = hass.data[DOMAIN].get(HUB)
 
     if hub is None:
         _LOGGER.error("No Crestron hub found for cover entities")
