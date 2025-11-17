@@ -903,7 +903,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             try:
-                yaml_text = user_input.get("yaml_config", "").strip()
+                yaml_text = user_input.get("yaml_config", "")
+
+                _LOGGER.debug("YAML import - raw input length: %d chars", len(yaml_text))
+                _LOGGER.debug("YAML import - raw input (first 200): %s", repr(yaml_text[:200]))
+                _LOGGER.debug("YAML import - has newlines: %s", '\n' in yaml_text)
+
+                yaml_text = yaml_text.strip()
 
                 if not yaml_text:
                     errors["yaml_config"] = "empty_yaml"
@@ -913,7 +919,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     import textwrap
                     yaml_text = textwrap.dedent(yaml_text)
 
-                    _LOGGER.debug("YAML import - dedented text (first 200 chars): %s", yaml_text[:200])
+                    _LOGGER.debug("YAML import - dedented text (first 200 chars): %s", repr(yaml_text[:200]))
 
                     # Parse YAML
                     try:
