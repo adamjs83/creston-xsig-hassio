@@ -37,6 +37,7 @@ CONF_SWITCH_JOIN = "switch_join"
 # Entity storage (v1.8.0+)
 CONF_COVERS = "covers"
 CONF_BINARY_SENSORS = "binary_sensors"
+CONF_SENSORS = "sensors"
 
 # Climate additional constants
 CONF_MODE_HEAT_COOL_JOIN = "mode_heat_cool_join"

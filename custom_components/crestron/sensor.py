@@ -9,7 +9,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 import homeassistant.helpers.config_validation as cv
 
-from .const import HUB, DOMAIN, CONF_VALUE_JOIN, CONF_DIVISOR
+from .const import HUB, DOMAIN, CONF_VALUE_JOIN, CONF_DIVISOR, CONF_SENSORS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,22 +33,67 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Crestron sensors from a config entry.
 
-    For v1.6.0, entities are still configured via YAML.
-    This stub enables device registry linkage for future entity options flow.
+    Supports UI-configured sensors (v1.10.0+).
+    YAML platform setup (above) handles YAML-configured entities.
     """
-    # No entities added from config entry in v1.6.0
-    # YAML platform setup (above) handles entity creation
+    # Get hub from entry data
+    entry_data = hass.data[DOMAIN].get(entry.entry_id)
+    if not entry_data:
+        _LOGGER.warning("No entry data found for sensor setup")
+        return False
+
+    hub_wrapper = entry_data.get('hub_wrapper')
+    if not hub_wrapper:
+        _LOGGER.warning("No hub_wrapper found for sensor setup")
+        return False
+
+    # Get hub from wrapper
+    hub = hub_wrapper.hub
+
+    # Load sensors from config entry (UI-configured)
+    sensors_config = entry.data.get(CONF_SENSORS, [])
+
+    if sensors_config:
+        entities = []
+        for sensor_cfg in sensors_config:
+            # Parse join string to integer (e.g., "a10" -> 10)
+            value_join_str = sensor_cfg.get(CONF_VALUE_JOIN, "")
+            if value_join_str and value_join_str[0] == 'a' and value_join_str[1:].isdigit():
+                value_join = int(value_join_str[1:])
+            else:
+                _LOGGER.error(
+                    "Invalid value join format for sensor %s: %s",
+                    sensor_cfg.get(CONF_NAME), value_join_str
+                )
+                continue
+
+            # Create config dict with integer join
+            config = {
+                CONF_NAME: sensor_cfg.get(CONF_NAME),
+                CONF_VALUE_JOIN: value_join,
+                CONF_DEVICE_CLASS: sensor_cfg.get(CONF_DEVICE_CLASS),
+                CONF_UNIT_OF_MEASUREMENT: sensor_cfg.get(CONF_UNIT_OF_MEASUREMENT),
+                CONF_DIVISOR: sensor_cfg.get(CONF_DIVISOR, 1),
+            }
+
+            entities.append(CrestronSensor(hub, config, from_ui=True))
+
+        if entities:
+            async_add_entities(entities)
+            _LOGGER.info("Added %d UI-configured sensors", len(entities))
+
     return True
 
 
 class CrestronSensor(SensorEntity, RestoreEntity):
-    def __init__(self, hub, config):
+    def __init__(self, hub, config, from_ui=False):
         self._hub = hub
         self._name = config.get(CONF_NAME)
         self._join = config.get(CONF_VALUE_JOIN)
         self._device_class = config.get(CONF_DEVICE_CLASS)
         self._unit_of_measurement = config.get(CONF_UNIT_OF_MEASUREMENT)
         self._divisor = config.get(CONF_DIVISOR, 1)
+        self._from_ui = from_ui
 
         # State restoration variable
         self._restored_value = None
@@ -86,6 +131,8 @@ class CrestronSensor(SensorEntity, RestoreEntity):
     @property
     def unique_id(self):
         """Return unique ID for this entity."""
+        if self._from_ui:
+            return f"crestron_sensor_ui_a{self._join}"
         return f"crestron_sensor_a{self._join}"
 
     @property

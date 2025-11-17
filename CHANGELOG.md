@@ -5,7 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2025-01-17
 
+### Added
+- **UI Configuration for Sensors** - Complete UI-based entity management for sensors via Configure button
+- Add/edit/remove sensor entities through the options flow without editing YAML
+- Analog join (value_join) input with validation (e.g., "a10")
+- Device class selector: temperature, humidity, pressure, power, energy, voltage, current, illuminance, battery, none
+- Unit of measurement configuration field
+- Divisor support for value scaling (e.g., temperature tenths: 720 = 72.0°F)
+- Automatic entity registry cleanup when sensors removed via UI
+- UI/YAML coexistence with unique_id prefixes ("ui" vs "yaml")
+
+### Changed
+- Updated sensor.py to support from_ui parameter for unique_id differentiation
+- Enhanced config_flow.py with async_step_add_sensor, edit, and remove flows
+- Added CONF_SENSORS constant to const.py
+
+### Technical Details
+- Hub persistence during entity management (no connection drops)
+- Follows established pattern from covers (v1.8.0) and binary sensors (v1.9.0)
+- Safe reload handling with ValueError fallback
+
+### Roadmap Progress
+- ✅ Covers (v1.8.0)
+- ✅ Binary Sensors (v1.9.0)
+- ✅ Sensors (v1.10.0)
+- 🔲 Light (next)
+- 🔲 Switch
+- 🔲 Climate
+- 🔲 Media Player
 
 
 

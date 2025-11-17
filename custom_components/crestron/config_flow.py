@@ -19,14 +19,17 @@ from .const import (
     CONF_FROM_HUB,
     CONF_COVERS,
     CONF_BINARY_SENSORS,
+    CONF_SENSORS,
     CONF_POS_JOIN,
     CONF_IS_OPENING_JOIN,
     CONF_IS_CLOSING_JOIN,
     CONF_IS_CLOSED_JOIN,
     CONF_STOP_JOIN,
     CONF_IS_ON_JOIN,
+    CONF_VALUE_JOIN,
+    CONF_DIVISOR,
 )
-from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS
+from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -229,6 +232,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             elif next_step == "add_binary_sensor":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_binary_sensor()
+            elif next_step == "add_sensor":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_sensor()
             elif next_step == "add_to_join":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
@@ -252,6 +258,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
         current_covers = self.config_entry.data.get(CONF_COVERS, [])
         current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+        current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
 
         # Show menu
         menu_schema = vol.Schema(
@@ -261,6 +268,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         options=[
                             {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
                             {"label": f"Add Binary Sensor - Currently: {len(current_binary_sensors)}", "value": "add_binary_sensor"},
+                            {"label": f"Add Sensor - Currently: {len(current_sensors)}", "value": "add_sensor"},
                             {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
                             {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
                             {"label": "Edit joins", "value": "edit_joins"},
@@ -891,6 +899,134 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
+    async def async_step_add_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add or edit a sensor entity."""
+        errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME)
+                value_join = user_input.get(CONF_VALUE_JOIN)
+                device_class = user_input.get(CONF_DEVICE_CLASS)
+                unit_of_measurement = user_input.get(CONF_UNIT_OF_MEASUREMENT)
+                divisor = user_input.get(CONF_DIVISOR, 1)
+
+                # Validate value_join format (must be analog)
+                if not value_join or not (value_join[0] == 'a' and value_join[1:].isdigit()):
+                    errors[CONF_VALUE_JOIN] = "invalid_join_format"
+
+                # Check for duplicate entity name
+                current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
+                old_name = self._editing_join.get(CONF_NAME) if is_editing else None
+                if name != old_name and any(s.get(CONF_NAME) == name for s in current_sensors):
+                    errors[CONF_NAME] = "entity_already_exists"
+
+                if not errors:
+                    # Build new sensor entry
+                    new_sensor = {
+                        CONF_NAME: name,
+                        CONF_VALUE_JOIN: value_join,
+                        CONF_DEVICE_CLASS: device_class,
+                        CONF_UNIT_OF_MEASUREMENT: unit_of_measurement,
+                        CONF_DIVISOR: divisor,
+                    }
+
+                    if is_editing:
+                        # Replace existing sensor
+                        updated_sensors = [
+                            new_sensor if s.get(CONF_NAME) == old_name else s
+                            for s in current_sensors
+                        ]
+                        _LOGGER.info("Updated sensor %s", name)
+                    else:
+                        # Append new sensor
+                        updated_sensors = current_sensors + [new_sensor]
+                        _LOGGER.info("Added sensor %s", name)
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_SENSORS] = updated_sensors
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self._async_reload_integration()
+
+                    # Clear editing state and return to menu
+                    self._editing_join = None
+                    return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error adding/updating sensor: %s", err)
+                errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            default_values = {
+                CONF_NAME: self._editing_join.get(CONF_NAME, ""),
+                CONF_VALUE_JOIN: self._editing_join.get(CONF_VALUE_JOIN, ""),
+                CONF_DEVICE_CLASS: self._editing_join.get(CONF_DEVICE_CLASS, "temperature"),
+                CONF_UNIT_OF_MEASUREMENT: self._editing_join.get(CONF_UNIT_OF_MEASUREMENT, ""),
+                CONF_DIVISOR: self._editing_join.get(CONF_DIVISOR, 1),
+            }
+
+        # Show form
+        add_sensor_schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_VALUE_JOIN, default=default_values.get(CONF_VALUE_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "temperature")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "Temperature", "value": "temperature"},
+                            {"label": "Humidity", "value": "humidity"},
+                            {"label": "Pressure", "value": "pressure"},
+                            {"label": "Power", "value": "power"},
+                            {"label": "Energy", "value": "energy"},
+                            {"label": "Voltage", "value": "voltage"},
+                            {"label": "Current", "value": "current"},
+                            {"label": "Illuminance", "value": "illuminance"},
+                            {"label": "Battery", "value": "battery"},
+                            {"label": "None", "value": "none"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(CONF_UNIT_OF_MEASUREMENT, default=default_values.get(CONF_UNIT_OF_MEASUREMENT, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_DIVISOR, default=default_values.get(CONF_DIVISOR, 1)): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1,
+                        max=1000,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_sensor",
+            data_schema=add_sensor_schema,
+            errors=errors,
+        )
+
     async def async_step_select_entity_to_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -902,6 +1038,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 # Find the entity in our data
                 current_covers = self.config_entry.data.get(CONF_COVERS, [])
                 current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+                current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
 
                 # Check if it's a cover
                 for cover in current_covers:
@@ -915,12 +1052,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         self._editing_join = binary_sensor
                         return await self.async_step_add_binary_sensor()
 
+                # Check if it's a sensor
+                for sensor in current_sensors:
+                    if sensor.get(CONF_NAME) == selected_entity:
+                        self._editing_join = sensor
+                        return await self.async_step_add_sensor()
+
             # Not found, return to menu
             return await self.async_step_init()
 
         # Build list of all entities for editing
         current_covers = self.config_entry.data.get(CONF_COVERS, [])
         current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+        current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
 
         entity_options = []
         for c in current_covers:
@@ -932,6 +1076,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_options.append({
                 "label": f"{bs.get(CONF_NAME)} (Binary Sensor - {bs.get(CONF_IS_ON_JOIN)})",
                 "value": bs.get(CONF_NAME)
+            })
+        for s in current_sensors:
+            entity_options.append({
+                "label": f"{s.get(CONF_NAME)} (Sensor - {s.get(CONF_VALUE_JOIN)})",
+                "value": s.get(CONF_NAME)
             })
 
         if not entity_options:
@@ -968,15 +1117,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if entities_to_remove:
                     current_covers = self.config_entry.data.get(CONF_COVERS, [])
                     current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+                    current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
 
                     # Filter out selected entities
                     updated_covers = [c for c in current_covers if c.get(CONF_NAME) not in entities_to_remove]
                     updated_binary_sensors = [bs for bs in current_binary_sensors if bs.get(CONF_NAME) not in entities_to_remove]
+                    updated_sensors = [s for s in current_sensors if s.get(CONF_NAME) not in entities_to_remove]
 
                     # Update config entry
                     new_data = dict(self.config_entry.data)
                     new_data[CONF_COVERS] = updated_covers
                     new_data[CONF_BINARY_SENSORS] = updated_binary_sensors
+                    new_data[CONF_SENSORS] = updated_sensors
 
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, data=new_data
@@ -1006,6 +1158,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                     entity_type = "binary_sensor"
                                     break
 
+                        # Check if it's a sensor
+                        if not entity_config:
+                            for s in current_sensors:
+                                if s.get(CONF_NAME) == entity_name:
+                                    entity_config = s
+                                    entity_type = "sensor"
+                                    break
+
                         if entity_config and entity_type:
                             # Construct unique_id based on entity type
                             if entity_type == "cover":
@@ -1020,6 +1180,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                 if is_on_join_str and is_on_join_str[0] == 'd':
                                     join_num = is_on_join_str[1:]
                                     unique_id = f"crestron_binary_sensor_ui_d{join_num}"
+                                else:
+                                    continue
+                            elif entity_type == "sensor":
+                                value_join_str = entity_config.get(CONF_VALUE_JOIN, "")
+                                if value_join_str and value_join_str[0] == 'a':
+                                    join_num = value_join_str[1:]
+                                    unique_id = f"crestron_sensor_ui_a{join_num}"
                                 else:
                                     continue
 
@@ -1054,6 +1221,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Build list of all entities for removal selection
         current_covers = self.config_entry.data.get(CONF_COVERS, [])
         current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+        current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
 
         entity_options = []
         for c in current_covers:
@@ -1065,6 +1233,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_options.append({
                 "label": f"{bs.get(CONF_NAME)} (Binary Sensor - {bs.get(CONF_IS_ON_JOIN)})",
                 "value": bs.get(CONF_NAME)
+            })
+        for s in current_sensors:
+            entity_options.append({
+                "label": f"{s.get(CONF_NAME)} (Sensor - {s.get(CONF_VALUE_JOIN)})",
+                "value": s.get(CONF_NAME)
             })
 
         if not entity_options:
