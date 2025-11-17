@@ -186,22 +186,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Check if a YAML hub exists (not just any hub)
     # A YAML hub is one that was created by async_setup(), indicated by
     # the presence of HUB key without a corresponding entry_id
+    # IMPORTANT: Only check if our entry_id already exists (not first setup)
     yaml_hub_exists = False
-    if HUB in hass.data[DOMAIN]:
+    if HUB in hass.data[DOMAIN] and entry.entry_id in hass.data[DOMAIN]:
+        # Entry already exists, so we can check if HUB belongs to it
         # Check if this hub belongs to an entry or is a standalone YAML hub
-        # If it's our own entry's hub, it's not a YAML hub
+        if hass.data[DOMAIN][entry.entry_id].get(HUB) != hass.data[DOMAIN][HUB]:
+            # The HUB at top level doesn't match our entry's hub
+            # This means there's a separate YAML hub
+            yaml_hub_exists = True
+            _LOGGER.debug("Detected YAML hub (different from entry hub)")
+        else:
+            _LOGGER.debug("HUB belongs to this entry, not YAML")
+    elif HUB in hass.data[DOMAIN]:
+        # HUB exists but our entry doesn't exist yet (first setup)
+        # The hub must be from YAML or another entry
+        # Check if it belongs to another entry
+        found_owner = False
         for key, value in hass.data[DOMAIN].items():
-            if key == HUB:
+            if key == HUB or key == entry.entry_id:
                 continue
             if isinstance(value, dict) and value.get(HUB) == hass.data[DOMAIN][HUB]:
-                # This hub belongs to an entry
-                if key != entry.entry_id:
-                    # Hub belongs to a different entry - shouldn't happen
-                    _LOGGER.warning("Hub belongs to entry %s, not current entry %s", key, entry.entry_id)
+                # Hub belongs to another entry
+                _LOGGER.debug("HUB belongs to another entry: %s", key)
+                found_owner = True
                 break
-        else:
-            # HUB key exists but doesn't belong to any entry - it's a YAML hub!
+
+        if not found_owner:
+            # HUB exists but doesn't belong to any entry - it's a YAML hub!
             yaml_hub_exists = True
+            _LOGGER.debug("Detected standalone YAML hub")
 
     if yaml_hub_exists:
         yaml_hub = hass.data[DOMAIN][HUB]
