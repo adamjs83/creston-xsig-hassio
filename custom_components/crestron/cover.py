@@ -93,7 +93,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             if join_str and join_str[0] == 'd':
                 parsed_config[join_key] = int(join_str[1:])
 
-        entities.append(CrestronShade(hub, parsed_config))
+        entities.append(CrestronShade(hub, parsed_config, from_ui=True))
 
     if entities:
         async_add_entities(entities)
@@ -103,8 +103,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class CrestronShade(CoverEntity, RestoreEntity):
-    def __init__(self, hub, config):
+    def __init__(self, hub, config, from_ui=False):
         self._hub = hub
+        self._from_ui = from_ui  # Track if this is a UI-created entity
         # Initialize with default values
         self._attr_device_class = None
         self._attr_supported_features = 0
@@ -161,6 +162,8 @@ class CrestronShade(CoverEntity, RestoreEntity):
     @property
     def unique_id(self):
         """Return unique ID for this entity."""
+        if self._from_ui:
+            return f"crestron_cover_ui_a{self._pos_join}"
         return f"crestron_cover_a{self._pos_join}"
 
     @property
