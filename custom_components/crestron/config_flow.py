@@ -196,7 +196,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        super().__init__()
+        # Note: config_entry is available via self.config_entry property from base class
+        # Don't set it explicitly to avoid deprecation warning (HA 2025.12+)
         self._editing_join = None  # Track which join we're editing
         self._import_summary = ""  # Store import summary for display
 
