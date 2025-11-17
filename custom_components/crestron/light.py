@@ -11,7 +11,7 @@ from homeassistant.components.light import (
 from homeassistant.const import CONF_NAME, CONF_TYPE, STATE_ON
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
-from .const import HUB, DOMAIN, CONF_BRIGHTNESS_JOIN
+from .const import HUB, DOMAIN, CONF_BRIGHTNESS_JOIN, CONF_LIGHTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,17 +33,67 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Crestron lights from a config entry.
 
-    For v1.6.0, entities are still configured via YAML.
-    This stub enables device registry linkage for future entity options flow.
+    v1.11.0+: Entities can be configured via UI (stored in entry.data[CONF_LIGHTS])
+    YAML platform setup (above) still works for backward compatibility.
     """
-    # No entities added from config entry in v1.6.0
-    # YAML platform setup (above) handles entity creation
+    # Get the hub - try entry-specific first, fall back to HUB key
+    hub_data = hass.data[DOMAIN].get(entry.entry_id)
+
+    if hub_data:
+        # Hub data is stored as dict with HUB key
+        if isinstance(hub_data, dict):
+            hub = hub_data.get(HUB)
+        else:
+            hub = hub_data  # Fallback for direct hub reference
+    else:
+        # Fallback to global HUB key
+        hub = hass.data[DOMAIN].get(HUB)
+
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for light entities")
+        return False
+
+    # Get light configurations from config entry
+    light_configs = entry.data.get(CONF_LIGHTS, [])
+
+    if not light_configs:
+        _LOGGER.debug("No light entities configured in config entry")
+        return True
+
+    # Parse join strings to integers and create entities
+    entities = []
+    for light_config in light_configs:
+        # Parse joins from string format ("a30") to integers
+        parsed_config = {
+            CONF_NAME: light_config.get(CONF_NAME),
+            CONF_TYPE: light_config.get(CONF_TYPE, "brightness"),
+        }
+
+        # Parse brightness join (required, analog)
+        brightness_join_str = light_config.get(CONF_BRIGHTNESS_JOIN)
+        if brightness_join_str and brightness_join_str[0] == 'a':
+            parsed_config[CONF_BRIGHTNESS_JOIN] = int(brightness_join_str[1:])
+        else:
+            _LOGGER.warning(
+                "Skipping light %s: invalid brightness_join format %s",
+                light_config.get(CONF_NAME),
+                brightness_join_str
+            )
+            continue
+
+        entities.append(CrestronLight(hub, parsed_config, from_ui=True))
+
+    if entities:
+        async_add_entities(entities)
+        _LOGGER.info("Added %d light entities from config entry", len(entities))
+
     return True
 
 
 class CrestronLight(LightEntity, RestoreEntity):
-    def __init__(self, hub, config):
+    def __init__(self, hub, config, from_ui=False):
         self._hub = hub
+        self._from_ui = from_ui  # Track if this is a UI-created entity
         self._name = config.get(CONF_NAME)
         self._brightness_join = config.get(CONF_BRIGHTNESS_JOIN)
 
@@ -90,6 +140,8 @@ class CrestronLight(LightEntity, RestoreEntity):
     @property
     def unique_id(self):
         """Return unique ID for this entity."""
+        if self._from_ui:
+            return f"crestron_light_ui_a{self._brightness_join}"
         return f"crestron_light_a{self._brightness_join}"
 
     @property

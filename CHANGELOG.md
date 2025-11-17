@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2025-01-17
+
+### Added
+- **UI Configuration for Lights** - Complete UI-based entity management for lights via Configure button
+- Add/edit/remove light entities through the options flow without editing YAML
+- Brightness join input with validation (analog format "aXX")
+- Light type selector: "Dimmable (Brightness)" or "On/Off Only"
+- Automatic entity registry cleanup when lights removed via UI
+- UI/YAML coexistence with unique_id prefixes ("ui" vs "yaml")
+
+### Changed
+- Updated light.py to support from_ui parameter for unique_id differentiation
+- Enhanced config_flow.py with async_step_add_light, edit, and remove flows
+- Added CONF_LIGHTS constant to const.py
+
+### Technical Details
+- Hub persistence during entity management (no connection drops)
+- Follows established pattern from covers (v1.8.0), binary sensors (v1.9.0), and sensors (v1.10.0)
+- Safe reload handling with ValueError fallback
+- Supports both ColorMode.BRIGHTNESS and ColorMode.ONOFF
+
+### Roadmap Progress
+- ✅ Covers (v1.8.0)
+- ✅ Binary Sensors (v1.9.0)
+- ✅ Sensors (v1.10.0)
+- ✅ Light (v1.11.0)
+- 🔲 Switch (next)
+- 🔲 Climate
+- 🔲 Media Player
+
 ## [1.10.0] - 2025-01-17
 
 ### Added
