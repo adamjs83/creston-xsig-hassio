@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2025-01-17
+
+### Fixed
+- **Light state showing as "unknown"** - Fixed is_on property to default to False instead of None when no Crestron value available and no restored state
+- Newly created UI lights now show as "off" instead of "unknown" until first value received from Crestron
+
+### Technical Details
+- Changed light.py line 181: return False as default instead of None
+- Prevents "unknown" state for lights on first setup
+- Matches behavior of onoff-type lights
+
 ## [1.11.0] - 2025-01-17
 
 ### Added

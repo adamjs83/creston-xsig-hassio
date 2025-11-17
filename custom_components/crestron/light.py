@@ -177,8 +177,8 @@ class CrestronLight(LightEntity, RestoreEntity):
             # Use real value from Crestron if available
             if self._hub.has_analog_value(self._brightness_join):
                 return int(self._hub.get_analog(self._brightness_join) * 255 / 65535) > 0
-            # Use restored state if available
-            return self._restored_state if self._restored_state is not None else None
+            # Use restored state if available, otherwise default to off
+            return self._restored_state if self._restored_state is not None else False
         return False
 
     async def async_turn_on(self, **kwargs):
