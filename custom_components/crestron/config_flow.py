@@ -913,11 +913,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     import textwrap
                     yaml_text = textwrap.dedent(yaml_text)
 
+                    _LOGGER.debug("YAML import - dedented text (first 200 chars): %s", yaml_text[:200])
+
                     # Parse YAML
                     try:
                         yaml_data = yaml.safe_load(yaml_text)
+                        _LOGGER.debug("YAML import - parsed data type: %s", type(yaml_data))
+                        if isinstance(yaml_data, list):
+                            _LOGGER.debug("YAML import - found list with %d items", len(yaml_data))
+                        elif isinstance(yaml_data, dict):
+                            _LOGGER.debug("YAML import - found dict with keys: %s", list(yaml_data.keys()))
                     except yaml.YAMLError as err:
                         _LOGGER.error("YAML parse error: %s", err)
+                        _LOGGER.error("Failed YAML text: %s", yaml_text)
                         errors["yaml_config"] = "invalid_yaml"
                         yaml_data = None
 
@@ -942,19 +950,24 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         skipped_covers = []
                         current_covers = self.config_entry.data.get(CONF_COVERS, [])
 
-                        for cover_yaml in yaml_data:
+                        for idx, cover_yaml in enumerate(yaml_data):
+                            _LOGGER.debug("YAML import - processing item %d: %s", idx, cover_yaml)
+
                             # Skip if not a crestron cover
                             if cover_yaml.get("platform") != "crestron":
+                                _LOGGER.debug("YAML import - skipping non-crestron platform: %s", cover_yaml.get("platform"))
                                 continue
 
                             name = cover_yaml.get("name")
                             if not name:
                                 skipped_covers.append("(unnamed cover)")
+                                _LOGGER.debug("YAML import - skipping unnamed cover")
                                 continue
 
                             # Check if already exists
                             if any(c.get(CONF_NAME) == name for c in current_covers):
                                 skipped_covers.append(f"{name} (already exists)")
+                                _LOGGER.debug("YAML import - skipping duplicate: %s", name)
                                 continue
 
                             # Convert YAML format to UI format
@@ -962,6 +975,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             pos_join = cover_yaml.get("pos_join")
                             if pos_join is None:
                                 skipped_covers.append(f"{name} (no pos_join)")
+                                _LOGGER.debug("YAML import - skipping %s: no pos_join", name)
                                 continue
 
                             new_cover = {
@@ -981,6 +995,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                 new_cover[CONF_STOP_JOIN] = f"d{cover_yaml['stop_join']}"
 
                             imported_covers.append(new_cover)
+                            _LOGGER.debug("YAML import - imported: %s", name)
+
+                        _LOGGER.info("YAML import - total imported: %d, skipped: %d", len(imported_covers), len(skipped_covers))
 
                         if imported_covers:
                             # Add imported covers to config entry
