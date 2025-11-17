@@ -21,6 +21,7 @@ from .const import (
     CONF_BINARY_SENSORS,
     CONF_SENSORS,
     CONF_LIGHTS,
+    CONF_SWITCHES,
     CONF_POS_JOIN,
     CONF_IS_OPENING_JOIN,
     CONF_IS_CLOSING_JOIN,
@@ -30,6 +31,7 @@ from .const import (
     CONF_VALUE_JOIN,
     CONF_DIVISOR,
     CONF_BRIGHTNESS_JOIN,
+    CONF_SWITCH_JOIN,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 
@@ -240,6 +242,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             elif next_step == "add_light":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_light()
+            elif next_step == "add_switch":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_switch()
             elif next_step == "add_to_join":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
@@ -265,6 +270,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
         current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
         current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+        current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
 
         # Show menu
         menu_schema = vol.Schema(
@@ -273,6 +279,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": f"Add Light - Currently: {len(current_lights)}", "value": "add_light"},
+                            {"label": f"Add Switch - Currently: {len(current_switches)}", "value": "add_switch"},
                             {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
                             {"label": f"Add Binary Sensor - Currently: {len(current_binary_sensors)}", "value": "add_binary_sensor"},
                             {"label": f"Add Sensor - Currently: {len(current_sensors)}", "value": "add_sensor"},
@@ -1136,6 +1143,108 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
+    async def async_step_add_switch(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add or edit a switch entity."""
+        errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME)
+                switch_join = user_input.get(CONF_SWITCH_JOIN)
+                device_class = user_input.get(CONF_DEVICE_CLASS, "switch")
+
+                # Validate switch_join format (must be digital)
+                if not switch_join or not (switch_join[0] == 'd' and switch_join[1:].isdigit()):
+                    errors[CONF_SWITCH_JOIN] = "invalid_join_format"
+
+                # Check for duplicate entity name
+                current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+                old_name = self._editing_join.get(CONF_NAME) if is_editing else None
+                if name != old_name and any(s.get(CONF_NAME) == name for s in current_switches):
+                    errors[CONF_NAME] = "entity_already_exists"
+
+                if not errors:
+                    # Build new switch entry
+                    new_switch = {
+                        CONF_NAME: name,
+                        CONF_SWITCH_JOIN: switch_join,
+                        CONF_DEVICE_CLASS: device_class,
+                    }
+
+                    if is_editing:
+                        # Replace existing switch
+                        updated_switches = [
+                            new_switch if s.get(CONF_NAME) == old_name else s
+                            for s in current_switches
+                        ]
+                        _LOGGER.info("Updated switch %s", name)
+                    else:
+                        # Append new switch
+                        updated_switches = current_switches + [new_switch]
+                        _LOGGER.info("Added switch %s", name)
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_SWITCHES] = updated_switches
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self._async_reload_integration()
+
+                    # Clear editing state and return to menu
+                    self._editing_join = None
+                    return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error adding/updating switch: %s", err)
+                errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            default_values = {
+                CONF_NAME: self._editing_join.get(CONF_NAME, ""),
+                CONF_SWITCH_JOIN: self._editing_join.get(CONF_SWITCH_JOIN, ""),
+                CONF_DEVICE_CLASS: self._editing_join.get(CONF_DEVICE_CLASS, "switch"),
+            }
+
+        # Show form
+        add_switch_schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_SWITCH_JOIN, default=default_values.get(CONF_SWITCH_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Optional(CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "switch")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "Switch", "value": "switch"},
+                            {"label": "Outlet", "value": "outlet"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_switch",
+            data_schema=add_switch_schema,
+            errors=errors,
+        )
+
     async def async_step_select_entity_to_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -1149,12 +1258,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
                 current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
                 current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+                current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
 
                 # Check if it's a light
                 for light in current_lights:
                     if light.get(CONF_NAME) == selected_entity:
                         self._editing_join = light
                         return await self.async_step_add_light()
+
+                # Check if it's a switch
+                for switch in current_switches:
+                    if switch.get(CONF_NAME) == selected_entity:
+                        self._editing_join = switch
+                        return await self.async_step_add_switch()
 
                 # Check if it's a cover
                 for cover in current_covers:
@@ -1182,12 +1298,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
         current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
         current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+        current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
 
         entity_options = []
         for l in current_lights:
             entity_options.append({
                 "label": f"{l.get(CONF_NAME)} (Light - {l.get(CONF_BRIGHTNESS_JOIN)})",
                 "value": l.get(CONF_NAME)
+            })
+        for sw in current_switches:
+            entity_options.append({
+                "label": f"{sw.get(CONF_NAME)} (Switch - {sw.get(CONF_SWITCH_JOIN)})",
+                "value": sw.get(CONF_NAME)
             })
         for c in current_covers:
             entity_options.append({
@@ -1241,12 +1363,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
                     current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
                     current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+                    current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
 
                     # Filter out selected entities
                     updated_covers = [c for c in current_covers if c.get(CONF_NAME) not in entities_to_remove]
                     updated_binary_sensors = [bs for bs in current_binary_sensors if bs.get(CONF_NAME) not in entities_to_remove]
                     updated_sensors = [s for s in current_sensors if s.get(CONF_NAME) not in entities_to_remove]
                     updated_lights = [l for l in current_lights if l.get(CONF_NAME) not in entities_to_remove]
+                    updated_switches = [sw for sw in current_switches if sw.get(CONF_NAME) not in entities_to_remove]
 
                     # Update config entry
                     new_data = dict(self.config_entry.data)
@@ -1254,6 +1378,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     new_data[CONF_BINARY_SENSORS] = updated_binary_sensors
                     new_data[CONF_SENSORS] = updated_sensors
                     new_data[CONF_LIGHTS] = updated_lights
+                    new_data[CONF_SWITCHES] = updated_switches
 
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, data=new_data
@@ -1274,6 +1399,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                 entity_config = light
                                 entity_type = "light"
                                 break
+
+                        # Check if it's a switch
+                        if not entity_config:
+                            for switch in current_switches:
+                                if switch.get(CONF_NAME) == entity_name:
+                                    entity_config = switch
+                                    entity_type = "switch"
+                                    break
 
                         # Check if it's a cover
                         if not entity_config:
@@ -1306,6 +1439,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                 if brightness_join_str and brightness_join_str[0] == 'a':
                                     join_num = brightness_join_str[1:]
                                     unique_id = f"crestron_light_ui_a{join_num}"
+                                else:
+                                    continue
+                            elif entity_type == "switch":
+                                switch_join_str = entity_config.get(CONF_SWITCH_JOIN, "")
+                                if switch_join_str and switch_join_str[0] == 'd':
+                                    join_num = switch_join_str[1:]
+                                    unique_id = f"crestron_switch_ui_d{join_num}"
                                 else:
                                     continue
                             elif entity_type == "cover":
@@ -1363,12 +1503,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
         current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
         current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+        current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
 
         entity_options = []
         for l in current_lights:
             entity_options.append({
                 "label": f"{l.get(CONF_NAME)} (Light - {l.get(CONF_BRIGHTNESS_JOIN)})",
                 "value": l.get(CONF_NAME)
+            })
+        for sw in current_switches:
+            entity_options.append({
+                "label": f"{sw.get(CONF_NAME)} (Switch - {sw.get(CONF_SWITCH_JOIN)})",
+                "value": sw.get(CONF_NAME)
             })
         for c in current_covers:
             entity_options.append({

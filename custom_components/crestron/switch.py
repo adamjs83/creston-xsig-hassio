@@ -8,7 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_NAME, CONF_DEVICE_CLASS
-from .const import HUB, DOMAIN, CONF_SWITCH_JOIN
+from .const import HUB, DOMAIN, CONF_SWITCH_JOIN, CONF_SWITCHES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,17 +30,67 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Crestron switches from a config entry.
 
-    For v1.6.0, entities are still configured via YAML.
-    This stub enables device registry linkage for future entity options flow.
+    v1.12.0+: Entities can be configured via UI (stored in entry.data[CONF_SWITCHES])
+    YAML platform setup (above) still works for backward compatibility.
     """
-    # No entities added from config entry in v1.6.0
-    # YAML platform setup (above) handles entity creation
+    # Get the hub - try entry-specific first, fall back to HUB key
+    hub_data = hass.data[DOMAIN].get(entry.entry_id)
+
+    if hub_data:
+        # Hub data is stored as dict with HUB key
+        if isinstance(hub_data, dict):
+            hub = hub_data.get(HUB)
+        else:
+            hub = hub_data  # Fallback for direct hub reference
+    else:
+        # Fallback to global HUB key
+        hub = hass.data[DOMAIN].get(HUB)
+
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for switch entities")
+        return False
+
+    # Get switch configurations from config entry
+    switch_configs = entry.data.get(CONF_SWITCHES, [])
+
+    if not switch_configs:
+        _LOGGER.debug("No switch entities configured in config entry")
+        return True
+
+    # Parse join strings to integers and create entities
+    entities = []
+    for switch_config in switch_configs:
+        # Parse joins from string format ("d30") to integers
+        parsed_config = {
+            CONF_NAME: switch_config.get(CONF_NAME),
+            CONF_DEVICE_CLASS: switch_config.get(CONF_DEVICE_CLASS, "switch"),
+        }
+
+        # Parse switch join (required, digital)
+        switch_join_str = switch_config.get(CONF_SWITCH_JOIN)
+        if switch_join_str and switch_join_str[0] == 'd':
+            parsed_config[CONF_SWITCH_JOIN] = int(switch_join_str[1:])
+        else:
+            _LOGGER.warning(
+                "Skipping switch %s: invalid switch_join format %s",
+                switch_config.get(CONF_NAME),
+                switch_join_str
+            )
+            continue
+
+        entities.append(CrestronSwitch(hub, parsed_config, from_ui=True))
+
+    if entities:
+        async_add_entities(entities)
+        _LOGGER.info("Added %d switch entities from config entry", len(entities))
+
     return True
 
 
 class CrestronSwitch(SwitchEntity, RestoreEntity):
-    def __init__(self, hub, config):
+    def __init__(self, hub, config, from_ui=False):
         self._hub = hub
+        self._from_ui = from_ui  # Track if this is a UI-created entity
         self._name = config.get(CONF_NAME)
         self._switch_join = config.get(CONF_SWITCH_JOIN)
         self._device_class = config.get(CONF_DEVICE_CLASS, "switch")
@@ -60,6 +110,11 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
                 f"Restored {self.name}: is_on={self._restored_is_on}"
             )
 
+        # Request current state from Crestron if connected
+        if self._hub.is_available():
+            self._hub.request_update()
+            _LOGGER.debug(f"Requested update for {self.name}")
+
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)
 
@@ -77,6 +132,8 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
     @property
     def unique_id(self):
         """Return unique ID for this entity."""
+        if self._from_ui:
+            return f"crestron_switch_ui_d{self._switch_join}"
         return f"crestron_switch_d{self._switch_join}"
 
     @property
@@ -103,7 +160,8 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
         """Return true if switch is on."""
         if self._hub.has_digital_value(self._switch_join):
             return self._hub.get_digital(self._switch_join)
-        return self._restored_is_on
+        # Use restored state if available, otherwise default to off
+        return self._restored_is_on if self._restored_is_on is not None else False
 
     async def async_turn_on(self, **kwargs):
         self._hub.set_digital(self._switch_join, True)

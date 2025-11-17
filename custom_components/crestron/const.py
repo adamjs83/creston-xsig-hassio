@@ -39,6 +39,7 @@ CONF_COVERS = "covers"
 CONF_BINARY_SENSORS = "binary_sensors"
 CONF_SENSORS = "sensors"
 CONF_LIGHTS = "lights"
+CONF_SWITCHES = "switches"
 
 # Climate additional constants
 CONF_MODE_HEAT_COOL_JOIN = "mode_heat_cool_join"

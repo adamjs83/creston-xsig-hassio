@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2025-01-17
+
+### Added
+- **UI Configuration for Switches** - Complete UI-based entity management for switches via Configure button
+- Add/edit/remove switch entities through the options flow without editing YAML
+- Switch join input with validation (digital format "dXX")
+- Device class selector: Switch or Outlet
+- Automatic entity registry cleanup when switches removed via UI
+- UI/YAML coexistence with unique_id prefixes ("ui" vs "yaml")
+- Auto-request join status on entity creation for immediate state sync
+
+### Changed
+- Updated switch.py to support from_ui parameter for unique_id differentiation
+- Enhanced config_flow.py with async_step_add_switch, edit, and remove flows
+- Added CONF_SWITCHES constant to const.py
+- Fixed switch is_on property to default to False instead of None when no data available
+
+### Technical Details
+- Hub persistence during entity management (no connection drops)
+- Follows established pattern from lights (v1.11.0), covers (v1.8.0), binary sensors (v1.9.0), and sensors (v1.10.0)
+- Safe reload handling with ValueError fallback
+- Immediate state synchronization via request_update()
+
+### Roadmap Progress
+- ✅ Covers (v1.8.0)
+- ✅ Binary Sensors (v1.9.0)
+- ✅ Sensors (v1.10.0)
+- ✅ Light (v1.11.0)
+- ✅ Switch (v1.12.0)
+- 🔲 Climate (next)
+- 🔲 Media Player
+
 ## [1.11.2] - 2025-01-17
 
 ### Added
