@@ -908,6 +908,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if not yaml_text:
                     errors["yaml_config"] = "empty_yaml"
                 else:
+                    # Remove common leading whitespace (dedent)
+                    # Users copy from YAML where list is indented under "cover:"
+                    import textwrap
+                    yaml_text = textwrap.dedent(yaml_text)
+
                     # Parse YAML
                     try:
                         yaml_data = yaml.safe_load(yaml_text)
