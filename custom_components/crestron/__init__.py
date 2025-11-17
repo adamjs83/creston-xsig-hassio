@@ -167,10 +167,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Initialize domain data if not exists
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
+        _LOGGER.debug("Initialized hass.data[DOMAIN] in async_setup_entry")
+    else:
+        _LOGGER.debug("hass.data[DOMAIN] already exists in async_setup_entry")
 
     # Check if YAML configuration exists on same port
     notification_id = f"crestron_dual_config_{entry.data[CONF_PORT]}"
     notification_shown_key = f"dual_notification_shown_{entry.data[CONF_PORT]}"
+
+    _LOGGER.debug(
+        "Checking notification flag '%s': current value = %s",
+        notification_shown_key,
+        hass.data[DOMAIN].get(notification_shown_key, "NOT SET")
+    )
 
     if HUB in hass.data[DOMAIN]:
         yaml_hub = hass.data[DOMAIN][HUB]
@@ -183,12 +192,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 entry.data[CONF_PORT]
             )
             # Create persistent notification only once per session (not on every reload)
-            # Check if notification already exists by looking at persistent notifications
-            from homeassistant.components.persistent_notification import DOMAIN as NOTIFICATION_DOMAIN
-            notifications = hass.data.get(NOTIFICATION_DOMAIN, {}).get("notifications", {})
-            notification_exists = notification_id in notifications
-
-            if not notification_exists:
+            # Use a flag stored at DOMAIN level (survives reload)
+            if not hass.data[DOMAIN].get(notification_shown_key, False):
                 await hass.services.async_call(
                     "persistent_notification",
                     "create",
@@ -203,9 +208,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         "notification_id": notification_id
                     }
                 )
+                # Mark as shown at DOMAIN level (won't be cleared during entry reload)
+                hass.data[DOMAIN][notification_shown_key] = True
                 _LOGGER.debug("Created dual config notification for port %s", entry.data[CONF_PORT])
             else:
-                _LOGGER.debug("Dual config notification already exists for port %s, skipping", entry.data[CONF_PORT])
+                _LOGGER.debug("Dual config notification already shown for port %s, skipping", entry.data[CONF_PORT])
 
             # Store reference to YAML hub under entry ID so platforms can access it
             hass.data[DOMAIN][entry.entry_id] = {
