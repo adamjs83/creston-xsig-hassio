@@ -323,32 +323,46 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        # Get hub data
-        entry_data = hass.data[DOMAIN].pop(entry.entry_id, None)
+        # Get hub data (don't pop yet - check if dual config mode first)
+        entry_data = hass.data[DOMAIN].get(entry.entry_id)
+
+        # Check if this is dual config mode (YAML hub exists)
+        is_dual_config = HUB in hass.data[DOMAIN] and entry_data
 
         if entry_data:
-            # Stop the hub
-            hub_wrapper = entry_data.get('hub_wrapper')
-            if hub_wrapper:
-                # Create a dummy event for stop method
-                class StopEvent:
-                    pass
-                await hub_wrapper.stop(StopEvent())
-                _LOGGER.info(
-                    "Stopped Crestron hub on port %s",
+            # Only stop hub if NOT in dual config mode
+            # In dual config mode, the YAML hub is shared and should not be stopped
+            if not is_dual_config:
+                hub_wrapper = entry_data.get('hub_wrapper')
+                if hub_wrapper:
+                    # Create a dummy event for stop method
+                    class StopEvent:
+                        pass
+                    await hub_wrapper.stop(StopEvent())
+                    _LOGGER.info(
+                        "Stopped Crestron hub on port %s",
+                        entry_data.get('port')
+                    )
+                # Remove entry data only if we stopped the hub
+                hass.data[DOMAIN].pop(entry.entry_id, None)
+            else:
+                _LOGGER.debug(
+                    "Dual config mode: preserving YAML hub reference during reload on port %s",
                     entry_data.get('port')
                 )
 
-        # Dismiss dual config notification if exists
-        await hass.services.async_call(
-            "persistent_notification",
-            "dismiss",
-            {"notification_id": f"crestron_dual_config_{entry.data[CONF_PORT]}"}
-        )
+        # Dismiss dual config notification only if NOT in dual config mode
+        # (In dual config, keep notification visible)
+        if not is_dual_config:
+            await hass.services.async_call(
+                "persistent_notification",
+                "dismiss",
+                {"notification_id": f"crestron_dual_config_{entry.data[CONF_PORT]}"}
+            )
 
-        # Clear notification shown flag so it can be shown again if re-enabled
-        notification_shown_key = f"dual_notification_shown_{entry.data[CONF_PORT]}"
-        hass.data[DOMAIN].pop(notification_shown_key, None)
+        # DON'T clear the notification shown flag
+        # It's session-based and should persist until HA restarts
+        # Clearing it causes notification spam on every reload
 
     return unload_ok
 
