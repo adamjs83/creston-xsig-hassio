@@ -18,13 +18,15 @@ from .const import (
     CONF_TO_HUB,
     CONF_FROM_HUB,
     CONF_COVERS,
+    CONF_BINARY_SENSORS,
     CONF_POS_JOIN,
     CONF_IS_OPENING_JOIN,
     CONF_IS_CLOSING_JOIN,
     CONF_IS_CLOSED_JOIN,
     CONF_STOP_JOIN,
+    CONF_IS_ON_JOIN,
 )
-from homeassistant.const import CONF_NAME, CONF_TYPE
+from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -224,6 +226,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if next_step == "add_cover":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_cover()
+            elif next_step == "add_binary_sensor":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_binary_sensor()
             elif next_step == "add_to_join":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
@@ -246,6 +251,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
         current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
         current_covers = self.config_entry.data.get(CONF_COVERS, [])
+        current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
 
         # Show menu
         menu_schema = vol.Schema(
@@ -254,6 +260,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
+                            {"label": f"Add Binary Sensor - Currently: {len(current_binary_sensors)}", "value": "add_binary_sensor"},
                             {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
                             {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
                             {"label": "Edit joins", "value": "edit_joins"},
@@ -773,6 +780,117 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
+    async def async_step_add_binary_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add or edit a binary sensor entity."""
+        errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME)
+                is_on_join = user_input.get(CONF_IS_ON_JOIN)
+                device_class = user_input.get(CONF_DEVICE_CLASS)
+
+                # Validate is_on_join format (must be digital)
+                if not is_on_join or not (is_on_join[0] == 'd' and is_on_join[1:].isdigit()):
+                    errors[CONF_IS_ON_JOIN] = "invalid_join_format"
+
+                # Check for duplicate entity name
+                current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+                old_name = self._editing_join.get(CONF_NAME) if is_editing else None
+                if name != old_name and any(bs.get(CONF_NAME) == name for bs in current_binary_sensors):
+                    errors[CONF_NAME] = "entity_already_exists"
+
+                if not errors:
+                    # Build new binary sensor entry
+                    new_binary_sensor = {
+                        CONF_NAME: name,
+                        CONF_IS_ON_JOIN: is_on_join,
+                        CONF_DEVICE_CLASS: device_class,
+                    }
+
+                    if is_editing:
+                        # Replace existing binary sensor
+                        updated_binary_sensors = [
+                            new_binary_sensor if bs.get(CONF_NAME) == old_name else bs
+                            for bs in current_binary_sensors
+                        ]
+                        _LOGGER.info("Updated binary sensor %s", name)
+                    else:
+                        # Append new binary sensor
+                        updated_binary_sensors = current_binary_sensors + [new_binary_sensor]
+                        _LOGGER.info("Added binary sensor %s", name)
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_BINARY_SENSORS] = updated_binary_sensors
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self._async_reload_integration()
+
+                    # Clear editing state and return to menu
+                    self._editing_join = None
+                    return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error adding/updating binary sensor: %s", err)
+                errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            default_values = {
+                CONF_NAME: self._editing_join.get(CONF_NAME, ""),
+                CONF_IS_ON_JOIN: self._editing_join.get(CONF_IS_ON_JOIN, ""),
+                CONF_DEVICE_CLASS: self._editing_join.get(CONF_DEVICE_CLASS, "motion"),
+            }
+
+        # Show form
+        add_binary_sensor_schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_IS_ON_JOIN, default=default_values.get(CONF_IS_ON_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "motion")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "Motion", "value": "motion"},
+                            {"label": "Door", "value": "door"},
+                            {"label": "Window", "value": "window"},
+                            {"label": "Opening", "value": "opening"},
+                            {"label": "Occupancy", "value": "occupancy"},
+                            {"label": "Presence", "value": "presence"},
+                            {"label": "Garage Door", "value": "garage_door"},
+                            {"label": "Smoke", "value": "smoke"},
+                            {"label": "Moisture", "value": "moisture"},
+                            {"label": "Light", "value": "light"},
+                            {"label": "None", "value": "none"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_binary_sensor",
+            data_schema=add_binary_sensor_schema,
+            errors=errors,
+        )
+
     async def async_step_select_entity_to_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -783,6 +901,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if selected_entity:
                 # Find the entity in our data
                 current_covers = self.config_entry.data.get(CONF_COVERS, [])
+                current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
 
                 # Check if it's a cover
                 for cover in current_covers:
@@ -790,17 +909,29 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         self._editing_join = cover
                         return await self.async_step_add_cover()
 
+                # Check if it's a binary sensor
+                for binary_sensor in current_binary_sensors:
+                    if binary_sensor.get(CONF_NAME) == selected_entity:
+                        self._editing_join = binary_sensor
+                        return await self.async_step_add_binary_sensor()
+
             # Not found, return to menu
             return await self.async_step_init()
 
         # Build list of all entities for editing
         current_covers = self.config_entry.data.get(CONF_COVERS, [])
+        current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
 
         entity_options = []
         for c in current_covers:
             entity_options.append({
                 "label": f"{c.get(CONF_NAME)} (Cover - {c.get(CONF_POS_JOIN)})",
                 "value": c.get(CONF_NAME)
+            })
+        for bs in current_binary_sensors:
+            entity_options.append({
+                "label": f"{bs.get(CONF_NAME)} (Binary Sensor - {bs.get(CONF_IS_ON_JOIN)})",
+                "value": bs.get(CONF_NAME)
             })
 
         if not entity_options:
@@ -836,13 +967,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
                 if entities_to_remove:
                     current_covers = self.config_entry.data.get(CONF_COVERS, [])
+                    current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
 
                     # Filter out selected entities
                     updated_covers = [c for c in current_covers if c.get(CONF_NAME) not in entities_to_remove]
+                    updated_binary_sensors = [bs for bs in current_binary_sensors if bs.get(CONF_NAME) not in entities_to_remove]
 
                     # Update config entry
                     new_data = dict(self.config_entry.data)
                     new_data[CONF_COVERS] = updated_covers
+                    new_data[CONF_BINARY_SENSORS] = updated_binary_sensors
 
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, data=new_data
@@ -862,12 +996,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         # Build list of all entities for removal selection
         current_covers = self.config_entry.data.get(CONF_COVERS, [])
+        current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
 
         entity_options = []
         for c in current_covers:
             entity_options.append({
                 "label": f"{c.get(CONF_NAME)} (Cover - {c.get(CONF_POS_JOIN)})",
                 "value": c.get(CONF_NAME)
+            })
+        for bs in current_binary_sensors:
+            entity_options.append({
+                "label": f"{bs.get(CONF_NAME)} (Binary Sensor - {bs.get(CONF_IS_ON_JOIN)})",
+                "value": bs.get(CONF_NAME)
             })
 
         if not entity_options:

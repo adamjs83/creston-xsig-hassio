@@ -96,6 +96,20 @@
           "stop_join": "Digital join for stop command (e.g., d34)"
         }
       },
+      "add_binary_sensor": {
+        "title": "Add Binary Sensor Entity",
+        "description": "Create a binary sensor entity for digital state monitoring (on/off, open/closed, etc.). Device class determines the icon and behavior.",
+        "data": {
+          "name": "Entity Name",
+          "is_on_join": "State Join",
+          "device_class": "Device Class"
+        },
+        "data_description": {
+          "name": "Friendly name for this sensor (e.g., Front Door Motion)",
+          "is_on_join": "Digital join for state feedback (e.g., d100)",
+          "device_class": "Sensor type (determines icon and behavior)"
+        }
+      },
       "select_entity_to_edit": {
         "title": "Select Entity to Edit",
         "description": "Choose an entity to edit. The form will be pre-filled with current values.",
