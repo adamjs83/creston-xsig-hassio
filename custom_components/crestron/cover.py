@@ -223,8 +223,19 @@ class CrestronShade(CoverEntity, RestoreEntity):
     @property
     def is_closed(self):
         """Return if the cover is closed."""
+        # If we have closed state feedback, use it
         if self._hub.has_digital_value(self._is_closed_join):
             return self._hub.get_digital(self._is_closed_join)
+
+        # Otherwise, infer from position when not moving
+        # (opening/closing state takes precedence)
+        if not self.is_opening and not self.is_closing:
+            position = self.current_cover_position
+            if position is not None:
+                # Closed if position is at or very close to 0
+                return position < 1
+
+        # Fallback to restored state if available
         return self._restored_is_closed
 
     async def async_set_cover_position(self, **kwargs):
