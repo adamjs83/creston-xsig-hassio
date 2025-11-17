@@ -914,6 +914,20 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if not yaml_text:
                     errors["yaml_config"] = "empty_yaml"
                 else:
+                    # Check if newlines are present
+                    if '\n' not in yaml_text:
+                        _LOGGER.warning("YAML import - no newlines detected, attempting to reconstruct")
+                        # Browser/form stripped newlines - try to reconstruct them
+                        # Insert newline before each "- platform:" (except first) and before each field
+                        import re
+                        # First, add newlines before list items
+                        yaml_text = re.sub(r'(\s*)- platform:', r'\n\1- platform:', yaml_text)
+                        # Add newlines before field names (but not after colons in values)
+                        yaml_text = re.sub(r'\s+(name|type|pos_join|is_opening_join|is_closing_join|is_closed_join|stop_join):', r'\n  \1:', yaml_text)
+                        # Clean up leading newline
+                        yaml_text = yaml_text.lstrip('\n')
+                        _LOGGER.debug("YAML import - reconstructed text (first 300 chars): %s", repr(yaml_text[:300]))
+
                     # Remove common leading whitespace (dedent)
                     # Users copy from YAML where list is indented under "cover:"
                     import textwrap
