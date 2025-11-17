@@ -284,12 +284,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             len(entry.data[CONF_FROM_HUB])
         )
 
-    # Create and start hub
-    # v1.7.0: Allow hub to set HUB key if no YAML hub exists
-    # This enables YAML platform entities to use config entry hub after YAML removal
-    yaml_hub_exists = HUB in hass.data[DOMAIN]
-    hub_wrapper = CrestronHub(hass, hub_config, set_hub_key=(not yaml_hub_exists))
-    await hub_wrapper.start()
+    # Check if hub already exists from previous load (during reload)
+    existing_entry_data = hass.data[DOMAIN].get(entry.entry_id)
+    if existing_entry_data and existing_entry_data.get('hub_wrapper'):
+        # Reuse existing hub during reload
+        hub_wrapper = existing_entry_data['hub_wrapper']
+        _LOGGER.debug("Reusing existing hub on port %s during reload", entry.data[CONF_PORT])
+    else:
+        # Create and start hub
+        # v1.7.0: Allow hub to set HUB key if no YAML hub exists
+        # This enables YAML platform entities to use config entry hub after YAML removal
+        yaml_hub_exists = HUB in hass.data[DOMAIN]
+        hub_wrapper = CrestronHub(hass, hub_config, set_hub_key=(not yaml_hub_exists))
+        await hub_wrapper.start()
+        _LOGGER.info("Created new hub on port %s", entry.data[CONF_PORT])
 
     # Store hub under entry ID for config entry management
     hass.data[DOMAIN][entry.entry_id] = {
@@ -360,26 +368,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         is_dual_config = yaml_hub_exists and entry_data
 
         if entry_data:
-            # Only stop hub if NOT in dual config mode
-            # In dual config mode, the YAML hub is shared and should not be stopped
-            if not is_dual_config:
-                hub_wrapper = entry_data.get('hub_wrapper')
-                if hub_wrapper:
-                    # Create a dummy event for stop method
-                    class StopEvent:
-                        pass
-                    await hub_wrapper.stop(StopEvent())
-                    _LOGGER.info(
-                        "Stopped Crestron hub on port %s",
-                        entry_data.get('port')
-                    )
-                # Remove entry data only if we stopped the hub
-                hass.data[DOMAIN].pop(entry.entry_id, None)
-            else:
+            # In dual config mode: preserve YAML hub
+            # NOT in dual config mode: preserve config entry hub (don't stop/restart)
+            # The hub should only be stopped on full integration removal, not reload
+            if is_dual_config:
                 _LOGGER.debug(
                     "Dual config mode: preserving YAML hub reference during reload on port %s",
                     entry_data.get('port')
                 )
+            else:
+                _LOGGER.debug(
+                    "Config entry mode: preserving hub during reload on port %s",
+                    entry_data.get('port')
+                )
+            # DON'T stop hub or remove entry_data during reload
+            # The hub will be reused by the next setup_entry call
 
         # Dismiss dual config notification only if NOT in dual config mode
         # (In dual config, keep notification visible)
