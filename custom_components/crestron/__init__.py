@@ -183,7 +183,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].get(notification_shown_key, "NOT SET")
     )
 
+    # Check if a YAML hub exists (not just any hub)
+    # A YAML hub is one that was created by async_setup(), indicated by
+    # the presence of HUB key without a corresponding entry_id
+    yaml_hub_exists = False
     if HUB in hass.data[DOMAIN]:
+        # Check if this hub belongs to an entry or is a standalone YAML hub
+        # If it's our own entry's hub, it's not a YAML hub
+        for key, value in hass.data[DOMAIN].items():
+            if key == HUB:
+                continue
+            if isinstance(value, dict) and value.get(HUB) == hass.data[DOMAIN][HUB]:
+                # This hub belongs to an entry
+                if key != entry.entry_id:
+                    # Hub belongs to a different entry - shouldn't happen
+                    _LOGGER.warning("Hub belongs to entry %s, not current entry %s", key, entry.entry_id)
+                break
+        else:
+            # HUB key exists but doesn't belong to any entry - it's a YAML hub!
+            yaml_hub_exists = True
+
+    if yaml_hub_exists:
         yaml_hub = hass.data[DOMAIN][HUB]
         # Check if it's the same port
         if hasattr(yaml_hub, 'port') and yaml_hub.port == entry.data[CONF_PORT]:
@@ -342,7 +362,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_data = hass.data[DOMAIN].get(entry.entry_id)
 
         # Check if this is dual config mode (YAML hub exists)
-        is_dual_config = HUB in hass.data[DOMAIN] and entry_data
+        # A YAML hub is one that exists at HUB key but doesn't belong to any entry
+        yaml_hub_exists = False
+        if HUB in hass.data[DOMAIN]:
+            # Check if this hub belongs to an entry
+            for key, value in hass.data[DOMAIN].items():
+                if key == HUB:
+                    continue
+                if isinstance(value, dict) and value.get(HUB) == hass.data[DOMAIN][HUB]:
+                    # This hub belongs to an entry, not YAML
+                    break
+            else:
+                # HUB exists but doesn't belong to any entry - it's a YAML hub
+                yaml_hub_exists = True
+
+        is_dual_config = yaml_hub_exists and entry_data
 
         if entry_data:
             # Only stop hub if NOT in dual config mode
