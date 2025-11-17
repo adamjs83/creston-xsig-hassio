@@ -200,7 +200,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Note: config_entry is available via self.config_entry property from base class
         # Don't set it explicitly to avoid deprecation warning (HA 2025.12+)
         self._editing_join = None  # Track which join we're editing
-        self._import_summary = ""  # Store import summary for display
 
     async def _async_reload_integration(self) -> None:
         """Safely reload the integration, handling platforms that aren't loaded."""
@@ -225,8 +224,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if next_step == "add_cover":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_cover()
-            elif next_step == "import_yaml_covers":
-                return await self.async_step_import_yaml_covers()
             elif next_step == "add_to_join":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
@@ -257,7 +254,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
-                            {"label": "Import YAML Covers", "value": "import_yaml_covers"},
                             {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
                             {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
                             {"label": "Edit joins", "value": "edit_joins"},
@@ -895,200 +891,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="remove_entities",
             data_schema=remove_schema,
             errors=errors,
-        )
-
-    async def async_step_import_yaml_covers(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Import covers from YAML configuration."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            try:
-                yaml_text = user_input.get("yaml_config", "")
-
-                _LOGGER.debug("YAML import - raw input length: %d chars", len(yaml_text))
-                _LOGGER.debug("YAML import - raw input (first 200): %s", repr(yaml_text[:200]))
-                _LOGGER.debug("YAML import - has newlines: %s", '\n' in yaml_text)
-
-                yaml_text = yaml_text.strip()
-
-                if not yaml_text:
-                    errors["yaml_config"] = "empty_yaml"
-                else:
-                    # Check if newlines are present
-                    if '\n' not in yaml_text:
-                        _LOGGER.warning("YAML import - no newlines detected, attempting to reconstruct")
-                        # Browser/form stripped newlines - try to reconstruct them
-                        # Insert newline before each "- platform:" (except first) and before each field
-                        import re
-                        # First, add newlines before list items
-                        yaml_text = re.sub(r'(\s*)- platform:', r'\n\1- platform:', yaml_text)
-                        # Add newlines before field names (but not after colons in values)
-                        yaml_text = re.sub(r'\s+(name|type|pos_join|is_opening_join|is_closing_join|is_closed_join|stop_join):', r'\n  \1:', yaml_text)
-                        # Clean up leading newline
-                        yaml_text = yaml_text.lstrip('\n')
-                        _LOGGER.debug("YAML import - reconstructed text (first 300 chars): %s", repr(yaml_text[:300]))
-
-                    # Remove common leading whitespace (dedent)
-                    # Users copy from YAML where list is indented under "cover:"
-                    import textwrap
-                    yaml_text = textwrap.dedent(yaml_text)
-
-                    _LOGGER.debug("YAML import - dedented text (first 200 chars): %s", repr(yaml_text[:200]))
-
-                    # Parse YAML
-                    try:
-                        yaml_data = yaml.safe_load(yaml_text)
-                        _LOGGER.debug("YAML import - parsed data type: %s", type(yaml_data))
-                        if isinstance(yaml_data, list):
-                            _LOGGER.debug("YAML import - found list with %d items", len(yaml_data))
-                        elif isinstance(yaml_data, dict):
-                            _LOGGER.debug("YAML import - found dict with keys: %s", list(yaml_data.keys()))
-                    except yaml.YAMLError as err:
-                        _LOGGER.error("YAML parse error: %s", err)
-                        _LOGGER.error("Failed YAML text: %s", yaml_text)
-                        errors["yaml_config"] = "invalid_yaml"
-                        yaml_data = None
-
-                    if yaml_data and not errors:
-                        # Handle different YAML formats:
-                        # 1. List of covers: [- platform: crestron, ...]
-                        # 2. Single cover: {platform: crestron, ...}
-                        # 3. Wrapped in "cover:" key: {cover: [- platform: crestron, ...]}
-                        if isinstance(yaml_data, dict):
-                            # Check if it's wrapped in "cover:" key
-                            if "cover" in yaml_data:
-                                yaml_data = yaml_data["cover"]
-                            else:
-                                # Single cover dict
-                                yaml_data = [yaml_data]
-
-                        # Ensure it's a list at this point
-                        if not isinstance(yaml_data, list):
-                            yaml_data = [yaml_data]
-
-                        imported_covers = []
-                        skipped_covers = []
-                        current_covers = self.config_entry.data.get(CONF_COVERS, [])
-
-                        for idx, cover_yaml in enumerate(yaml_data):
-                            _LOGGER.debug("YAML import - processing item %d: %s", idx, cover_yaml)
-
-                            # Skip if not a crestron cover
-                            if cover_yaml.get("platform") != "crestron":
-                                _LOGGER.debug("YAML import - skipping non-crestron platform: %s", cover_yaml.get("platform"))
-                                continue
-
-                            name = cover_yaml.get("name")
-                            if not name:
-                                skipped_covers.append("(unnamed cover)")
-                                _LOGGER.debug("YAML import - skipping unnamed cover")
-                                continue
-
-                            # Check if already exists
-                            if any(c.get(CONF_NAME) == name for c in current_covers):
-                                skipped_covers.append(f"{name} (already exists)")
-                                _LOGGER.debug("YAML import - skipping duplicate: %s", name)
-                                continue
-
-                            # Convert YAML format to UI format
-                            # YAML uses integer joins, UI uses string format
-                            pos_join = cover_yaml.get("pos_join")
-                            if pos_join is None:
-                                skipped_covers.append(f"{name} (no pos_join)")
-                                _LOGGER.debug("YAML import - skipping %s: no pos_join", name)
-                                continue
-
-                            new_cover = {
-                                CONF_NAME: name,
-                                CONF_POS_JOIN: f"a{pos_join}",
-                                CONF_TYPE: cover_yaml.get("type", "shade"),
-                            }
-
-                            # Add optional joins
-                            if "is_opening_join" in cover_yaml:
-                                new_cover[CONF_IS_OPENING_JOIN] = f"d{cover_yaml['is_opening_join']}"
-                            if "is_closing_join" in cover_yaml:
-                                new_cover[CONF_IS_CLOSING_JOIN] = f"d{cover_yaml['is_closing_join']}"
-                            if "is_closed_join" in cover_yaml:
-                                new_cover[CONF_IS_CLOSED_JOIN] = f"d{cover_yaml['is_closed_join']}"
-                            if "stop_join" in cover_yaml:
-                                new_cover[CONF_STOP_JOIN] = f"d{cover_yaml['stop_join']}"
-
-                            imported_covers.append(new_cover)
-                            _LOGGER.debug("YAML import - imported: %s", name)
-
-                        _LOGGER.info("YAML import - total imported: %d, skipped: %d", len(imported_covers), len(skipped_covers))
-
-                        if imported_covers:
-                            # Add imported covers to config entry
-                            updated_covers = current_covers + imported_covers
-
-                            new_data = dict(self.config_entry.data)
-                            new_data[CONF_COVERS] = updated_covers
-
-                            self.hass.config_entries.async_update_entry(
-                                self.config_entry, data=new_data
-                            )
-
-                            # Reload the integration
-                            await self._async_reload_integration()
-
-                            _LOGGER.info(
-                                "Imported %d covers, skipped %d",
-                                len(imported_covers),
-                                len(skipped_covers)
-                            )
-
-                            # Show success message
-                            import_summary = f"Successfully imported {len(imported_covers)} cover(s)."
-                            if skipped_covers:
-                                import_summary += f"\n\nSkipped {len(skipped_covers)}:\n" + "\n".join(skipped_covers)
-
-                            # Store summary for display
-                            self._import_summary = import_summary
-
-                            # Show summary step
-                            return await self.async_step_import_summary()
-                        else:
-                            errors["yaml_config"] = "no_covers_found"
-
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.exception("Error importing YAML covers: %s", err)
-                errors["base"] = "unknown"
-
-        # Show form
-        import_schema = vol.Schema(
-            {
-                vol.Required("yaml_config"): selector.TextSelector(
-                    selector.TextSelectorConfig(
-                        multiline=True,
-                        type=selector.TextSelectorType.TEXT,
-                    )
-                ),
-            }
-        )
-
-        return self.async_show_form(
-            step_id="import_yaml_covers",
-            data_schema=import_schema,
-            errors=errors,
-        )
-
-    async def async_step_import_summary(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Show summary of imported covers."""
-        if user_input is not None:
-            # Return to menu
-            return await self.async_step_init()
-
-        # Show summary with OK button
-        return self.async_show_form(
-            step_id="import_summary",
-            data_schema=vol.Schema({}),
-            description_placeholders={"summary": self._import_summary},
         )
 
 

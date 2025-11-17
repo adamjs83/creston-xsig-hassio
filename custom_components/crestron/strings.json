@@ -110,28 +110,11 @@
           "entities_to_remove": "Entities to Remove"
         }
       },
-      "import_yaml_covers": {
-        "title": "Import YAML Covers",
-        "description": "Paste your YAML cover configuration to import. Covers will be converted to UI entities. You can then remove the YAML configuration from configuration.yaml.\n\nYou can paste:\n• Just the cover list (without 'cover:')\n• The entire cover: section including the 'cover:' key\n\nExample (either format works):\n\ncover:\n  - platform: crestron\n    name: Living Room Shade\n    pos_join: 40\n    is_opening_join: 41\n    is_closing_join: 42\n    is_closed_join: 43\n    stop_join: 44\n    type: shade",
-        "data": {
-          "yaml_config": "YAML Configuration"
-        },
-        "data_description": {
-          "yaml_config": "Paste your cover section from configuration.yaml (with or without the 'cover:' key)"
-        }
-      },
-      "import_summary": {
-        "title": "Import Complete",
-        "description": "{summary}\n\nYou can now optionally remove the cover: section from your configuration.yaml and restart Home Assistant. The covers will continue to work from the UI configuration."
-      }
     },
     "error": {
       "invalid_join_format": "Join must be in format: d1-d250, a1-a250, or s1-s250 (e.g., d15, a10, s5)",
       "join_already_exists": "This join number is already configured. Remove it first or use a different join number.",
       "entity_already_exists": "An entity with this name already exists. Choose a different name.",
-      "empty_yaml": "Please paste your YAML configuration.",
-      "invalid_yaml": "Invalid YAML format. Please check your syntax.",
-      "no_covers_found": "No valid covers found in YAML. Make sure platform is set to 'crestron' and required fields are present.",
       "unknown": "An unexpected error occurred. Check the logs for details."
     }
   }
