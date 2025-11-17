@@ -137,7 +137,9 @@ async def async_setup(hass, config):
             )
 
         # Continue with YAML setup (backward compatibility - YAML still works!)
-        hass.data[DOMAIN] = {}
+        # Don't wipe out existing data (preserves notification flags from config entry setup)
+        if DOMAIN not in hass.data:
+            hass.data[DOMAIN] = {}
         hub = CrestronHub(hass, yaml_config)
 
         await hub.start()
