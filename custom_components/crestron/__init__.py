@@ -187,16 +187,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "create",
                 {
                     "message": "Crestron XSIG is configured via both YAML and UI on port {}. "
-                               "YAML configuration is being used. To use UI configuration, "
-                               "remove the 'crestron:' section from configuration.yaml and restart.".format(
+                               "YAML hub configuration is being used. "
+                               "UI entity configuration (covers, etc.) will still work. "
+                               "To use UI hub configuration, remove the 'crestron:' section from configuration.yaml and restart.".format(
                                    entry.data[CONF_PORT]
                                ),
                     "title": "Crestron Dual Configuration",
                     "notification_id": notification_id
                 }
             )
-            # Still return True so entry isn't marked failed
-            # But we won't create a second hub
+
+            # Store reference to YAML hub under entry ID so platforms can access it
+            hass.data[DOMAIN][entry.entry_id] = {
+                HUB: yaml_hub,  # Use YAML hub
+                'port': entry.data[CONF_PORT],
+                'entry': entry,
+            }
+
+            # Create device in registry
+            device_registry = dr.async_get(hass)
+            device_registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                identifiers={(DOMAIN, f"crestron_{entry.data[CONF_PORT]}")},
+                name="Crestron Control System",
+                manufacturer="Crestron Electronics",
+                model="XSIG Gateway",
+                sw_version="1.8.0",
+            )
+
+            # Forward entry setup to platforms so UI entities work with YAML hub
+            await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+            _LOGGER.info(
+                "Crestron XSIG config entry setup complete (using YAML hub, UI entities enabled)"
+            )
+
+            # Return True - hub is from YAML, but platforms are set up
             return True
     else:
         # No YAML hub exists, dismiss any previous dual config notification
