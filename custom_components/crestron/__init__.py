@@ -140,6 +140,9 @@ async def async_setup(hass, config):
         # Don't wipe out existing data (preserves notification flags from config entry setup)
         if DOMAIN not in hass.data:
             hass.data[DOMAIN] = {}
+
+        # Mark that we're creating a YAML hub
+        hass.data[DOMAIN]['hub_source'] = 'yaml'
         hub = CrestronHub(hass, yaml_config)
 
         await hub.start()
@@ -183,39 +186,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].get(notification_shown_key, "NOT SET")
     )
 
-    # Check if a YAML hub exists (not just any hub)
-    # A YAML hub is one that was created by async_setup(), indicated by
-    # the presence of HUB key without a corresponding entry_id
-    # IMPORTANT: Only check if our entry_id already exists (not first setup)
-    yaml_hub_exists = False
-    if HUB in hass.data[DOMAIN] and entry.entry_id in hass.data[DOMAIN]:
-        # Entry already exists, so we can check if HUB belongs to it
-        # Check if this hub belongs to an entry or is a standalone YAML hub
-        if hass.data[DOMAIN][entry.entry_id].get(HUB) != hass.data[DOMAIN][HUB]:
-            # The HUB at top level doesn't match our entry's hub
-            # This means there's a separate YAML hub
-            yaml_hub_exists = True
-            _LOGGER.debug("Detected YAML hub (different from entry hub)")
-        else:
-            _LOGGER.debug("HUB belongs to this entry, not YAML")
-    elif HUB in hass.data[DOMAIN]:
-        # HUB exists but our entry doesn't exist yet (first setup)
-        # The hub must be from YAML or another entry
-        # Check if it belongs to another entry
-        found_owner = False
-        for key, value in hass.data[DOMAIN].items():
-            if key == HUB or key == entry.entry_id:
-                continue
-            if isinstance(value, dict) and value.get(HUB) == hass.data[DOMAIN][HUB]:
-                # Hub belongs to another entry
-                _LOGGER.debug("HUB belongs to another entry: %s", key)
-                found_owner = True
-                break
+    # Simple check: does a YAML hub exist?
+    # We mark the hub source when creating it, so just check the marker
+    yaml_hub_exists = hass.data[DOMAIN].get('hub_source') == 'yaml'
 
-        if not found_owner:
-            # HUB exists but doesn't belong to any entry - it's a YAML hub!
-            yaml_hub_exists = True
-            _LOGGER.debug("Detected standalone YAML hub")
+    if yaml_hub_exists:
+        _LOGGER.debug("YAML hub detected (hub_source='yaml')")
+    else:
+        _LOGGER.debug("No YAML hub (hub_source=%s)", hass.data[DOMAIN].get('hub_source', 'not set'))
 
     if yaml_hub_exists:
         yaml_hub = hass.data[DOMAIN][HUB]
@@ -323,6 +301,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # If no YAML hub, this config entry hub will serve YAML platform entities
     if not yaml_hub_exists:
+        # Mark that this hub is from a config entry, not YAML
+        hass.data[DOMAIN]['hub_source'] = 'config_entry'
         _LOGGER.info(
             "Config entry hub serving YAML platform entities (no YAML crestron: section)"
         )
@@ -376,20 +356,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_data = hass.data[DOMAIN].get(entry.entry_id)
 
         # Check if this is dual config mode (YAML hub exists)
-        # A YAML hub is one that exists at HUB key but doesn't belong to any entry
-        yaml_hub_exists = False
-        if HUB in hass.data[DOMAIN]:
-            # Check if this hub belongs to an entry
-            for key, value in hass.data[DOMAIN].items():
-                if key == HUB:
-                    continue
-                if isinstance(value, dict) and value.get(HUB) == hass.data[DOMAIN][HUB]:
-                    # This hub belongs to an entry, not YAML
-                    break
-            else:
-                # HUB exists but doesn't belong to any entry - it's a YAML hub
-                yaml_hub_exists = True
-
+        yaml_hub_exists = hass.data[DOMAIN].get('hub_source') == 'yaml'
         is_dual_config = yaml_hub_exists and entry_data
 
         if entry_data:
