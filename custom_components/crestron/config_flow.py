@@ -10,7 +10,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import selector
+from homeassistant.helpers import selector, entity_registry as er
 
 from .const import (
     DOMAIN,
@@ -982,10 +982,67 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         self.config_entry, data=new_data
                     )
 
+                    # Remove entities from entity registry
+                    entity_reg = er.async_get(self.hass)
+                    removed_count = 0
+
+                    for entity_name in entities_to_remove:
+                        # Find the entity config to get join number
+                        entity_config = None
+                        entity_type = None
+
+                        # Check if it's a cover
+                        for cover in current_covers:
+                            if cover.get(CONF_NAME) == entity_name:
+                                entity_config = cover
+                                entity_type = "cover"
+                                break
+
+                        # Check if it's a binary sensor
+                        if not entity_config:
+                            for bs in current_binary_sensors:
+                                if bs.get(CONF_NAME) == entity_name:
+                                    entity_config = bs
+                                    entity_type = "binary_sensor"
+                                    break
+
+                        if entity_config and entity_type:
+                            # Construct unique_id based on entity type
+                            if entity_type == "cover":
+                                pos_join_str = entity_config.get(CONF_POS_JOIN, "")
+                                if pos_join_str and pos_join_str[0] == 'a':
+                                    join_num = pos_join_str[1:]
+                                    unique_id = f"crestron_cover_ui_a{join_num}"
+                                else:
+                                    continue
+                            elif entity_type == "binary_sensor":
+                                is_on_join_str = entity_config.get(CONF_IS_ON_JOIN, "")
+                                if is_on_join_str and is_on_join_str[0] == 'd':
+                                    join_num = is_on_join_str[1:]
+                                    unique_id = f"crestron_binary_sensor_ui_d{join_num}"
+                                else:
+                                    continue
+
+                            # Find and remove entity from registry
+                            entity_id = entity_reg.async_get_entity_id(
+                                entity_type, DOMAIN, unique_id
+                            )
+
+                            if entity_id:
+                                entity_reg.async_remove(entity_id)
+                                removed_count += 1
+                                _LOGGER.info(
+                                    "Removed entity %s (unique_id: %s) from registry",
+                                    entity_name, unique_id
+                                )
+
                     # Reload the integration
                     await self._async_reload_integration()
 
-                    _LOGGER.info("Removed %d entities", len(entities_to_remove))
+                    _LOGGER.info(
+                        "Removed %d entities from config, %d from registry",
+                        len(entities_to_remove), removed_count
+                    )
 
                 # Return to menu
                 return await self.async_step_init()

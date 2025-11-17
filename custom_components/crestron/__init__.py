@@ -183,7 +183,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 entry.data[CONF_PORT]
             )
             # Create persistent notification only once per session (not on every reload)
-            if not hass.data[DOMAIN].get(notification_shown_key, False):
+            # Check if notification already exists by looking at persistent notifications
+            from homeassistant.components.persistent_notification import DOMAIN as NOTIFICATION_DOMAIN
+            notifications = hass.data.get(NOTIFICATION_DOMAIN, {}).get("notifications", {})
+            notification_exists = notification_id in notifications
+
+            if not notification_exists:
                 await hass.services.async_call(
                     "persistent_notification",
                     "create",
@@ -198,8 +203,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         "notification_id": notification_id
                     }
                 )
-                # Mark notification as shown for this session
-                hass.data[DOMAIN][notification_shown_key] = True
+                _LOGGER.debug("Created dual config notification for port %s", entry.data[CONF_PORT])
+            else:
+                _LOGGER.debug("Dual config notification already exists for port %s, skipping", entry.data[CONF_PORT])
 
             # Store reference to YAML hub under entry ID so platforms can access it
             hass.data[DOMAIN][entry.entry_id] = {
