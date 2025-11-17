@@ -333,7 +333,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 # Create a dummy event for stop method
                 class StopEvent:
                     pass
-                hub_wrapper.stop(StopEvent())
+                await hub_wrapper.stop(StopEvent())
                 _LOGGER.info(
                     "Stopped Crestron hub on port %s",
                     entry_data.get('port')
