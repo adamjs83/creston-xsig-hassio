@@ -170,6 +170,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Check if YAML configuration exists on same port
     notification_id = f"crestron_dual_config_{entry.data[CONF_PORT]}"
+    notification_shown_key = f"dual_notification_shown_{entry.data[CONF_PORT]}"
 
     if HUB in hass.data[DOMAIN]:
         yaml_hub = hass.data[DOMAIN][HUB]
@@ -181,21 +182,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "Remove YAML config to use UI configuration.",
                 entry.data[CONF_PORT]
             )
-            # Create a persistent notification to inform user
-            await hass.services.async_call(
-                "persistent_notification",
-                "create",
-                {
-                    "message": "Crestron XSIG is configured via both YAML and UI on port {}. "
-                               "YAML hub configuration is being used. "
-                               "UI entity configuration (covers, etc.) will still work. "
-                               "To use UI hub configuration, remove the 'crestron:' section from configuration.yaml and restart.".format(
-                                   entry.data[CONF_PORT]
-                               ),
-                    "title": "Crestron Dual Configuration",
-                    "notification_id": notification_id
-                }
-            )
+            # Create persistent notification only once per session (not on every reload)
+            if not hass.data[DOMAIN].get(notification_shown_key, False):
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "message": "Crestron XSIG is configured via both YAML and UI on port {}. "
+                                   "YAML hub configuration is being used. "
+                                   "UI entity configuration (covers, etc.) will still work. "
+                                   "To use UI hub configuration, remove the 'crestron:' section from configuration.yaml and restart.".format(
+                                       entry.data[CONF_PORT]
+                                   ),
+                        "title": "Crestron Dual Configuration",
+                        "notification_id": notification_id
+                    }
+                )
+                # Mark notification as shown for this session
+                hass.data[DOMAIN][notification_shown_key] = True
 
             # Store reference to YAML hub under entry ID so platforms can access it
             hass.data[DOMAIN][entry.entry_id] = {
@@ -341,6 +345,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "dismiss",
             {"notification_id": f"crestron_dual_config_{entry.data[CONF_PORT]}"}
         )
+
+        # Clear notification shown flag so it can be shown again if re-enabled
+        notification_shown_key = f"dual_notification_shown_{entry.data[CONF_PORT]}"
+        hass.data[DOMAIN].pop(notification_shown_key, None)
 
     return unload_ok
 

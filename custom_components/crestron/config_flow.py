@@ -922,7 +922,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         yaml_data = None
 
                     if yaml_data and not errors:
-                        # Ensure it's a list
+                        # Handle different YAML formats:
+                        # 1. List of covers: [- platform: crestron, ...]
+                        # 2. Single cover: {platform: crestron, ...}
+                        # 3. Wrapped in "cover:" key: {cover: [- platform: crestron, ...]}
+                        if isinstance(yaml_data, dict):
+                            # Check if it's wrapped in "cover:" key
+                            if "cover" in yaml_data:
+                                yaml_data = yaml_data["cover"]
+                            else:
+                                # Single cover dict
+                                yaml_data = [yaml_data]
+
+                        # Ensure it's a list at this point
                         if not isinstance(yaml_data, list):
                             yaml_data = [yaml_data]
 
