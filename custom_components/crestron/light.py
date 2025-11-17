@@ -123,6 +123,11 @@ class CrestronLight(LightEntity, RestoreEntity):
                 f"brightness={self._restored_brightness}"
             )
 
+        # Request current state from Crestron if connected
+        if self._hub.is_available():
+            self._hub.request_update()
+            _LOGGER.debug(f"Requested update for {self.name}")
+
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)
 

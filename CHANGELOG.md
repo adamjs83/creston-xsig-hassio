@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2025-01-17
+
+### Added
+- **Auto-request join status on entity creation** - Entities now automatically request current state from Crestron when added
+- New `request_update()` method in CrestronXsig hub to trigger state updates from Crestron
+- Immediate state synchronization for newly created UI entities (lights, covers, sensors, binary sensors)
+
+### Changed
+- Updated all platform entities (light, cover, sensor, binary_sensor) to request updates when added to Home Assistant
+- Entities created via UI now show correct state immediately without needing physical toggle
+- Added debug logging for update requests
+
+### Technical Details
+- Added CrestronXsig.request_update() method that sends 0xFD command to Crestron
+- Modified async_added_to_hass() in light.py, cover.py, sensor.py, binary_sensor.py
+- Update request only sent if Crestron is connected (hub.is_available())
+- Maintains same XSIG protocol behavior as initial connection
+
+### User Impact
+- No more "unknown" or "off" states for newly created entities
+- Entities immediately reflect actual Crestron state
+- Eliminates need to toggle physical switches after creating UI entities
+
 ## [1.11.1] - 2025-01-17
 
 ### Fixed

@@ -239,3 +239,16 @@ class CrestronXsig:
                 self._available = False
         else:
             _LOGGER.debug("Could not send serial. No connection to hub")
+
+    def request_update(self):
+        """ Request Crestron to send current state of all joins """
+        if self._writer:
+            try:
+                self._writer.write(b"\xfd")
+                _LOGGER.debug("Requested update from Crestron")
+            except Exception as err:
+                _LOGGER.warning(f"Failed to request update: {err}")
+                self._writer = None
+                self._available = False
+        else:
+            _LOGGER.debug("Could not request update. No connection to hub")
