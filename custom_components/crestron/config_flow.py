@@ -254,74 +254,38 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Main menu for managing joins."""
+        """Main menu - choose between entity or join sync management."""
         if user_input is not None:
-            # Handle menu selection
             next_step = user_input.get("action")
-            if next_step == "add_cover":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_add_cover()
-            elif next_step == "add_binary_sensor":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_add_binary_sensor()
-            elif next_step == "add_sensor":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_add_sensor()
-            elif next_step == "add_light":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_add_light()
-            elif next_step == "add_switch":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_add_switch()
-            elif next_step == "add_climate":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_select_climate_type()
-            elif next_step == "add_to_join":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_add_to_join()
-            elif next_step == "add_from_join":
-                self._editing_join = None  # Clear editing state
-                return await self.async_step_add_from_join()
-            elif next_step == "edit_joins":
-                return await self.async_step_select_join_to_edit()
-            elif next_step == "edit_entities":
-                return await self.async_step_select_entity_to_edit()
-            elif next_step == "remove_joins":
-                return await self.async_step_remove_joins()
-            elif next_step == "remove_entities":
-                return await self.async_step_remove_entities()
+            if next_step == "entity_menu":
+                return await self.async_step_entity_menu()
+            elif next_step == "join_menu":
+                return await self.async_step_join_menu()
             else:
                 # Done
                 return self.async_create_entry(title="", data={})
 
-        # Get current counts
-        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
-        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+        # Get current counts for display
         current_covers = self.config_entry.data.get(CONF_COVERS, [])
         current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
         current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
         current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
         current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
         current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
+        total_entities = len(current_covers) + len(current_binary_sensors) + len(current_sensors) + len(current_lights) + len(current_switches) + len(current_climates)
 
-        # Show menu
+        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+        total_joins = len(current_to_joins) + len(current_from_joins)
+
+        # Show main menu
         menu_schema = vol.Schema(
             {
                 vol.Required("action"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"label": f"Add Light - Currently: {len(current_lights)}", "value": "add_light"},
-                            {"label": f"Add Switch - Currently: {len(current_switches)}", "value": "add_switch"},
-                            {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
-                            {"label": f"Add Binary Sensor - Currently: {len(current_binary_sensors)}", "value": "add_binary_sensor"},
-                            {"label": f"Add Sensor - Currently: {len(current_sensors)}", "value": "add_sensor"},
-                            {"label": f"Add Climate (Floor Warming or Standard HVAC) - Currently: {len(current_climates)}", "value": "add_climate"},
-                            {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
-                            {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
-                            {"label": "Edit joins", "value": "edit_joins"},
-                            {"label": "Edit entities", "value": "edit_entities"},
-                            {"label": "Remove joins", "value": "remove_joins"},
-                            {"label": "Remove entities", "value": "remove_entities"},
+                            {"label": f"Manage Entities ({total_entities} configured)", "value": "entity_menu"},
+                            {"label": f"Manage Join Syncs ({total_joins} configured)", "value": "join_menu"},
                             {"label": "Done", "value": "done"},
                         ],
                         mode=selector.SelectSelectorMode.LIST,
@@ -332,6 +296,158 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
+            data_schema=menu_schema,
+            description_placeholders={
+                "entities": str(total_entities),
+                "joins": str(total_joins),
+            },
+        )
+
+    async def async_step_entity_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Entity management submenu."""
+        if user_input is not None:
+            next_step = user_input.get("action")
+            if next_step == "add_entity":
+                return await self.async_step_select_entity_type()
+            elif next_step == "edit_entities":
+                return await self.async_step_select_entity_to_edit()
+            elif next_step == "remove_entities":
+                return await self.async_step_remove_entities()
+            elif next_step == "back":
+                return await self.async_step_init()
+
+        # Get current entity counts
+        current_covers = self.config_entry.data.get(CONF_COVERS, [])
+        current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+        current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
+        current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+        current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+        current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
+        total_entities = len(current_covers) + len(current_binary_sensors) + len(current_sensors) + len(current_lights) + len(current_switches) + len(current_climates)
+
+        # Show entity menu
+        menu_schema = vol.Schema(
+            {
+                vol.Required("action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "Add Entity", "value": "add_entity"},
+                            {"label": f"Edit Entity ({total_entities} available)", "value": "edit_entities"},
+                            {"label": f"Remove Entity ({total_entities} available)", "value": "remove_entities"},
+                            {"label": "← Back to Main Menu", "value": "back"},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="entity_menu",
+            data_schema=menu_schema,
+        )
+
+    async def async_step_select_entity_type(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select which type of entity to add."""
+        if user_input is not None:
+            self._editing_join = None  # Clear editing state
+            entity_type = user_input.get("entity_type")
+            if entity_type == "light":
+                return await self.async_step_add_light()
+            elif entity_type == "switch":
+                return await self.async_step_add_switch()
+            elif entity_type == "cover":
+                return await self.async_step_add_cover()
+            elif entity_type == "binary_sensor":
+                return await self.async_step_add_binary_sensor()
+            elif entity_type == "sensor":
+                return await self.async_step_add_sensor()
+            elif entity_type == "climate":
+                return await self.async_step_select_climate_type()
+            elif entity_type == "back":
+                return await self.async_step_entity_menu()
+
+        # Get current counts
+        current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+        current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+        current_covers = self.config_entry.data.get(CONF_COVERS, [])
+        current_binary_sensors = self.config_entry.data.get(CONF_BINARY_SENSORS, [])
+        current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
+        current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
+
+        # Show entity type selection
+        menu_schema = vol.Schema(
+            {
+                vol.Required("entity_type"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": f"Light ({len(current_lights)} configured)", "value": "light"},
+                            {"label": f"Switch ({len(current_switches)} configured)", "value": "switch"},
+                            {"label": f"Cover ({len(current_covers)} configured)", "value": "cover"},
+                            {"label": f"Binary Sensor ({len(current_binary_sensors)} configured)", "value": "binary_sensor"},
+                            {"label": f"Sensor ({len(current_sensors)} configured)", "value": "sensor"},
+                            {"label": f"Climate ({len(current_climates)} configured)", "value": "climate"},
+                            {"label": "← Back", "value": "back"},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="select_entity_type",
+            data_schema=menu_schema,
+        )
+
+    async def async_step_join_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Join sync management submenu."""
+        if user_input is not None:
+            next_step = user_input.get("action")
+            if next_step == "add_to_join":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_to_join()
+            elif next_step == "add_from_join":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_from_join()
+            elif next_step == "edit_joins":
+                return await self.async_step_select_join_to_edit()
+            elif next_step == "remove_joins":
+                return await self.async_step_remove_joins()
+            elif next_step == "back":
+                return await self.async_step_init()
+
+        # Get current join counts
+        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+        total_joins = len(current_to_joins) + len(current_from_joins)
+
+        # Show join menu
+        menu_schema = vol.Schema(
+            {
+                vol.Required("action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": f"Add to_join (HA→Crestron) ({len(current_to_joins)} configured)", "value": "add_to_join"},
+                            {"label": f"Add from_join (Crestron→HA) ({len(current_from_joins)} configured)", "value": "add_from_join"},
+                            {"label": f"Edit Join ({total_joins} available)", "value": "edit_joins"},
+                            {"label": f"Remove Join ({total_joins} available)", "value": "remove_joins"},
+                            {"label": "← Back to Main Menu", "value": "back"},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="join_menu",
             data_schema=menu_schema,
         )
 

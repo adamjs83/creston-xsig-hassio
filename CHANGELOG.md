@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2025-11-18
+
+### Changed
+- **Restructured Configuration Menu for Better UX** - Complete redesign of the options flow navigation
+- Main menu reduced from 12 items to 3 items for better usability
+- Two-menu hierarchy: "Manage Entities" and "Manage Join Syncs"
+- Entity management submenu: Add/Edit/Remove entities with entity type selection
+- Join sync management submenu: Add/Edit/Remove to_joins and from_joins
+- Back navigation at every menu level for intuitive user experience
+- Live counts displayed in menu labels showing configured entities and joins
+
+### Technical Details
+- Added async_step_entity_menu() for entity management submenu
+- Added async_step_select_entity_type() for entity type selection
+- Added async_step_join_menu() for join sync management submenu
+- All existing Add/Edit/Remove flows unchanged - only navigation restructured
+- Improves cognitive load by separating entities from join syncs
+- Scalable architecture for future entity platform additions
+
 ## [1.14.0] - 2025-01-18
 
 ### Added
