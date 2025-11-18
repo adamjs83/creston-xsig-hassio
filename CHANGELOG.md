@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2025-01-18
+
+### Added
+- **UI Configuration for Standard HVAC Climate Entities** - Complete UI-based entity management for standard thermostats
+- Climate type selection: Floor Warming or Standard HVAC
+- Standard HVAC form with 20 join fields (3 analog + 15 digital required + 2 digital optional)
+- Organized form sections: Temperature Setpoints, HVAC Modes, Fan Modes, Equipment Status, HVAC Actions
+- Automatic routing to correct climate form when editing based on entity type
+- Type-aware entity display in edit/remove lists showing "Floor Warming" vs "Standard HVAC"
+
+### Changed
+- Enhanced climate.py to support both floor_warming and standard types in async_setup_entry
+- Updated config_flow.py with async_step_select_climate_type and async_step_add_climate_standard
+- Climate menu label updated to reflect both type options
+- Added all standard HVAC join constants to config_flow.py imports
+
+### Technical Details
+- Full support for both climate types via UI (no YAML required)
+- Standard HVAC joins: heat_sp, cool_sp, reg_temp, mode_heat, mode_cool, mode_auto, mode_heat_cool, mode_off, fan_on, fan_auto, fan_mode_on, fan_mode_auto, h1, h2 (opt), c1, c2 (opt), fa, hvac_action_heat, hvac_action_cool, hvac_action_idle
+- Optional joins (h2, c2) validated only if provided
+- Hub persistence during entity management (no connection drops)
+- Safe reload handling with ValueError fallback
+
 ## [1.13.0] - 2025-01-18
 
 ### Added

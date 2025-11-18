@@ -33,12 +33,33 @@ from .const import (
     CONF_DIVISOR,
     CONF_BRIGHTNESS_JOIN,
     CONF_SWITCH_JOIN,
-    # Climate joins (floor_warming only)
+    # Climate joins - floor_warming
     CONF_FLOOR_MODE_JOIN,
     CONF_FLOOR_MODE_FB_JOIN,
     CONF_FLOOR_SP_JOIN,
     CONF_FLOOR_SP_FB_JOIN,
     CONF_FLOOR_TEMP_JOIN,
+    # Climate joins - standard HVAC
+    CONF_HEAT_SP_JOIN,
+    CONF_COOL_SP_JOIN,
+    CONF_REG_TEMP_JOIN,
+    CONF_MODE_HEAT_JOIN,
+    CONF_MODE_COOL_JOIN,
+    CONF_MODE_AUTO_JOIN,
+    CONF_MODE_OFF_JOIN,
+    CONF_FAN_ON_JOIN,
+    CONF_FAN_AUTO_JOIN,
+    CONF_H1_JOIN,
+    CONF_H2_JOIN,
+    CONF_C1_JOIN,
+    CONF_C2_JOIN,
+    CONF_FA_JOIN,
+    CONF_MODE_HEAT_COOL_JOIN,
+    CONF_FAN_MODE_AUTO_JOIN,
+    CONF_FAN_MODE_ON_JOIN,
+    CONF_HVAC_ACTION_HEAT_JOIN,
+    CONF_HVAC_ACTION_COOL_JOIN,
+    CONF_HVAC_ACTION_IDLE_JOIN,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 
@@ -254,7 +275,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_add_switch()
             elif next_step == "add_climate":
                 self._editing_join = None  # Clear editing state
-                return await self.async_step_add_climate()
+                return await self.async_step_select_climate_type()
             elif next_step == "add_to_join":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
@@ -294,7 +315,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
                             {"label": f"Add Binary Sensor - Currently: {len(current_binary_sensors)}", "value": "add_binary_sensor"},
                             {"label": f"Add Sensor - Currently: {len(current_sensors)}", "value": "add_sensor"},
-                            {"label": f"Add Climate (Floor Warming) - Currently: {len(current_climates)}", "value": "add_climate"},
+                            {"label": f"Add Climate (Floor Warming or Standard HVAC) - Currently: {len(current_climates)}", "value": "add_climate"},
                             {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
                             {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
                             {"label": "Edit joins", "value": "edit_joins"},
@@ -1389,6 +1410,267 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
+    async def async_step_select_climate_type(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select climate type (floor_warming or standard)."""
+        if user_input is not None:
+            climate_type = user_input.get("climate_type")
+            if climate_type == "floor_warming":
+                return await self.async_step_add_climate()
+            elif climate_type == "standard":
+                return await self.async_step_add_climate_standard()
+
+        # Show type selection form
+        type_schema = vol.Schema(
+            {
+                vol.Required("climate_type"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "Floor Warming Thermostat (5 analog joins)", "value": "floor_warming"},
+                            {"label": "Standard HVAC (3 analog + 15 digital joins)", "value": "standard"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="select_climate_type",
+            data_schema=type_schema,
+        )
+
+    async def async_step_add_climate_standard(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add or edit a standard HVAC climate entity."""
+        errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME)
+
+                # Validate analog joins (3 required)
+                analog_joins = {
+                    CONF_HEAT_SP_JOIN: user_input.get(CONF_HEAT_SP_JOIN),
+                    CONF_COOL_SP_JOIN: user_input.get(CONF_COOL_SP_JOIN),
+                    CONF_REG_TEMP_JOIN: user_input.get(CONF_REG_TEMP_JOIN),
+                }
+
+                for join_field, join_value in analog_joins.items():
+                    if not join_value or not (join_value[0] == 'a' and join_value[1:].isdigit()):
+                        errors[join_field] = "invalid_join_format"
+
+                # Validate digital joins (15 required)
+                digital_joins = {
+                    CONF_MODE_HEAT_JOIN: user_input.get(CONF_MODE_HEAT_JOIN),
+                    CONF_MODE_COOL_JOIN: user_input.get(CONF_MODE_COOL_JOIN),
+                    CONF_MODE_AUTO_JOIN: user_input.get(CONF_MODE_AUTO_JOIN),
+                    CONF_MODE_OFF_JOIN: user_input.get(CONF_MODE_OFF_JOIN),
+                    CONF_FAN_ON_JOIN: user_input.get(CONF_FAN_ON_JOIN),
+                    CONF_FAN_AUTO_JOIN: user_input.get(CONF_FAN_AUTO_JOIN),
+                    CONF_H1_JOIN: user_input.get(CONF_H1_JOIN),
+                    CONF_C1_JOIN: user_input.get(CONF_C1_JOIN),
+                    CONF_FA_JOIN: user_input.get(CONF_FA_JOIN),
+                    CONF_MODE_HEAT_COOL_JOIN: user_input.get(CONF_MODE_HEAT_COOL_JOIN),
+                    CONF_FAN_MODE_AUTO_JOIN: user_input.get(CONF_FAN_MODE_AUTO_JOIN),
+                    CONF_FAN_MODE_ON_JOIN: user_input.get(CONF_FAN_MODE_ON_JOIN),
+                    CONF_HVAC_ACTION_HEAT_JOIN: user_input.get(CONF_HVAC_ACTION_HEAT_JOIN),
+                    CONF_HVAC_ACTION_COOL_JOIN: user_input.get(CONF_HVAC_ACTION_COOL_JOIN),
+                    CONF_HVAC_ACTION_IDLE_JOIN: user_input.get(CONF_HVAC_ACTION_IDLE_JOIN),
+                }
+
+                for join_field, join_value in digital_joins.items():
+                    if not join_value or not (join_value[0] == 'd' and join_value[1:].isdigit()):
+                        errors[join_field] = "invalid_join_format"
+
+                # Validate optional digital joins (2 optional)
+                h2_join = user_input.get(CONF_H2_JOIN, "")
+                c2_join = user_input.get(CONF_C2_JOIN, "")
+
+                if h2_join and not (h2_join[0] == 'd' and h2_join[1:].isdigit()):
+                    errors[CONF_H2_JOIN] = "invalid_join_format"
+                if c2_join and not (c2_join[0] == 'd' and c2_join[1:].isdigit()):
+                    errors[CONF_C2_JOIN] = "invalid_join_format"
+
+                # Check for duplicate entity name
+                current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
+                old_name = self._editing_join.get(CONF_NAME) if is_editing else None
+                if name != old_name and any(c.get(CONF_NAME) == name for c in current_climates):
+                    errors[CONF_NAME] = "entity_already_exists"
+
+                if not errors:
+                    # Build new climate entry (standard type)
+                    new_climate = {
+                        CONF_NAME: name,
+                        CONF_TYPE: "standard",
+                        CONF_HEAT_SP_JOIN: user_input.get(CONF_HEAT_SP_JOIN),
+                        CONF_COOL_SP_JOIN: user_input.get(CONF_COOL_SP_JOIN),
+                        CONF_REG_TEMP_JOIN: user_input.get(CONF_REG_TEMP_JOIN),
+                        CONF_MODE_HEAT_JOIN: user_input.get(CONF_MODE_HEAT_JOIN),
+                        CONF_MODE_COOL_JOIN: user_input.get(CONF_MODE_COOL_JOIN),
+                        CONF_MODE_AUTO_JOIN: user_input.get(CONF_MODE_AUTO_JOIN),
+                        CONF_MODE_OFF_JOIN: user_input.get(CONF_MODE_OFF_JOIN),
+                        CONF_FAN_ON_JOIN: user_input.get(CONF_FAN_ON_JOIN),
+                        CONF_FAN_AUTO_JOIN: user_input.get(CONF_FAN_AUTO_JOIN),
+                        CONF_H1_JOIN: user_input.get(CONF_H1_JOIN),
+                        CONF_C1_JOIN: user_input.get(CONF_C1_JOIN),
+                        CONF_FA_JOIN: user_input.get(CONF_FA_JOIN),
+                        CONF_MODE_HEAT_COOL_JOIN: user_input.get(CONF_MODE_HEAT_COOL_JOIN),
+                        CONF_FAN_MODE_AUTO_JOIN: user_input.get(CONF_FAN_MODE_AUTO_JOIN),
+                        CONF_FAN_MODE_ON_JOIN: user_input.get(CONF_FAN_MODE_ON_JOIN),
+                        CONF_HVAC_ACTION_HEAT_JOIN: user_input.get(CONF_HVAC_ACTION_HEAT_JOIN),
+                        CONF_HVAC_ACTION_COOL_JOIN: user_input.get(CONF_HVAC_ACTION_COOL_JOIN),
+                        CONF_HVAC_ACTION_IDLE_JOIN: user_input.get(CONF_HVAC_ACTION_IDLE_JOIN),
+                    }
+
+                    # Add optional joins if provided
+                    if h2_join:
+                        new_climate[CONF_H2_JOIN] = h2_join
+                    if c2_join:
+                        new_climate[CONF_C2_JOIN] = c2_join
+
+                    if is_editing:
+                        # Replace existing climate
+                        updated_climates = [
+                            new_climate if c.get(CONF_NAME) == old_name else c
+                            for c in current_climates
+                        ]
+                        _LOGGER.info("Updated standard climate %s", name)
+                    else:
+                        # Append new climate
+                        updated_climates = current_climates + [new_climate]
+                        _LOGGER.info("Added standard climate %s", name)
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_CLIMATES] = updated_climates
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self._async_reload_integration()
+
+                    # Clear editing state and return to menu
+                    self._editing_join = None
+                    return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error adding/updating standard climate: %s", err)
+                errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            default_values = {
+                CONF_NAME: self._editing_join.get(CONF_NAME, ""),
+                CONF_HEAT_SP_JOIN: self._editing_join.get(CONF_HEAT_SP_JOIN, ""),
+                CONF_COOL_SP_JOIN: self._editing_join.get(CONF_COOL_SP_JOIN, ""),
+                CONF_REG_TEMP_JOIN: self._editing_join.get(CONF_REG_TEMP_JOIN, ""),
+                CONF_MODE_HEAT_JOIN: self._editing_join.get(CONF_MODE_HEAT_JOIN, ""),
+                CONF_MODE_COOL_JOIN: self._editing_join.get(CONF_MODE_COOL_JOIN, ""),
+                CONF_MODE_AUTO_JOIN: self._editing_join.get(CONF_MODE_AUTO_JOIN, ""),
+                CONF_MODE_OFF_JOIN: self._editing_join.get(CONF_MODE_OFF_JOIN, ""),
+                CONF_FAN_ON_JOIN: self._editing_join.get(CONF_FAN_ON_JOIN, ""),
+                CONF_FAN_AUTO_JOIN: self._editing_join.get(CONF_FAN_AUTO_JOIN, ""),
+                CONF_H1_JOIN: self._editing_join.get(CONF_H1_JOIN, ""),
+                CONF_H2_JOIN: self._editing_join.get(CONF_H2_JOIN, ""),
+                CONF_C1_JOIN: self._editing_join.get(CONF_C1_JOIN, ""),
+                CONF_C2_JOIN: self._editing_join.get(CONF_C2_JOIN, ""),
+                CONF_FA_JOIN: self._editing_join.get(CONF_FA_JOIN, ""),
+                CONF_MODE_HEAT_COOL_JOIN: self._editing_join.get(CONF_MODE_HEAT_COOL_JOIN, ""),
+                CONF_FAN_MODE_AUTO_JOIN: self._editing_join.get(CONF_FAN_MODE_AUTO_JOIN, ""),
+                CONF_FAN_MODE_ON_JOIN: self._editing_join.get(CONF_FAN_MODE_ON_JOIN, ""),
+                CONF_HVAC_ACTION_HEAT_JOIN: self._editing_join.get(CONF_HVAC_ACTION_HEAT_JOIN, ""),
+                CONF_HVAC_ACTION_COOL_JOIN: self._editing_join.get(CONF_HVAC_ACTION_COOL_JOIN, ""),
+                CONF_HVAC_ACTION_IDLE_JOIN: self._editing_join.get(CONF_HVAC_ACTION_IDLE_JOIN, ""),
+            }
+
+        # Show form - organized by section
+        add_climate_standard_schema = vol.Schema(
+            {
+                # Name
+                vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                # Temperature setpoints (3 analog)
+                vol.Required(CONF_HEAT_SP_JOIN, default=default_values.get(CONF_HEAT_SP_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_COOL_SP_JOIN, default=default_values.get(CONF_COOL_SP_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_REG_TEMP_JOIN, default=default_values.get(CONF_REG_TEMP_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                # HVAC modes (5 digital)
+                vol.Required(CONF_MODE_HEAT_JOIN, default=default_values.get(CONF_MODE_HEAT_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_MODE_COOL_JOIN, default=default_values.get(CONF_MODE_COOL_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_MODE_AUTO_JOIN, default=default_values.get(CONF_MODE_AUTO_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_MODE_HEAT_COOL_JOIN, default=default_values.get(CONF_MODE_HEAT_COOL_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_MODE_OFF_JOIN, default=default_values.get(CONF_MODE_OFF_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                # Fan modes (4 digital)
+                vol.Required(CONF_FAN_ON_JOIN, default=default_values.get(CONF_FAN_ON_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_FAN_AUTO_JOIN, default=default_values.get(CONF_FAN_AUTO_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_FAN_MODE_ON_JOIN, default=default_values.get(CONF_FAN_MODE_ON_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_FAN_MODE_AUTO_JOIN, default=default_values.get(CONF_FAN_MODE_AUTO_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                # HVAC equipment status (6 digital, 2 optional)
+                vol.Required(CONF_H1_JOIN, default=default_values.get(CONF_H1_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Optional(CONF_H2_JOIN, default=default_values.get(CONF_H2_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_C1_JOIN, default=default_values.get(CONF_C1_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Optional(CONF_C2_JOIN, default=default_values.get(CONF_C2_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_FA_JOIN, default=default_values.get(CONF_FA_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                # HVAC actions (3 digital)
+                vol.Required(CONF_HVAC_ACTION_HEAT_JOIN, default=default_values.get(CONF_HVAC_ACTION_HEAT_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_HVAC_ACTION_COOL_JOIN, default=default_values.get(CONF_HVAC_ACTION_COOL_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_HVAC_ACTION_IDLE_JOIN, default=default_values.get(CONF_HVAC_ACTION_IDLE_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_climate_standard",
+            data_schema=add_climate_standard_schema,
+            errors=errors,
+        )
+
     async def async_step_select_entity_to_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -1439,7 +1721,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 for climate in current_climates:
                     if climate.get(CONF_NAME) == selected_entity:
                         self._editing_join = climate
-                        return await self.async_step_add_climate()
+                        # Route to appropriate climate form based on type
+                        climate_type = climate.get(CONF_TYPE, "standard")
+                        if climate_type == "floor_warming":
+                            return await self.async_step_add_climate()
+                        else:
+                            return await self.async_step_add_climate_standard()
 
             # Not found, return to menu
             return await self.async_step_init()
@@ -1479,8 +1766,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 "value": s.get(CONF_NAME)
             })
         for cl in current_climates:
+            climate_type = cl.get(CONF_TYPE, "standard")
+            type_label = "Floor Warming" if climate_type == "floor_warming" else "Standard HVAC"
+            join_display = cl.get(CONF_FLOOR_SP_JOIN) if climate_type == "floor_warming" else cl.get(CONF_HEAT_SP_JOIN)
             entity_options.append({
-                "label": f"{cl.get(CONF_NAME)} (Climate - {cl.get(CONF_FLOOR_SP_JOIN)})",
+                "label": f"{cl.get(CONF_NAME)} (Climate - {type_label} - {join_display})",
                 "value": cl.get(CONF_NAME)
             })
 
@@ -1708,8 +1998,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 "value": s.get(CONF_NAME)
             })
         for cl in current_climates:
+            climate_type = cl.get(CONF_TYPE, "standard")
+            type_label = "Floor Warming" if climate_type == "floor_warming" else "Standard HVAC"
+            join_display = cl.get(CONF_FLOOR_SP_JOIN) if climate_type == "floor_warming" else cl.get(CONF_HEAT_SP_JOIN)
             entity_options.append({
-                "label": f"{cl.get(CONF_NAME)} (Climate - {cl.get(CONF_FLOOR_SP_JOIN)})",
+                "label": f"{cl.get(CONF_NAME)} (Climate - {type_label} - {join_display})",
                 "value": cl.get(CONF_NAME)
             })
 

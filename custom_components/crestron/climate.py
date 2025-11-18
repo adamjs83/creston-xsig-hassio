@@ -140,48 +140,119 @@ async def async_setup_entry(hass, entry, async_add_entities):
     unit = hass.config.units.temperature_unit
 
     # Load climates from config entry (UI-configured)
-    # Note: v1.13.0 only supports floor_warming type via UI
+    # v1.13.0: floor_warming type
+    # v1.14.0: standard type
     climates_config = entry.data.get(CONF_CLIMATES, [])
 
     if climates_config:
         entities = []
         for climate_cfg in climates_config:
-            # Only floor_warming type supported in v1.13.0
-            # Standard thermostats must still use YAML (too many joins for practical UI form)
-            if climate_cfg.get(CONF_TYPE) != "floor_warming":
-                _LOGGER.warning(
-                    "Skipping non-floor_warming climate %s - only floor_warming supported via UI",
-                    climate_cfg.get(CONF_NAME)
-                )
-                continue
+            dev_type = climate_cfg.get(CONF_TYPE, "standard")
 
-            # Parse floor warming joins (all analog)
-            config = {
-                CONF_NAME: climate_cfg.get(CONF_NAME),
-                CONF_TYPE: "floor_warming",
-            }
+            if dev_type == "floor_warming":
+                # Parse floor warming joins (all analog)
+                config = {
+                    CONF_NAME: climate_cfg.get(CONF_NAME),
+                    CONF_TYPE: "floor_warming",
+                }
 
-            # Parse analog join strings
-            all_joins_valid = True
-            for join_key in [CONF_FLOOR_MODE_JOIN, CONF_FLOOR_MODE_FB_JOIN,
-                            CONF_FLOOR_SP_JOIN, CONF_FLOOR_SP_FB_JOIN, CONF_FLOOR_TEMP_JOIN]:
-                join_str = climate_cfg.get(join_key, "")
-                if join_str and join_str[0] == 'a' and join_str[1:].isdigit():
-                    config[join_key] = int(join_str[1:])
-                else:
-                    _LOGGER.error(
-                        "Invalid join format for %s in %s: %s",
-                        join_key, climate_cfg.get(CONF_NAME), join_str
-                    )
-                    all_joins_valid = False
-                    break
+                # Parse analog join strings
+                all_joins_valid = True
+                for join_key in [CONF_FLOOR_MODE_JOIN, CONF_FLOOR_MODE_FB_JOIN,
+                                CONF_FLOOR_SP_JOIN, CONF_FLOOR_SP_FB_JOIN, CONF_FLOOR_TEMP_JOIN]:
+                    join_str = climate_cfg.get(join_key, "")
+                    if join_str and join_str[0] == 'a' and join_str[1:].isdigit():
+                        config[join_key] = int(join_str[1:])
+                    else:
+                        _LOGGER.error(
+                            "Invalid join format for %s in %s: %s",
+                            join_key, climate_cfg.get(CONF_NAME), join_str
+                        )
+                        all_joins_valid = False
+                        break
 
-            if all_joins_valid:
-                entities.append(CrestronFloorWarmingThermostat(hub, config, unit, from_ui=True))
+                if all_joins_valid:
+                    entities.append(CrestronFloorWarmingThermostat(hub, config, unit, from_ui=True))
+
+            elif dev_type == "standard":
+                # Parse standard thermostat joins (3 analog + 15-17 digital)
+                config = {
+                    CONF_NAME: climate_cfg.get(CONF_NAME),
+                    CONF_TYPE: "standard",
+                }
+
+                # Parse analog joins (3 required)
+                analog_joins = {
+                    CONF_HEAT_SP_JOIN: climate_cfg.get(CONF_HEAT_SP_JOIN, ""),
+                    CONF_COOL_SP_JOIN: climate_cfg.get(CONF_COOL_SP_JOIN, ""),
+                    CONF_REG_TEMP_JOIN: climate_cfg.get(CONF_REG_TEMP_JOIN, ""),
+                }
+
+                all_joins_valid = True
+                for join_key, join_str in analog_joins.items():
+                    if join_str and join_str[0] == 'a' and join_str[1:].isdigit():
+                        config[join_key] = int(join_str[1:])
+                    else:
+                        _LOGGER.error(
+                            "Invalid analog join format for %s in %s: %s",
+                            join_key, climate_cfg.get(CONF_NAME), join_str
+                        )
+                        all_joins_valid = False
+                        break
+
+                # Parse digital joins (15 required + 2 optional)
+                digital_joins = {
+                    CONF_MODE_HEAT_JOIN: climate_cfg.get(CONF_MODE_HEAT_JOIN, ""),
+                    CONF_MODE_COOL_JOIN: climate_cfg.get(CONF_MODE_COOL_JOIN, ""),
+                    CONF_MODE_AUTO_JOIN: climate_cfg.get(CONF_MODE_AUTO_JOIN, ""),
+                    CONF_MODE_OFF_JOIN: climate_cfg.get(CONF_MODE_OFF_JOIN, ""),
+                    CONF_FAN_ON_JOIN: climate_cfg.get(CONF_FAN_ON_JOIN, ""),
+                    CONF_FAN_AUTO_JOIN: climate_cfg.get(CONF_FAN_AUTO_JOIN, ""),
+                    CONF_H1_JOIN: climate_cfg.get(CONF_H1_JOIN, ""),
+                    CONF_C1_JOIN: climate_cfg.get(CONF_C1_JOIN, ""),
+                    CONF_FA_JOIN: climate_cfg.get(CONF_FA_JOIN, ""),
+                    CONF_MODE_HEAT_COOL_JOIN: climate_cfg.get(CONF_MODE_HEAT_COOL_JOIN, ""),
+                    CONF_FAN_MODE_AUTO_JOIN: climate_cfg.get(CONF_FAN_MODE_AUTO_JOIN, ""),
+                    CONF_FAN_MODE_ON_JOIN: climate_cfg.get(CONF_FAN_MODE_ON_JOIN, ""),
+                    CONF_HVAC_ACTION_HEAT_JOIN: climate_cfg.get(CONF_HVAC_ACTION_HEAT_JOIN, ""),
+                    CONF_HVAC_ACTION_COOL_JOIN: climate_cfg.get(CONF_HVAC_ACTION_COOL_JOIN, ""),
+                    CONF_HVAC_ACTION_IDLE_JOIN: climate_cfg.get(CONF_HVAC_ACTION_IDLE_JOIN, ""),
+                }
+
+                if all_joins_valid:
+                    for join_key, join_str in digital_joins.items():
+                        if join_str and join_str[0] == 'd' and join_str[1:].isdigit():
+                            config[join_key] = int(join_str[1:])
+                        else:
+                            _LOGGER.error(
+                                "Invalid digital join format for %s in %s: %s",
+                                join_key, climate_cfg.get(CONF_NAME), join_str
+                            )
+                            all_joins_valid = False
+                            break
+
+                # Parse optional digital joins
+                if all_joins_valid:
+                    optional_joins = {
+                        CONF_H2_JOIN: climate_cfg.get(CONF_H2_JOIN, ""),
+                        CONF_C2_JOIN: climate_cfg.get(CONF_C2_JOIN, ""),
+                    }
+                    for join_key, join_str in optional_joins.items():
+                        if join_str:  # Only parse if provided
+                            if join_str[0] == 'd' and join_str[1:].isdigit():
+                                config[join_key] = int(join_str[1:])
+                            else:
+                                _LOGGER.warning(
+                                    "Invalid optional digital join format for %s in %s: %s (skipping)",
+                                    join_key, climate_cfg.get(CONF_NAME), join_str
+                                )
+
+                if all_joins_valid:
+                    entities.append(CrestronThermostat(hub, config, unit, from_ui=True))
 
         if entities:
             async_add_entities(entities)
-            _LOGGER.info("Added %d UI-configured floor warming thermostats", len(entities))
+            _LOGGER.info("Added %d UI-configured climate entities", len(entities))
 
     return True
 
