@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.2] - 2025-11-18
+
+### Fixed
+- Fixed "Unknown error occurred" when clicking "Add Dimmer/Keypad"
+- Changed button count selector values from integers to strings (Home Assistant requirement)
+- Added proper string-to-integer conversion when processing button count
+
+### Technical Details
+- SelectSelector values must be strings, not integers
+- Updated CONF_BUTTON_COUNT selector options to use string values ("2", "3", "4", "5", "6")
+- Added `int()` conversion when reading button_count from user input
+- This fixes the silent form validation failure that caused the "Unknown error" message
+
 ## [1.16.1] - 2025-11-18
 
 ### Fixed

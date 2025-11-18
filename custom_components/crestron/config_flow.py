@@ -2221,7 +2221,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             try:
                 name = user_input.get(CONF_NAME, "").strip()
-                button_count = user_input.get(CONF_BUTTON_COUNT)
+                button_count = int(user_input.get(CONF_BUTTON_COUNT, "4"))  # Convert string to int
                 has_lighting_load = user_input.get("has_lighting_load", False)
 
                 # Validate name
@@ -2256,14 +2256,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         basic_schema = vol.Schema(
             {
                 vol.Required(CONF_NAME): selector.TextSelector(),
-                vol.Required(CONF_BUTTON_COUNT, default=4): selector.SelectSelector(
+                vol.Required(CONF_BUTTON_COUNT, default="4"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"label": "2 Buttons", "value": 2},
-                            {"label": "3 Buttons", "value": 3},
-                            {"label": "4 Buttons", "value": 4},
-                            {"label": "5 Buttons", "value": 5},
-                            {"label": "6 Buttons", "value": 6},
+                            {"label": "2 Buttons", "value": "2"},
+                            {"label": "3 Buttons", "value": "3"},
+                            {"label": "4 Buttons", "value": "4"},
+                            {"label": "5 Buttons", "value": "5"},
+                            {"label": "6 Buttons", "value": "6"},
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
