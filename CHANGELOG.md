@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.1] - 2025-11-18
+
+### Added
+- **Manual Join Assignment Mode** - Choose between auto-sequential or manual join assignment
+- Mode selector before dimmer configuration (auto-sequential recommended, manual for advanced users)
+- Manual mode allows non-sequential join assignments (e.g., d10, d20, d30 instead of d10, d11, d12)
+- Dynamic form that shows only relevant button join fields based on button count
+
+### Changed
+- Dimmer configuration now has 2-step process: 1) Select mode, 2) Configure joins
+- Entity platforms (event.py, switch.py) now handle both auto-sequential and manual join modes
+
+### Technical Details
+- Added async_step_add_dimmer_mode() for mode selection
+- Added async_step_add_dimmer_manual() for manual join configuration
+- Dimmer config stores "manual_joins" dict for manual mode or "base_join" for auto mode
+- Entity creation checks for manual_joins first, falls back to base_join calculation
+- Form dynamically generates 3 fields per button (press, double, hold)
+
 ## [1.17.0] - 2025-11-18
 
 ### Added - Complete Dimmer/Keypad Redesign

@@ -99,20 +99,29 @@ async def async_setup_entry(hass, entry, async_add_entities):
     for dimmer in dimmers:
         dimmer_name = dimmer.get(CONF_NAME, "Unknown")
         base_join = dimmer.get(CONF_BASE_JOIN)
+        manual_joins = dimmer.get("manual_joins")
         button_count = dimmer.get(CONF_BUTTON_COUNT, 2)
 
+        mode = "manual" if manual_joins else "auto-sequential"
         _LOGGER.debug(
-            "Creating LED switch entities for dimmer '%s' (%d buttons)",
+            "Creating LED switch entities for dimmer '%s' (%s mode, %d buttons)",
             dimmer_name,
+            mode,
             button_count,
         )
 
         # Create LED switches (1 per button)
         # Uses the press join for OUTPUT (bidirectional join usage)
         for button_num in range(1, button_count + 1):
-            # Calculate press join for this button
-            base_offset = (button_num - 1) * 3
-            press_join = int(base_join[1:]) + base_offset
+            # Get press join for this button (manual or auto-sequential)
+            if manual_joins and button_num in manual_joins:
+                # Manual mode: use explicitly configured press join
+                press_join_str = manual_joins[button_num]["press"]
+                press_join = int(press_join_str[1:])
+            else:
+                # Auto-sequential mode: calculate from base join
+                base_offset = (button_num - 1) * 3
+                press_join = int(base_join[1:]) + base_offset
 
             led_config = {
                 CONF_NAME: f"{dimmer_name} LED {button_num}",

@@ -124,9 +124,16 @@
           "entities_to_remove": "Entities to Remove"
         }
       },
+      "add_dimmer_mode": {
+        "title": "Choose Join Assignment Mode",
+        "description": "How should button joins be assigned?",
+        "data": {
+          "join_mode": "Join Assignment Mode"
+        }
+      },
       "add_dimmer_simple": {
-        "title": "Add Dimmer/Keypad",
-        "description": "Create a Crestron dimmer/keypad device. Button actions are configured via HA automations. LED bindings use select dropdowns.",
+        "title": "Add Dimmer/Keypad (Auto-Sequential)",
+        "description": "System auto-assigns joins sequentially from base join. Button actions configured via HA automations. LED bindings use select dropdowns.",
         "data": {
           "name": "Dimmer/Keypad Name",
           "base_join": "Base Join (Button 1 Press)",
@@ -139,6 +146,60 @@
           "name": "Friendly name (e.g., Kitchen Keypad)",
           "base_join": "First digital join (e.g., d10). System auto-assigns: d10=press, d11=double, d12=hold, d13-d15=button2, etc.",
           "button_count": "Number of buttons (2-6). Each button uses 3 sequential joins.",
+          "has_lighting_load": "Does this dimmer control a light with brightness?",
+          "light_on_join": "Digital join for light on/off (e.g., d1)",
+          "light_brightness_join": "Analog join for brightness 0-255 (e.g., a1)"
+        }
+      },
+      "add_dimmer_manual": {
+        "title": "Add Dimmer/Keypad (Manual)",
+        "description": "Manually specify each button join. Useful for non-sequential join assignments. Button actions configured via HA automations. LED bindings use select dropdowns.",
+        "data": {
+          "name": "Dimmer/Keypad Name",
+          "button_count": "Number of Buttons",
+          "button_1_press": "Button 1 - Press Join",
+          "button_1_double": "Button 1 - Double Press Join",
+          "button_1_hold": "Button 1 - Hold Join",
+          "button_2_press": "Button 2 - Press Join",
+          "button_2_double": "Button 2 - Double Press Join",
+          "button_2_hold": "Button 2 - Hold Join",
+          "button_3_press": "Button 3 - Press Join",
+          "button_3_double": "Button 3 - Double Press Join",
+          "button_3_hold": "Button 3 - Hold Join",
+          "button_4_press": "Button 4 - Press Join",
+          "button_4_double": "Button 4 - Double Press Join",
+          "button_4_hold": "Button 4 - Hold Join",
+          "button_5_press": "Button 5 - Press Join",
+          "button_5_double": "Button 5 - Double Press Join",
+          "button_5_hold": "Button 5 - Hold Join",
+          "button_6_press": "Button 6 - Press Join",
+          "button_6_double": "Button 6 - Double Press Join",
+          "button_6_hold": "Button 6 - Hold Join",
+          "has_lighting_load": "Has Lighting Load?",
+          "light_on_join": "Light On/Off Join",
+          "light_brightness_join": "Light Brightness Join (optional)"
+        },
+        "data_description": {
+          "name": "Friendly name (e.g., Kitchen Keypad)",
+          "button_count": "Number of buttons (2-6). Changing this updates the form.",
+          "button_1_press": "Digital join for button 1 press (e.g., d10)",
+          "button_1_double": "Digital join for button 1 double press (e.g., d20)",
+          "button_1_hold": "Digital join for button 1 hold (e.g., d30)",
+          "button_2_press": "Digital join for button 2 press (e.g., d11)",
+          "button_2_double": "Digital join for button 2 double press (e.g., d21)",
+          "button_2_hold": "Digital join for button 2 hold (e.g., d31)",
+          "button_3_press": "Digital join for button 3 press",
+          "button_3_double": "Digital join for button 3 double press",
+          "button_3_hold": "Digital join for button 3 hold",
+          "button_4_press": "Digital join for button 4 press",
+          "button_4_double": "Digital join for button 4 double press",
+          "button_4_hold": "Digital join for button 4 hold",
+          "button_5_press": "Digital join for button 5 press",
+          "button_5_double": "Digital join for button 5 double press",
+          "button_5_hold": "Digital join for button 5 hold",
+          "button_6_press": "Digital join for button 6 press",
+          "button_6_double": "Digital join for button 6 double press",
+          "button_6_hold": "Digital join for button 6 hold",
           "has_lighting_load": "Does this dimmer control a light with brightness?",
           "light_on_join": "Digital join for light on/off (e.g., d1)",
           "light_brightness_join": "Analog join for brightness 0-255 (e.g., a1)"

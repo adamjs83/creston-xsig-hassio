@@ -42,33 +42,43 @@ async def async_setup_entry(
     for dimmer in dimmers:
         dimmer_name = dimmer.get(CONF_NAME, "Unknown")
         base_join = dimmer.get(CONF_BASE_JOIN)
+        manual_joins = dimmer.get("manual_joins")
         button_count = dimmer.get(CONF_BUTTON_COUNT, 2)
 
+        mode = "manual" if manual_joins else "auto-sequential"
         _LOGGER.debug(
-            "Creating button event entities for dimmer '%s' (base join: %s, %d buttons)",
+            "Creating button event entities for dimmer '%s' (%s mode, %d buttons)",
             dimmer_name,
-            base_join,
+            mode,
             button_count,
         )
 
         # Create button event entities (1 per button)
         # Each button fires 3 event types: press, double_press, hold
         for button_num in range(1, button_count + 1):
-            # Calculate joins for this button
-            # Button 1: d10 (press), d11 (double), d12 (hold)
-            # Button 2: d13 (press), d14 (double), d15 (hold)
-            base_offset = (button_num - 1) * 3
-            press_join = int(base_join[1:]) + base_offset
-            double_join = press_join + 1
-            hold_join = press_join + 2
+            # Get joins for this button (manual or auto-sequential)
+            if manual_joins and button_num in manual_joins:
+                # Manual mode: use explicitly configured joins
+                press_join = manual_joins[button_num]["press"]
+                double_join = manual_joins[button_num]["double"]
+                hold_join = manual_joins[button_num]["hold"]
+            else:
+                # Auto-sequential mode: calculate from base join
+                # Button 1: d10 (press), d11 (double), d12 (hold)
+                # Button 2: d13 (press), d14 (double), d15 (hold)
+                base_offset = (button_num - 1) * 3
+                press_join_num = int(base_join[1:]) + base_offset
+                press_join = f"d{press_join_num}"
+                double_join = f"d{press_join_num + 1}"
+                hold_join = f"d{press_join_num + 2}"
 
             entity = CrestronButtonEvent(
                 hub=hub,
                 dimmer_name=dimmer_name,
                 button_num=button_num,
-                press_join=f"d{press_join}",
-                double_join=f"d{double_join}",
-                hold_join=f"d{hold_join}",
+                press_join=press_join,
+                double_join=double_join,
+                hold_join=hold_join,
             )
             entities.append(entity)
 
