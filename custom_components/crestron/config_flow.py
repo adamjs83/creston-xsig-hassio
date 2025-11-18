@@ -474,10 +474,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Dimmer/Keypad management submenu."""
+        _LOGGER.debug("async_step_dimmer_menu called with user_input: %s", user_input)
         if user_input is not None:
             next_step = user_input.get("action")
+            _LOGGER.debug("Dimmer menu action selected: %s", next_step)
             if next_step == "add_dimmer":
                 self._editing_join = None  # Clear editing state
+                _LOGGER.debug("Calling async_step_add_dimmer_basic")
                 return await self.async_step_add_dimmer_basic()
             elif next_step == "edit_dimmers":
                 return await self.async_step_select_dimmer_to_edit()
@@ -2212,6 +2215,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Step 1: Basic dimmer information."""
+        _LOGGER.debug("async_step_add_dimmer_basic called with user_input: %s", user_input)
         errors: dict[str, str] = {}
 
         if user_input is not None:

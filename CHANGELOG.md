@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.1] - 2025-11-18
+
+### Fixed
+- Added debug logging to dimmer configuration flow to troubleshoot "Unknown error occurred" issue
+- Added logging to async_step_dimmer_menu and async_step_add_dimmer_basic for diagnostics
+
+### Technical Details
+- Debug logs will show when dimmer menu is accessed and which actions are selected
+- Helps identify where configuration flow is failing during dimmer creation
+
 ## [1.16.0] - 2025-11-18
 
 ### Added
