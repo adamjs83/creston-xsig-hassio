@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.2] - 2025-11-18
+
+### Fixed
+- **Dimmer Device Cleanup** - Device now properly removed from device registry when dimmer is deleted
+- **Complete Entity Removal** - All entity types now removed when dimmer is deleted (events, selects, LED switches, light)
+- Fixed issue where only light entity was removed, leaving orphaned event, select, and switch entities
+
+### Changed
+- Enhanced `_cleanup_dimmer_entities()` to remove all associated entity types:
+  - Event entities (button press events)
+  - Select entities (LED bindings)
+  - Switch entities (LED switches)
+  - Light entity (if lighting load present)
+  - Device from device registry
+- Cleanup now runs for ALL dimmers, not just those with lighting loads
+
 ## [1.17.1] - 2025-11-18
 
 ### Added
