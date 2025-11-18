@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2025-11-18
+
+### Added
+- **Dimmer/Keypad Configuration Manager** - Complete UI-based configuration for Crestron dimmers and keypads
+- Third main menu option: "Manage Dimmers/Keypads" with full add/edit/remove capabilities
+- Dynamic button configuration supporting 2-6 buttons per dimmer/keypad
+- Optional lighting load configuration with on/off and brightness control
+- Button action types: Press, Double Press, and Hold (all optional and independent)
+- Button feedback configuration for syncing HA state to Crestron button LEDs
+- Entity picker for button actions with domain-aware action selection
+- Service data parameter support via YAML input for advanced service calls
+- Comprehensive join conflict detection across all entities and dimmers
+- Automatic entity registry cleanup when dimmers are removed
+- 13 domain action mappings: light, switch, cover, climate, media_player, fan, lock, vacuum, scene, script, input_boolean, automation, group
+
+### Changed
+- Enhanced main menu from 3 to 4 items including dimmer management
+- Dimmer button actions automatically generate from_joins (Crestron → HA service calls)
+- Dimmer button feedback automatically generates to_joins (HA state → Crestron)
+- Runtime processing merges dimmer-generated joins with explicit joins
+- All dimmer configurations stored in config entry data (CONF_DIMMERS)
+
+### Technical Details
+- No platform changes required - uses existing hub.py and light.py implementations
+- Dimmer processing in __init__.py converts button configs to from_joins/to_joins at runtime
+- Each button supports independent press/double press/hold actions with custom service data
+- Lighting load entities use unique_id pattern: `crestron_light_dimmer_{join}`
+- Join validation includes dimmers in conflict checking algorithm
+- Added 9 new constants to const.py for dimmer configuration
+- Added 600+ lines to config_flow.py with 8 new async methods
+- DOMAIN_ACTIONS dictionary provides action options for 13 entity domains
+
 ## [1.15.0] - 2025-11-18
 
 ### Changed

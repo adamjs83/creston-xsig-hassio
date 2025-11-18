@@ -27,7 +27,26 @@ from homeassistant.const import (
 )
 
 from .crestron import CrestronXsig
-from .const import CONF_PORT, HUB, DOMAIN, CONF_JOIN, CONF_SCRIPT, CONF_TO_HUB, CONF_FROM_HUB
+from .const import (
+    CONF_PORT,
+    HUB,
+    DOMAIN,
+    CONF_JOIN,
+    CONF_SCRIPT,
+    CONF_TO_HUB,
+    CONF_FROM_HUB,
+    CONF_DIMMERS,
+    CONF_BUTTONS,
+    CONF_PRESS,
+    CONF_DOUBLE_PRESS,
+    CONF_HOLD,
+    CONF_FEEDBACK,
+    CONF_ACTION,
+    CONF_SERVICE_DATA,
+    CONF_LIGHTING_LOAD,
+    CONF_IS_ON_JOIN,
+    CONF_BRIGHTNESS_JOIN,
+)
 #from .control_surface_sync import ControlSurfaceSync
 
 _LOGGER = logging.getLogger(__name__)
@@ -266,22 +285,123 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create hub config from entry data
     # v1.6.0 entries (UI): Only port
     # v1.7.0 entries (import): Port + to_joins + from_joins
+    # v1.15.0: Process dimmers to generate lights, to_joins, from_joins
     hub_config = {CONF_PORT: entry.data[CONF_PORT]}
 
-    # Preserve to_joins if exists (from v1.7.0 import)
-    if CONF_TO_HUB in entry.data:
-        hub_config[CONF_TO_HUB] = entry.data[CONF_TO_HUB]
+    # Process dimmer/keypad configurations (v1.15.0+)
+    dimmers_to_joins = []
+    dimmers_from_joins = []
+    if CONF_DIMMERS in entry.data:
+        dimmers = entry.data[CONF_DIMMERS]
+        _LOGGER.info("Processing %d dimmer/keypad configuration(s)", len(dimmers))
+
+        for dimmer in dimmers:
+            dimmer_name = dimmer.get(CONF_NAME, "Unknown")
+
+            # Process button actions (from_joins: Crestron → HA)
+            for button in dimmer.get(CONF_BUTTONS, []):
+                button_num = button.get("number", 0)
+
+                # Press action
+                if CONF_PRESS in button:
+                    press = button[CONF_PRESS]
+                    from_join = {
+                        "join": press["join"],
+                        "script": [{
+                            "service": f"{press['entity_id'].split('.')[0]}.{press[CONF_ACTION]}",
+                            "target": {"entity_id": press["entity_id"]},
+                        }]
+                    }
+                    # Add service_data if provided
+                    if CONF_SERVICE_DATA in press:
+                        from_join["script"][0]["data"] = press[CONF_SERVICE_DATA]
+
+                    dimmers_from_joins.append(from_join)
+                    _LOGGER.debug(
+                        "Dimmer '%s' button %d press: %s -> %s.%s",
+                        dimmer_name, button_num, press["join"],
+                        press['entity_id'].split('.')[0], press[CONF_ACTION]
+                    )
+
+                # Double press action
+                if CONF_DOUBLE_PRESS in button:
+                    double = button[CONF_DOUBLE_PRESS]
+                    from_join = {
+                        "join": double["join"],
+                        "script": [{
+                            "service": f"{double['entity_id'].split('.')[0]}.{double[CONF_ACTION]}",
+                            "target": {"entity_id": double["entity_id"]},
+                        }]
+                    }
+                    if CONF_SERVICE_DATA in double:
+                        from_join["script"][0]["data"] = double[CONF_SERVICE_DATA]
+
+                    dimmers_from_joins.append(from_join)
+                    _LOGGER.debug(
+                        "Dimmer '%s' button %d double press: %s -> %s.%s",
+                        dimmer_name, button_num, double["join"],
+                        double['entity_id'].split('.')[0], double[CONF_ACTION]
+                    )
+
+                # Hold action
+                if CONF_HOLD in button:
+                    hold = button[CONF_HOLD]
+                    from_join = {
+                        "join": hold["join"],
+                        "script": [{
+                            "service": f"{hold['entity_id'].split('.')[0]}.{hold[CONF_ACTION]}",
+                            "target": {"entity_id": hold["entity_id"]},
+                        }]
+                    }
+                    if CONF_SERVICE_DATA in hold:
+                        from_join["script"][0]["data"] = hold[CONF_SERVICE_DATA]
+
+                    dimmers_from_joins.append(from_join)
+                    _LOGGER.debug(
+                        "Dimmer '%s' button %d hold: %s -> %s.%s",
+                        dimmer_name, button_num, hold["join"],
+                        hold['entity_id'].split('.')[0], hold[CONF_ACTION]
+                    )
+
+                # Feedback (to_join: HA → Crestron)
+                if CONF_FEEDBACK in button:
+                    feedback = button[CONF_FEEDBACK]
+                    to_join = {
+                        "join": feedback["join"],
+                        "entity_id": feedback["entity_id"],
+                    }
+                    dimmers_to_joins.append(to_join)
+                    _LOGGER.debug(
+                        "Dimmer '%s' button %d feedback: %s <- %s",
+                        dimmer_name, button_num, feedback["join"], feedback["entity_id"]
+                    )
+
         _LOGGER.info(
-            "Config entry has %d to_joins - bidirectional communication enabled",
-            len(entry.data[CONF_TO_HUB])
+            "Generated %d from_joins and %d to_joins from dimmers",
+            len(dimmers_from_joins), len(dimmers_to_joins)
         )
 
-    # Preserve from_joins if exists (from v1.7.0 import)
-    if CONF_FROM_HUB in entry.data:
-        hub_config[CONF_FROM_HUB] = entry.data[CONF_FROM_HUB]
+    # Merge dimmer joins with explicit joins
+    all_to_joins = list(entry.data.get(CONF_TO_HUB, []))
+    all_to_joins.extend(dimmers_to_joins)
+
+    all_from_joins = list(entry.data.get(CONF_FROM_HUB, []))
+    all_from_joins.extend(dimmers_from_joins)
+
+    # Preserve to_joins (explicit + dimmer-generated)
+    if all_to_joins:
+        hub_config[CONF_TO_HUB] = all_to_joins
         _LOGGER.info(
-            "Config entry has %d from_joins - Crestron→HA scripts enabled",
-            len(entry.data[CONF_FROM_HUB])
+            "Config entry has %d to_joins (%d explicit + %d from dimmers) - bidirectional communication enabled",
+            len(all_to_joins), len(entry.data.get(CONF_TO_HUB, [])), len(dimmers_to_joins)
+        )
+
+    # Preserve from_joins (explicit + dimmer-generated)
+    if all_from_joins:
+        hub_config[CONF_FROM_HUB] = all_from_joins
+        _LOGGER.info(
+            "Config entry has %d from_joins (%d explicit + %d from dimmers) - Crestron→HA scripts enabled",
+            len(all_from_joins), len(entry.data.get(CONF_FROM_HUB, [])), len(dimmers_from_joins)
         )
 
     # Check if hub already exists from previous load (during reload)

@@ -23,6 +23,7 @@ from .const import (
     CONF_LIGHTS,
     CONF_SWITCHES,
     CONF_CLIMATES,
+    CONF_DIMMERS,
     CONF_POS_JOIN,
     CONF_IS_OPENING_JOIN,
     CONF_IS_CLOSING_JOIN,
@@ -60,6 +61,17 @@ from .const import (
     CONF_HVAC_ACTION_HEAT_JOIN,
     CONF_HVAC_ACTION_COOL_JOIN,
     CONF_HVAC_ACTION_IDLE_JOIN,
+    # Dimmer/Keypad constants
+    CONF_LIGHTING_LOAD,
+    CONF_BUTTON_COUNT,
+    CONF_BUTTONS,
+    CONF_PRESS,
+    CONF_DOUBLE_PRESS,
+    CONF_HOLD,
+    CONF_FEEDBACK,
+    CONF_ACTION,
+    CONF_SERVICE_DATA,
+    DOMAIN_ACTIONS,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 
@@ -254,13 +266,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Main menu - choose between entity or join sync management."""
+        """Main menu - choose between entity, join sync, or dimmer/keypad management."""
         if user_input is not None:
             next_step = user_input.get("action")
             if next_step == "entity_menu":
                 return await self.async_step_entity_menu()
             elif next_step == "join_menu":
                 return await self.async_step_join_menu()
+            elif next_step == "dimmer_menu":
+                return await self.async_step_dimmer_menu()
             else:
                 # Done
                 return self.async_create_entry(title="", data={})
@@ -278,6 +292,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
         total_joins = len(current_to_joins) + len(current_from_joins)
 
+        current_dimmers = self.config_entry.data.get(CONF_DIMMERS, [])
+        total_dimmers = len(current_dimmers)
+
         # Show main menu
         menu_schema = vol.Schema(
             {
@@ -286,6 +303,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         options=[
                             {"label": f"Manage Entities ({total_entities} configured)", "value": "entity_menu"},
                             {"label": f"Manage Join Syncs ({total_joins} configured)", "value": "join_menu"},
+                            {"label": f"Manage Dimmers/Keypads ({total_dimmers} configured)", "value": "dimmer_menu"},
                             {"label": "Done", "value": "done"},
                         ],
                         mode=selector.SelectSelectorMode.LIST,
@@ -300,6 +318,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             description_placeholders={
                 "entities": str(total_entities),
                 "joins": str(total_joins),
+                "dimmers": str(total_dimmers),
             },
         )
 
@@ -448,6 +467,48 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="join_menu",
+            data_schema=menu_schema,
+        )
+
+    async def async_step_dimmer_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Dimmer/Keypad management submenu."""
+        if user_input is not None:
+            next_step = user_input.get("action")
+            if next_step == "add_dimmer":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_dimmer_basic()
+            elif next_step == "edit_dimmers":
+                return await self.async_step_select_dimmer_to_edit()
+            elif next_step == "remove_dimmers":
+                return await self.async_step_remove_dimmers()
+            elif next_step == "back":
+                return await self.async_step_init()
+
+        # Get current dimmer counts
+        current_dimmers = self.config_entry.data.get(CONF_DIMMERS, [])
+        total_dimmers = len(current_dimmers)
+
+        # Show dimmer menu
+        menu_schema = vol.Schema(
+            {
+                vol.Required("action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "Add Dimmer/Keypad", "value": "add_dimmer"},
+                            {"label": f"Edit Dimmer/Keypad ({total_dimmers} available)", "value": "edit_dimmers"},
+                            {"label": f"Remove Dimmer/Keypad ({total_dimmers} available)", "value": "remove_dimmers"},
+                            {"label": "← Back to Main Menu", "value": "back"},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="dimmer_menu",
             data_schema=menu_schema,
         )
 
@@ -2144,6 +2205,592 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=remove_schema,
             errors=errors,
         )
+
+    # ========== Dimmer/Keypad Configuration Methods ==========
+
+    async def async_step_add_dimmer_basic(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 1: Basic dimmer information."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME, "").strip()
+                button_count = user_input.get(CONF_BUTTON_COUNT)
+                has_lighting_load = user_input.get("has_lighting_load", False)
+
+                # Validate name
+                if not name:
+                    errors[CONF_NAME] = "name_required"
+
+                # Check for duplicate dimmer name
+                current_dimmers = self.config_entry.data.get(CONF_DIMMERS, [])
+                if any(d.get(CONF_NAME) == name for d in current_dimmers):
+                    errors[CONF_NAME] = "dimmer_name_exists"
+
+                if not errors:
+                    # Store temporary dimmer config
+                    self._editing_join = {
+                        CONF_NAME: name,
+                        CONF_BUTTON_COUNT: button_count,
+                        "has_lighting_load": has_lighting_load,
+                        CONF_BUTTONS: [],
+                    }
+
+                    if has_lighting_load:
+                        return await self.async_step_add_dimmer_lighting()
+                    else:
+                        # Skip lighting, go to button 1
+                        return await self.async_step_add_dimmer_button(button_num=1)
+
+            except Exception as ex:
+                _LOGGER.exception("Unexpected error adding dimmer: %s", ex)
+                errors["base"] = "unknown"
+
+        # Show basic info form
+        basic_schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME): selector.TextSelector(),
+                vol.Required(CONF_BUTTON_COUNT, default=4): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "2 Buttons", "value": 2},
+                            {"label": "3 Buttons", "value": 3},
+                            {"label": "4 Buttons", "value": 4},
+                            {"label": "5 Buttons", "value": 5},
+                            {"label": "6 Buttons", "value": 6},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("has_lighting_load", default=False): selector.BooleanSelector(),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_dimmer_basic",
+            data_schema=basic_schema,
+            errors=errors,
+            description_placeholders={"step": "1"},
+        )
+
+    async def async_step_add_dimmer_lighting(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 2: Configure lighting load (optional)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                light_name = user_input.get("light_name", "").strip()
+                is_on_join = user_input.get(CONF_IS_ON_JOIN, "").strip()
+                has_brightness = user_input.get("has_brightness", False)
+                brightness_join = user_input.get(CONF_BRIGHTNESS_JOIN, "").strip()
+
+                # Validate light name
+                if not light_name:
+                    errors["light_name"] = "name_required"
+
+                # Validate is_on_join format
+                if not is_on_join or not (is_on_join[0] == 'd' and is_on_join[1:].isdigit()):
+                    errors[CONF_IS_ON_JOIN] = "invalid_join_format"
+
+                # Validate brightness join if enabled
+                if has_brightness:
+                    if not brightness_join or not (brightness_join[0] == 'a' and brightness_join[1:].isdigit()):
+                        errors[CONF_BRIGHTNESS_JOIN] = "invalid_join_format"
+
+                # Check for join conflicts
+                if not errors:
+                    all_joins = [is_on_join]
+                    if has_brightness and brightness_join:
+                        all_joins.append(brightness_join)
+
+                    conflict = self._check_join_conflicts(all_joins)
+                    if conflict:
+                        errors["base"] = f"join_conflict_{conflict}"
+
+                if not errors:
+                    # Store lighting load config
+                    lighting_load = {
+                        CONF_NAME: light_name,
+                        CONF_IS_ON_JOIN: is_on_join,
+                    }
+                    if has_brightness and brightness_join:
+                        lighting_load[CONF_BRIGHTNESS_JOIN] = brightness_join
+
+                    self._editing_join[CONF_LIGHTING_LOAD] = lighting_load
+
+                    # Move to button 1
+                    return await self.async_step_add_dimmer_button(button_num=1)
+
+            except Exception as ex:
+                _LOGGER.exception("Unexpected error configuring lighting load: %s", ex)
+                errors["base"] = "unknown"
+
+        # Show lighting load form
+        lighting_schema = vol.Schema(
+            {
+                vol.Required("light_name"): selector.TextSelector(),
+                vol.Required(CONF_IS_ON_JOIN): selector.TextSelector(
+                    selector.TextSelectorConfig(placeholder="d1")
+                ),
+                vol.Optional("has_brightness", default=False): selector.BooleanSelector(),
+                vol.Optional(CONF_BRIGHTNESS_JOIN): selector.TextSelector(
+                    selector.TextSelectorConfig(placeholder="a1")
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_dimmer_lighting",
+            data_schema=lighting_schema,
+            errors=errors,
+            description_placeholders={
+                "dimmer_name": self._editing_join.get(CONF_NAME, ""),
+                "step": "2",
+            },
+        )
+
+    async def async_step_add_dimmer_button(
+        self, user_input: dict[str, Any] | None = None, button_num: int = 1
+    ) -> FlowResult:
+        """Configure a single button (dynamic, handles buttons 1-6)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                # Parse button configuration
+                button_config = {"number": button_num}
+
+                # Press action (always configured if join provided)
+                press_join = user_input.get("press_join", "").strip()
+                press_entity = user_input.get("press_entity")
+                press_action = user_input.get("press_action")
+                press_data = user_input.get("press_service_data", "").strip()
+
+                # Double press action
+                config_double = user_input.get("config_double_press", False)
+                double_join = user_input.get("double_press_join", "").strip()
+                double_entity = user_input.get("double_press_entity")
+                double_action = user_input.get("double_press_action")
+                double_data = user_input.get("double_service_data", "").strip()
+
+                # Hold action
+                config_hold = user_input.get("config_hold", False)
+                hold_join = user_input.get("hold_join", "").strip()
+                hold_entity = user_input.get("hold_entity")
+                hold_action = user_input.get("hold_action")
+                hold_data = user_input.get("hold_service_data", "").strip()
+
+                # Feedback
+                config_feedback = user_input.get("config_feedback", False)
+                feedback_join = user_input.get("feedback_join", "").strip()
+                feedback_entity = user_input.get("feedback_entity")
+
+                # Validate press (if configured)
+                if press_join:
+                    if not (press_join[0] == 'd' and press_join[1:].isdigit()):
+                        errors["press_join"] = "invalid_join_format"
+                    elif not press_entity or not press_action:
+                        errors["press_entity"] = "entity_and_action_required"
+                    else:
+                        button_config[CONF_PRESS] = {
+                            "join": press_join,
+                            "entity_id": press_entity,
+                            CONF_ACTION: press_action,
+                        }
+                        if press_data:
+                            try:
+                                button_config[CONF_PRESS][CONF_SERVICE_DATA] = yaml.safe_load(press_data)
+                            except yaml.YAMLError:
+                                errors["press_service_data"] = "invalid_yaml"
+
+                # Validate double press
+                if config_double:
+                    if not double_join or not (double_join[0] == 'd' and double_join[1:].isdigit()):
+                        errors["double_press_join"] = "invalid_join_format"
+                    elif not double_entity or not double_action:
+                        errors["double_press_entity"] = "entity_and_action_required"
+                    else:
+                        button_config[CONF_DOUBLE_PRESS] = {
+                            "join": double_join,
+                            "entity_id": double_entity,
+                            CONF_ACTION: double_action,
+                        }
+                        if double_data:
+                            try:
+                                button_config[CONF_DOUBLE_PRESS][CONF_SERVICE_DATA] = yaml.safe_load(double_data)
+                            except yaml.YAMLError:
+                                errors["double_service_data"] = "invalid_yaml"
+
+                # Validate hold
+                if config_hold:
+                    if not hold_join or not (hold_join[0] == 'd' and hold_join[1:].isdigit()):
+                        errors["hold_join"] = "invalid_join_format"
+                    elif not hold_entity or not hold_action:
+                        errors["hold_entity"] = "entity_and_action_required"
+                    else:
+                        button_config[CONF_HOLD] = {
+                            "join": hold_join,
+                            "entity_id": hold_entity,
+                            CONF_ACTION: hold_action,
+                        }
+                        if hold_data:
+                            try:
+                                button_config[CONF_HOLD][CONF_SERVICE_DATA] = yaml.safe_load(hold_data)
+                            except yaml.YAMLError:
+                                errors["hold_service_data"] = "invalid_yaml"
+
+                # Validate feedback
+                if config_feedback:
+                    if not feedback_join or not (feedback_join[0] == 'd' and feedback_join[1:].isdigit()):
+                        errors["feedback_join"] = "invalid_join_format"
+                    elif not feedback_entity:
+                        errors["feedback_entity"] = "entity_required"
+                    else:
+                        button_config[CONF_FEEDBACK] = {
+                            "join": feedback_join,
+                            "entity_id": feedback_entity,
+                        }
+
+                # Check for join conflicts
+                if not errors:
+                    button_joins = []
+                    if CONF_PRESS in button_config:
+                        button_joins.append(button_config[CONF_PRESS]["join"])
+                    if CONF_DOUBLE_PRESS in button_config:
+                        button_joins.append(button_config[CONF_DOUBLE_PRESS]["join"])
+                    if CONF_HOLD in button_config:
+                        button_joins.append(button_config[CONF_HOLD]["join"])
+                    if CONF_FEEDBACK in button_config:
+                        button_joins.append(button_config[CONF_FEEDBACK]["join"])
+
+                    conflict = self._check_join_conflicts(button_joins)
+                    if conflict:
+                        errors["base"] = f"join_conflict"
+
+                if not errors:
+                    # Add button to dimmer config
+                    self._editing_join[CONF_BUTTONS].append(button_config)
+
+                    # Check if we need more buttons
+                    total_buttons = self._editing_join.get(CONF_BUTTON_COUNT, 0)
+                    if button_num < total_buttons:
+                        # More buttons to configure
+                        return await self.async_step_add_dimmer_button(button_num=button_num + 1)
+                    else:
+                        # All buttons configured, save dimmer
+                        return await self._save_dimmer()
+
+            except Exception as ex:
+                _LOGGER.exception("Unexpected error configuring button %s: %s", button_num, ex)
+                errors["base"] = "unknown"
+
+        # Build dynamic form for this button
+        total_buttons = self._editing_join.get(CONF_BUTTON_COUNT, 0)
+
+        button_schema = vol.Schema(
+            {
+                # Press action
+                vol.Optional("press_join"): selector.TextSelector(
+                    selector.TextSelectorConfig(placeholder=f"d{button_num}0")
+                ),
+                vol.Optional("press_entity"): selector.EntitySelector(),
+                vol.Optional("press_action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["turn_on", "turn_off", "toggle"],  # Will be dynamic based on entity
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("press_service_data"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        placeholder="brightness: 255\ntransition: 2"
+                    )
+                ),
+
+                # Double press action
+                vol.Optional("config_double_press", default=False): selector.BooleanSelector(),
+                vol.Optional("double_press_join"): selector.TextSelector(
+                    selector.TextSelectorConfig(placeholder=f"d{button_num}1")
+                ),
+                vol.Optional("double_press_entity"): selector.EntitySelector(),
+                vol.Optional("double_press_action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["turn_on", "turn_off", "toggle"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("double_service_data"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        placeholder="brightness: 128"
+                    )
+                ),
+
+                # Hold action
+                vol.Optional("config_hold", default=False): selector.BooleanSelector(),
+                vol.Optional("hold_join"): selector.TextSelector(
+                    selector.TextSelectorConfig(placeholder=f"d{button_num}2")
+                ),
+                vol.Optional("hold_entity"): selector.EntitySelector(),
+                vol.Optional("hold_action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["turn_on", "turn_off", "toggle"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("hold_service_data"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        placeholder="brightness: 1"
+                    )
+                ),
+
+                # Feedback
+                vol.Optional("config_feedback", default=False): selector.BooleanSelector(),
+                vol.Optional("feedback_join"): selector.TextSelector(
+                    selector.TextSelectorConfig(placeholder=f"d{button_num + 20}")
+                ),
+                vol.Optional("feedback_entity"): selector.EntitySelector(),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_dimmer_button",
+            data_schema=button_schema,
+            errors=errors,
+            description_placeholders={
+                "dimmer_name": self._editing_join.get(CONF_NAME, ""),
+                "button_num": str(button_num),
+                "total_buttons": str(total_buttons),
+                "step": str(2 + button_num if self._editing_join.get(CONF_LIGHTING_LOAD) else 1 + button_num),
+            },
+        )
+
+    async def _save_dimmer(self) -> FlowResult:
+        """Save the dimmer configuration."""
+        try:
+            current_dimmers = self.config_entry.data.get(CONF_DIMMERS, []).copy()
+            current_dimmers.append(self._editing_join)
+
+            # Update config entry
+            updated_data = {**self.config_entry.data, CONF_DIMMERS: current_dimmers}
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=updated_data
+            )
+
+            _LOGGER.info(
+                "Added dimmer '%s' with %s buttons",
+                self._editing_join.get(CONF_NAME),
+                self._editing_join.get(CONF_BUTTON_COUNT),
+            )
+
+            # Clear editing state
+            self._editing_join = None
+
+            # Reload integration
+            await self._async_reload_integration()
+
+            return self.async_create_entry(title="", data={})
+
+        except Exception as ex:
+            _LOGGER.exception("Failed to save dimmer: %s", ex)
+            return self.async_abort(reason="save_failed")
+
+    async def async_step_select_dimmer_to_edit(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select which dimmer to edit."""
+        current_dimmers = self.config_entry.data.get(CONF_DIMMERS, [])
+
+        if not current_dimmers:
+            return self.async_abort(reason="no_dimmers_configured")
+
+        if user_input is not None:
+            dimmer_name = user_input.get("dimmer_to_edit")
+
+            # Find the dimmer
+            dimmer = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
+            if dimmer:
+                self._editing_join = dimmer.copy()
+                return await self.async_step_edit_dimmer()
+
+        # Build dimmer selection
+        dimmer_options = [
+            {"label": f"{d.get(CONF_NAME)} ({d.get(CONF_BUTTON_COUNT)} buttons)", "value": d.get(CONF_NAME)}
+            for d in current_dimmers
+        ]
+
+        select_schema = vol.Schema(
+            {
+                vol.Required("dimmer_to_edit"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=dimmer_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="select_dimmer_to_edit",
+            data_schema=select_schema,
+        )
+
+    async def async_step_edit_dimmer(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit an existing dimmer (full reconfiguration)."""
+        if user_input is not None:
+            # User chose to reconfigure
+            # Start from beginning with current config pre-filled
+            return await self.async_step_add_dimmer_basic()
+
+        return self.async_show_menu(
+            step_id="edit_dimmer",
+            menu_options=["reconfigure", "back"],
+            description_placeholders={
+                "dimmer_name": self._editing_join.get(CONF_NAME, ""),
+            },
+        )
+
+    async def async_step_remove_dimmers(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Remove selected dimmers."""
+        errors: dict[str, str] = {}
+        current_dimmers = self.config_entry.data.get(CONF_DIMMERS, [])
+
+        if not current_dimmers:
+            return self.async_abort(reason="no_dimmers_configured")
+
+        if user_input is not None:
+            try:
+                dimmers_to_remove = user_input.get("dimmers_to_remove", [])
+
+                if dimmers_to_remove:
+                    # Filter out removed dimmers
+                    updated_dimmers = [
+                        d for d in current_dimmers
+                        if d.get(CONF_NAME) not in dimmers_to_remove
+                    ]
+
+                    # Update config entry
+                    updated_data = {**self.config_entry.data, CONF_DIMMERS: updated_dimmers}
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=updated_data
+                    )
+
+                    # Clean up entities generated by these dimmers
+                    for dimmer_name in dimmers_to_remove:
+                        dimmer = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
+                        if dimmer and dimmer.get(CONF_LIGHTING_LOAD):
+                            # Remove light entity from registry
+                            await self._cleanup_dimmer_entities(dimmer)
+
+                    _LOGGER.info("Removed %s dimmer(s)", len(dimmers_to_remove))
+
+                    # Reload integration
+                    await self._async_reload_integration()
+
+                return self.async_create_entry(title="", data={})
+
+            except Exception as ex:
+                _LOGGER.exception("Unexpected error removing dimmers: %s", ex)
+                errors["base"] = "unknown"
+
+        # Build dimmer options
+        dimmer_options = [
+            {"label": f"{d.get(CONF_NAME)} ({d.get(CONF_BUTTON_COUNT)} buttons)", "value": d.get(CONF_NAME)}
+            for d in current_dimmers
+        ]
+
+        # Show removal form
+        remove_schema = vol.Schema(
+            {
+                vol.Optional("dimmers_to_remove"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=dimmer_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="remove_dimmers",
+            data_schema=remove_schema,
+            errors=errors,
+        )
+
+    def _check_join_conflicts(self, new_joins: list[str]) -> str | None:
+        """Check if any joins conflict with existing configuration."""
+        # Check against all existing joins (to_joins, from_joins, entities, other dimmers)
+        current_to_joins = self.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins = self.config_entry.data.get(CONF_FROM_HUB, [])
+        current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
+        current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+        current_covers = self.config_entry.data.get(CONF_COVERS, [])
+        current_dimmers = self.config_entry.data.get(CONF_DIMMERS, [])
+
+        used_joins = set()
+
+        # Collect all used joins
+        for tj in current_to_joins:
+            used_joins.add(tj.get("join"))
+        for fj in current_from_joins:
+            used_joins.add(fj.get("join"))
+        for light in current_lights:
+            used_joins.add(light.get(CONF_IS_ON_JOIN))
+            if light.get(CONF_BRIGHTNESS_JOIN):
+                used_joins.add(light.get(CONF_BRIGHTNESS_JOIN))
+        for switch in current_switches:
+            used_joins.add(switch.get(CONF_SWITCH_JOIN))
+        for cover in current_covers:
+            used_joins.add(cover.get(CONF_POS_JOIN))
+        # Add dimmer joins...
+        for dimmer in current_dimmers:
+            if dimmer.get(CONF_LIGHTING_LOAD):
+                ll = dimmer[CONF_LIGHTING_LOAD]
+                used_joins.add(ll.get(CONF_IS_ON_JOIN))
+                if ll.get(CONF_BRIGHTNESS_JOIN):
+                    used_joins.add(ll.get(CONF_BRIGHTNESS_JOIN))
+            for button in dimmer.get(CONF_BUTTONS, []):
+                for action_type in [CONF_PRESS, CONF_DOUBLE_PRESS, CONF_HOLD, CONF_FEEDBACK]:
+                    if button.get(action_type):
+                        used_joins.add(button[action_type].get("join"))
+
+        # Check for conflicts
+        for join in new_joins:
+            if join in used_joins:
+                return join
+
+        # Check for duplicates within new_joins
+        if len(new_joins) != len(set(new_joins)):
+            return "duplicate_in_list"
+
+        return None
+
+    async def _cleanup_dimmer_entities(self, dimmer: dict[str, Any]) -> None:
+        """Remove entities created by a dimmer from entity registry."""
+        entity_reg = er.async_get(self.hass)
+
+        # Clean up lighting load entity
+        if dimmer.get(CONF_LIGHTING_LOAD):
+            lighting_load = dimmer[CONF_LIGHTING_LOAD]
+            is_on_join = lighting_load.get(CONF_IS_ON_JOIN)
+
+            # Construct unique_id for the light entity
+            unique_id = f"crestron_light_dimmer_{is_on_join}"
+            entity_id = entity_reg.async_get_entity_id("light", DOMAIN, unique_id)
+
+            if entity_id:
+                _LOGGER.debug("Removing dimmer light entity: %s", entity_id)
+                entity_reg.async_remove(entity_id)
 
 
 class PortInUse(HomeAssistantError):

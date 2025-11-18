@@ -41,6 +41,7 @@ CONF_SENSORS = "sensors"
 CONF_LIGHTS = "lights"
 CONF_SWITCHES = "switches"
 CONF_CLIMATES = "climates"
+CONF_DIMMERS = "dimmers"
 
 # Climate additional constants
 CONF_MODE_HEAT_COOL_JOIN = "mode_heat_cool_join"
@@ -56,3 +57,31 @@ CONF_FLOOR_MODE_FB_JOIN = "floor_mode_fb_join"     # analog feedback: 1/2
 CONF_FLOOR_SP_JOIN = "floor_sp_join"               # analog setpoint (tenths)
 CONF_FLOOR_SP_FB_JOIN = "floor_sp_fb_join"         # analog setpoint feedback (tenths)
 CONF_FLOOR_TEMP_JOIN = "floor_temp_join"           # analog floor temperature (tenths)
+
+# Dimmer/Keypad constants (v1.15.0+)
+CONF_LIGHTING_LOAD = "lighting_load"
+CONF_BUTTON_COUNT = "button_count"
+CONF_BUTTONS = "buttons"
+CONF_PRESS = "press"
+CONF_DOUBLE_PRESS = "double_press"
+CONF_HOLD = "hold"
+CONF_FEEDBACK = "feedback"
+CONF_ACTION = "action"
+CONF_SERVICE_DATA = "service_data"
+
+# Domain action mappings for dimmer buttons
+DOMAIN_ACTIONS = {
+    "light": ["turn_on", "turn_off", "toggle"],
+    "switch": ["turn_on", "turn_off", "toggle"],
+    "cover": ["open_cover", "close_cover", "stop_cover", "toggle"],
+    "scene": ["turn_on"],
+    "script": ["turn_on"],
+    "climate": ["turn_on", "turn_off", "set_temperature", "set_hvac_mode"],
+    "media_player": ["turn_on", "turn_off", "media_play", "media_pause", "media_play_pause", "volume_up", "volume_down", "volume_mute"],
+    "fan": ["turn_on", "turn_off", "toggle", "increase_speed", "decrease_speed"],
+    "lock": ["lock", "unlock"],
+    "vacuum": ["start", "stop", "return_to_base"],
+    "input_boolean": ["turn_on", "turn_off", "toggle"],
+    "automation": ["turn_on", "turn_off", "toggle", "trigger"],
+    "group": ["turn_on", "turn_off", "toggle"],
+}
