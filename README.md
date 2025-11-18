@@ -9,13 +9,21 @@ A Home Assistant custom component for integrating with Crestron control systems 
 ## Features
 
 - **UI-based configuration** with automatic YAML import (v1.7.0+)
+- **UI entity management** - Configure entities directly via UI (v1.8.0+)
+  - Covers, binary sensors, sensors, switches, lights, climate (v1.8.0-v1.14.0)
+  - Dimmers/keypads with button events and LED control (v1.17.0+)
 - **Options Flow join management** - Add, edit, and remove joins via UI (v1.7.0+)
 - **Bidirectional join communication** (digital, analog, and serial)
-- **Multiple platform support**: lights, switches, climate, covers, media players, sensors, binary sensors
+- **Multiple platform support**: lights, switches, climate, covers, media players, sensors, binary sensors, dimmers/keypads, events
+- **Dimmer/Keypad support** (v1.17.0+):
+  - Button press events (press, double press, hold)
+  - LED binding to Home Assistant entities
+  - Optional lighting load control
+  - Auto-sequential or manual join assignment
 - **Template-based state synchronization** (Home Assistant → Crestron)
 - **Script execution** from join changes (Crestron → Home Assistant)
 - **Automatic reconnection** on connection loss
-- **No restart required** for join changes (v1.7.0+)
+- **No restart required** for join/entity changes (v1.7.0+)
 
 ## Installation
 
@@ -74,10 +82,11 @@ Your YAML configuration will continue to work. To complete the migration,
 remove the 'crestron:' section from configuration.yaml and restart.
 ```
 
-#### Managing Joins (Options Flow)
+#### Managing Configuration via UI (Options Flow)
 
 After setup, click the **Configure** button on your Crestron integration to:
 
+**Join Management:**
 - **Add to_join (HA→Crestron)** - Send HA state to Crestron for feedback
   - Select entity from picker
   - Specify join number (d15, a10, s5, etc.)
@@ -88,16 +97,39 @@ After setup, click the **Configure** button on your Crestron integration to:
   - Select service to call
   - Optional: target entity
 
-- **Edit joins** - Modify existing joins with pre-filled forms
+- **Edit/Remove joins** - Modify or delete existing joins
 
-- **Remove joins** - Delete one or more joins
+**Entity Management (v1.8.0+):**
+- **Add/Edit/Remove Covers** - Window shades/blinds with position control
+- **Add/Edit/Remove Binary Sensors** - Digital state monitoring (doors, motion, etc.)
+- **Add/Edit/Remove Sensors** - Analog value monitoring with units and divisor support
+- **Add/Edit/Remove Switches** - Simple on/off control
+- **Add/Edit/Remove Lights** - Lighting control with optional brightness
+- **Add/Edit/Remove Climate** - HVAC and floor warming thermostats
+
+**Dimmer/Keypad Management (v1.17.0+):**
+- **Add Dimmer/Keypad** - Configure Crestron keypads and dimmers
+  - Choose auto-sequential or manual join assignment
+  - Configure 2-6 buttons with press, double press, and hold actions
+  - Optional lighting load with dimming
+  - Automatic creation of event entities (button presses)
+  - Automatic creation of LED binding selects
+  - Automatic creation of LED switch entities
+- **Edit/Remove Dimmers** - Modify or delete dimmer configurations
 
 **No restart required** - Changes take effect immediately after reload.
 
 ### YAML Configuration (Optional)
 
-Entity configuration (lights, switches, climate, etc.) is still done via `configuration.yaml`.
-YAML hub configuration is optional in v1.7.0+ (use UI instead).
+**UI configuration is recommended** for most use cases (v1.7.0+).
+
+YAML configuration is still supported for:
+- Hub setup (port configuration)
+- Join synchronization (to_joins, from_joins)
+- Platform entities (lights, switches, climate, etc.)
+- Media players (UI entity management not yet available)
+
+**Note:** Many entity types can now be configured via UI (v1.8.0+). YAML configuration remains optional for backward compatibility and advanced use cases.
 
 ### Basic Configuration
 
@@ -273,6 +305,113 @@ binary_sensor:
     device_class: door         # Optional: door, window, motion, etc.
 ```
 
+#### Dimmer/Keypad (v1.17.0+)
+
+**UI Configuration Only** - Dimmers/keypads can only be configured via the UI (no YAML support).
+
+Use the **Configure** button → **Manage Dimmers/Keypads** to add Crestron keypads and dimmers.
+
+**Join Assignment Modes:**
+
+1. **Auto-Sequential (Recommended)** - Specify a base join, system auto-assigns sequentially
+   - Base join d10 with 4 buttons uses d10-d21 (3 joins per button)
+   - Button 1: d10 (press), d11 (double), d12 (hold)
+   - Button 2: d13 (press), d14 (double), d15 (hold)
+   - Button 3: d16 (press), d17 (double), d18 (hold)
+   - Button 4: d19 (press), d20 (double), d21 (hold)
+
+2. **Manual (Advanced)** - Specify each button's joins individually
+   - Useful for non-sequential join assignments
+   - Example: Button 1 press=d10, double=d20, hold=d30
+
+**Configuration Options:**
+- **Name** - Friendly name for the dimmer/keypad
+- **Button Count** - 2 to 6 buttons
+- **Lighting Load** (optional) - Control a dimmer's lighting load
+  - On/Off join (digital)
+  - Brightness join (analog, 0-255)
+
+**Entities Created Automatically:**
+
+Each dimmer/keypad creates the following entities grouped under one device:
+
+1. **Event Entities** (one per button) - Fire events for button actions:
+   - Event types: `press`, `double_press`, `hold`
+   - Event data includes: `button`, `action`, `device_name`
+   - Use in automations with event triggers
+
+2. **LED Binding Selects** (one per button) - Bind LEDs to HA entities for feedback:
+   - Dropdown of all bindable entities (lights, switches, locks, covers, etc.)
+   - LED automatically mirrors bound entity state (Crestron feedback)
+   - Provides visual feedback of device status on keypad
+   - Supports 15+ domains with 30+ state mappings
+
+3. **LED Switch Entities** (one per button) - Direct LED control:
+   - Manual LED on/off control
+   - Bidirectional (same join for input and output)
+   - Can be controlled by LED binding or manually
+
+4. **Light Entity** (if lighting load configured) - Dimmer light control:
+   - On/off and brightness control
+   - Standard Home Assistant light entity
+
+**Example Automation using Button Events:**
+
+```yaml
+automation:
+  - alias: "Kitchen Keypad Button 1 Double Press"
+    trigger:
+      - platform: event
+        event_type: crestron_button_event
+        event_data:
+          device_name: "Kitchen Keypad"
+          button: 1
+          action: "double_press"
+    action:
+      - service: scene.turn_on
+        target:
+          entity_id: scene.kitchen_evening
+```
+
+**LED Binding for Feedback:**
+
+In Crestron systems, keypad LEDs provide visual feedback of controlled device status. The LED binding feature automatically synchronizes LED state with Home Assistant entities.
+
+**Example:** Kitchen Keypad controlling kitchen lights
+- Bind Button 1 LED to `light.kitchen` entity
+- When `light.kitchen` turns on (via HA, voice, or keypad) → LED 1 turns on
+- When `light.kitchen` turns off → LED 1 turns off
+- LED stays synchronized regardless of how the light was controlled
+
+This provides the same feedback behavior as traditional Crestron programming, but managed automatically by Home Assistant.
+
+**How to configure:**
+1. Navigate to the dimmer/keypad device in Home Assistant
+2. Find the "LED X Binding" select entity
+3. Choose the entity to bind (light, switch, lock, cover, etc.)
+4. LED will immediately start tracking that entity's state
+
+**Supported entity types for binding:**
+- Lights (on/off state)
+- Switches (on/off state)
+- Locks (locked/unlocked state)
+- Covers (open/closed state)
+- Climate (heating/cooling/idle state)
+- Fans (on/off state)
+- Media players (playing/paused state)
+- And many more (15+ domains supported)
+
+**Crestron Programming for Dimmers/Keypads:**
+
+In your Crestron program:
+1. Wire button press signals to digital joins (press, double press, hold)
+2. Wire LED feedback signals from the **same digital joins** (bidirectional)
+   - Example: Button 1 press join d10 is used for both INPUT (button press) and OUTPUT (LED feedback)
+   - This bidirectional approach allows Home Assistant to both detect button presses and control LED state
+3. If using lighting load: wire dimmer control joins for on/off and brightness
+
+**Important:** The same join number is used for button input and LED output. This is critical for the feedback system to work correctly.
+
 ## Complete Example
 
 ```yaml
@@ -365,9 +504,13 @@ logger:
 This component is forked from the excellent work by [@npope](https://github.com/npope) - [home-assistant-crestron-component](https://github.com/npope/home-assistant-crestron-component)
 
 ### Enhancements in this fork:
+- **v1.17.0**: Complete dimmer/keypad support with button events and LED control
+- **v1.17.1**: Manual join assignment mode for flexible keypad configuration
+- **v1.17.2**: Automatic device and entity cleanup on dimmer removal
+- **v1.8.0-v1.14.0**: UI entity management for covers, binary sensors, sensors, switches, lights, climate
 - **v1.7.0**: UI-based join management with Options Flow
 - **v1.7.0**: Automatic YAML import for seamless migration
-- **v1.6.0+**: UI-based configuration with Config Flow
+- **v1.6.0**: UI-based configuration with Config Flow
 - HACS compatibility and automated releases
 - Enhanced climate platform with floor warming support
 - Improved documentation and examples
