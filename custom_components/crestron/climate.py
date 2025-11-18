@@ -21,6 +21,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import (
     HUB,
     DOMAIN,
+    CONF_CLIMATES,
     # --- standard thermostat joins ---
     CONF_HEAT_SP_JOIN,
     CONF_COOL_SP_JOIN,
@@ -120,11 +121,68 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Crestron climate devices from a config entry.
 
-    For v1.6.0, entities are still configured via YAML.
-    This stub enables device registry linkage for future entity options flow.
+    Supports UI-configured climate entities (v1.13.0+).
+    YAML platform setup (above) handles YAML-configured entities.
     """
-    # No entities added from config entry in v1.6.0
-    # YAML platform setup (above) handles entity creation
+    # Get hub from entry data
+    entry_data = hass.data[DOMAIN].get(entry.entry_id)
+    if not entry_data:
+        _LOGGER.warning("No entry data found for climate setup")
+        return False
+
+    hub_wrapper = entry_data.get('hub_wrapper')
+    if not hub_wrapper:
+        _LOGGER.warning("No hub_wrapper found for climate setup")
+        return False
+
+    # Get hub from wrapper
+    hub = hub_wrapper.hub
+    unit = hass.config.units.temperature_unit
+
+    # Load climates from config entry (UI-configured)
+    # Note: v1.13.0 only supports floor_warming type via UI
+    climates_config = entry.data.get(CONF_CLIMATES, [])
+
+    if climates_config:
+        entities = []
+        for climate_cfg in climates_config:
+            # Only floor_warming type supported in v1.13.0
+            # Standard thermostats must still use YAML (too many joins for practical UI form)
+            if climate_cfg.get(CONF_TYPE) != "floor_warming":
+                _LOGGER.warning(
+                    "Skipping non-floor_warming climate %s - only floor_warming supported via UI",
+                    climate_cfg.get(CONF_NAME)
+                )
+                continue
+
+            # Parse floor warming joins (all analog)
+            config = {
+                CONF_NAME: climate_cfg.get(CONF_NAME),
+                CONF_TYPE: "floor_warming",
+            }
+
+            # Parse analog join strings
+            all_joins_valid = True
+            for join_key in [CONF_FLOOR_MODE_JOIN, CONF_FLOOR_MODE_FB_JOIN,
+                            CONF_FLOOR_SP_JOIN, CONF_FLOOR_SP_FB_JOIN, CONF_FLOOR_TEMP_JOIN]:
+                join_str = climate_cfg.get(join_key, "")
+                if join_str and join_str[0] == 'a' and join_str[1:].isdigit():
+                    config[join_key] = int(join_str[1:])
+                else:
+                    _LOGGER.error(
+                        "Invalid join format for %s in %s: %s",
+                        join_key, climate_cfg.get(CONF_NAME), join_str
+                    )
+                    all_joins_valid = False
+                    break
+
+            if all_joins_valid:
+                entities.append(CrestronFloorWarmingThermostat(hub, config, unit, from_ui=True))
+
+        if entities:
+            async_add_entities(entities)
+            _LOGGER.info("Added %d UI-configured floor warming thermostats", len(entities))
+
     return True
 
 # ----------------------------
@@ -132,7 +190,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 # ----------------------------
 
 class CrestronThermostat(ClimateEntity, RestoreEntity):
-    def __init__(self, hub, config, unit):
+    def __init__(self, hub, config, unit, from_ui=False):
         self._hub = hub
         self._hvac_modes = [
             HVACMode.HEAT_COOL,
@@ -149,6 +207,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         )
         self._should_poll = False
         self._temperature_unit = unit
+        self._from_ui = from_ui
 
         self._name = config.get(CONF_NAME, "Unnamed Thermostat")
         self._heat_sp_join = config.get(CONF_HEAT_SP_JOIN, 0)
@@ -222,6 +281,8 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
     def unique_id(self):
         """Return unique ID for this entity."""
         # Use heat setpoint join as primary identifier
+        if self._from_ui:
+            return f"crestron_climate_ui_a{self._heat_sp_join}"
         return f"crestron_climate_a{self._heat_sp_join}"
 
     @property
@@ -359,10 +420,11 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
 class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     """Floor-warming-only thermostat: Off/Heat modes, single setpoint, floor temp readback."""
 
-    def __init__(self, hub, config, unit):
+    def __init__(self, hub, config, unit, from_ui=False):
         self._hub = hub
         self._temperature_unit = unit
         self._should_poll = False
+        self._from_ui = from_ui
         self._name = config.get(CONF_NAME, "Floor Warming")
 
         # joins (all analog)
@@ -428,6 +490,8 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     def unique_id(self):
         """Return unique ID for this entity."""
         # Use setpoint join as primary identifier
+        if self._from_ui:
+            return f"crestron_climate_ui_a{self._sp_join}"
         return f"crestron_climate_a{self._sp_join}"
 
     @property

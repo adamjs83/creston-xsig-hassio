@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2025-01-18
+
+### Added
+- **UI Configuration for Climate Entities (Floor Warming)** - Complete UI-based entity management for floor warming thermostats
+- Add/edit/remove climate entities through the options flow without editing YAML
+- Support for 5 analog joins: floor_mode_join, floor_mode_fb_join, floor_sp_join, floor_sp_fb_join, floor_temp_join
+- Join validation for analog format ("aXX")
+- Automatic entity registry cleanup when climate entities removed via UI
+- UI/YAML coexistence with unique_id prefixes ("ui" vs "yaml")
+
+### Changed
+- Updated climate.py to support from_ui parameter for unique_id differentiation
+- Enhanced config_flow.py with async_step_add_climate, edit, and remove flows
+- Added CONF_CLIMATES constant to const.py
+
+### Technical Details
+- Floor warming thermostat support only (standard HVAC thermostats still YAML-only)
+- Follows established pattern from previous platforms
+- Hub persistence during entity management (no connection drops)
+- Safe reload handling with ValueError fallback
+
+### Limitations
+- Standard HVAC thermostats (with heat/cool setpoints, modes, fan controls) remain YAML-only due to complexity
+- Only floor_warming type climate entities can be configured via UI
+
 ## [1.12.0] - 2025-01-17
 
 ### Added

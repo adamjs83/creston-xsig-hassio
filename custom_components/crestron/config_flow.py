@@ -22,6 +22,7 @@ from .const import (
     CONF_SENSORS,
     CONF_LIGHTS,
     CONF_SWITCHES,
+    CONF_CLIMATES,
     CONF_POS_JOIN,
     CONF_IS_OPENING_JOIN,
     CONF_IS_CLOSING_JOIN,
@@ -32,6 +33,12 @@ from .const import (
     CONF_DIVISOR,
     CONF_BRIGHTNESS_JOIN,
     CONF_SWITCH_JOIN,
+    # Climate joins (floor_warming only)
+    CONF_FLOOR_MODE_JOIN,
+    CONF_FLOOR_MODE_FB_JOIN,
+    CONF_FLOOR_SP_JOIN,
+    CONF_FLOOR_SP_FB_JOIN,
+    CONF_FLOOR_TEMP_JOIN,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 
@@ -245,6 +252,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             elif next_step == "add_switch":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_switch()
+            elif next_step == "add_climate":
+                self._editing_join = None  # Clear editing state
+                return await self.async_step_add_climate()
             elif next_step == "add_to_join":
                 self._editing_join = None  # Clear editing state
                 return await self.async_step_add_to_join()
@@ -271,6 +281,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
         current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
         current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+        current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
 
         # Show menu
         menu_schema = vol.Schema(
@@ -283,6 +294,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             {"label": f"Add Cover - Currently: {len(current_covers)}", "value": "add_cover"},
                             {"label": f"Add Binary Sensor - Currently: {len(current_binary_sensors)}", "value": "add_binary_sensor"},
                             {"label": f"Add Sensor - Currently: {len(current_sensors)}", "value": "add_sensor"},
+                            {"label": f"Add Climate (Floor Warming) - Currently: {len(current_climates)}", "value": "add_climate"},
                             {"label": f"Add to_join (HA→Crestron) - Currently: {len(current_to_joins)}", "value": "add_to_join"},
                             {"label": f"Add from_join (Crestron→HA) - Currently: {len(current_from_joins)}", "value": "add_from_join"},
                             {"label": "Edit joins", "value": "edit_joins"},
@@ -1245,6 +1257,138 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
+    async def async_step_add_climate(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add or edit a climate entity (floor warming only)."""
+        errors: dict[str, str] = {}
+        is_editing = self._editing_join is not None
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME)
+                floor_mode_join = user_input.get(CONF_FLOOR_MODE_JOIN)
+                floor_mode_fb_join = user_input.get(CONF_FLOOR_MODE_FB_JOIN)
+                floor_sp_join = user_input.get(CONF_FLOOR_SP_JOIN)
+                floor_sp_fb_join = user_input.get(CONF_FLOOR_SP_FB_JOIN)
+                floor_temp_join = user_input.get(CONF_FLOOR_TEMP_JOIN)
+
+                # Validate all joins are analog format
+                joins_to_validate = [
+                    (CONF_FLOOR_MODE_JOIN, floor_mode_join),
+                    (CONF_FLOOR_MODE_FB_JOIN, floor_mode_fb_join),
+                    (CONF_FLOOR_SP_JOIN, floor_sp_join),
+                    (CONF_FLOOR_SP_FB_JOIN, floor_sp_fb_join),
+                    (CONF_FLOOR_TEMP_JOIN, floor_temp_join),
+                ]
+
+                for join_field, join_value in joins_to_validate:
+                    if not join_value or not (join_value[0] == 'a' and join_value[1:].isdigit()):
+                        errors[join_field] = "invalid_join_format"
+
+                # Check for duplicate entity name
+                current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
+                old_name = self._editing_join.get(CONF_NAME) if is_editing else None
+                if name != old_name and any(c.get(CONF_NAME) == name for c in current_climates):
+                    errors[CONF_NAME] = "entity_already_exists"
+
+                if not errors:
+                    # Build new climate entry (floor_warming type only)
+                    new_climate = {
+                        CONF_NAME: name,
+                        CONF_TYPE: "floor_warming",
+                        CONF_FLOOR_MODE_JOIN: floor_mode_join,
+                        CONF_FLOOR_MODE_FB_JOIN: floor_mode_fb_join,
+                        CONF_FLOOR_SP_JOIN: floor_sp_join,
+                        CONF_FLOOR_SP_FB_JOIN: floor_sp_fb_join,
+                        CONF_FLOOR_TEMP_JOIN: floor_temp_join,
+                    }
+
+                    if is_editing:
+                        # Replace existing climate
+                        updated_climates = [
+                            new_climate if c.get(CONF_NAME) == old_name else c
+                            for c in current_climates
+                        ]
+                        _LOGGER.info("Updated climate %s", name)
+                    else:
+                        # Append new climate
+                        updated_climates = current_climates + [new_climate]
+                        _LOGGER.info("Added climate %s", name)
+
+                    # Update config entry
+                    new_data = dict(self.config_entry.data)
+                    new_data[CONF_CLIMATES] = updated_climates
+
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+
+                    # Reload the integration
+                    await self._async_reload_integration()
+
+                    # Clear editing state and return to menu
+                    self._editing_join = None
+                    return await self.async_step_init()
+
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Error adding/updating climate: %s", err)
+                errors["base"] = "unknown"
+
+        # Pre-fill form if editing
+        default_values = {}
+        if is_editing:
+            default_values = {
+                CONF_NAME: self._editing_join.get(CONF_NAME, ""),
+                CONF_FLOOR_MODE_JOIN: self._editing_join.get(CONF_FLOOR_MODE_JOIN, ""),
+                CONF_FLOOR_MODE_FB_JOIN: self._editing_join.get(CONF_FLOOR_MODE_FB_JOIN, ""),
+                CONF_FLOOR_SP_JOIN: self._editing_join.get(CONF_FLOOR_SP_JOIN, ""),
+                CONF_FLOOR_SP_FB_JOIN: self._editing_join.get(CONF_FLOOR_SP_FB_JOIN, ""),
+                CONF_FLOOR_TEMP_JOIN: self._editing_join.get(CONF_FLOOR_TEMP_JOIN, ""),
+            }
+
+        # Show form
+        add_climate_schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_FLOOR_MODE_JOIN, default=default_values.get(CONF_FLOOR_MODE_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_FLOOR_MODE_FB_JOIN, default=default_values.get(CONF_FLOOR_MODE_FB_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_FLOOR_SP_JOIN, default=default_values.get(CONF_FLOOR_SP_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_FLOOR_SP_FB_JOIN, default=default_values.get(CONF_FLOOR_SP_FB_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+                vol.Required(CONF_FLOOR_TEMP_JOIN, default=default_values.get(CONF_FLOOR_TEMP_JOIN, "")): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_climate",
+            data_schema=add_climate_schema,
+            errors=errors,
+        )
+
     async def async_step_select_entity_to_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -1259,6 +1403,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
                 current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
                 current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+                current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
 
                 # Check if it's a light
                 for light in current_lights:
@@ -1290,6 +1435,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         self._editing_join = sensor
                         return await self.async_step_add_sensor()
 
+                # Check if it's a climate
+                for climate in current_climates:
+                    if climate.get(CONF_NAME) == selected_entity:
+                        self._editing_join = climate
+                        return await self.async_step_add_climate()
+
             # Not found, return to menu
             return await self.async_step_init()
 
@@ -1299,6 +1450,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
         current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
         current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+        current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
 
         entity_options = []
         for l in current_lights:
@@ -1325,6 +1477,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_options.append({
                 "label": f"{s.get(CONF_NAME)} (Sensor - {s.get(CONF_VALUE_JOIN)})",
                 "value": s.get(CONF_NAME)
+            })
+        for cl in current_climates:
+            entity_options.append({
+                "label": f"{cl.get(CONF_NAME)} (Climate - {cl.get(CONF_FLOOR_SP_JOIN)})",
+                "value": cl.get(CONF_NAME)
             })
 
         if not entity_options:
@@ -1364,6 +1521,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     current_sensors = self.config_entry.data.get(CONF_SENSORS, [])
                     current_lights = self.config_entry.data.get(CONF_LIGHTS, [])
                     current_switches = self.config_entry.data.get(CONF_SWITCHES, [])
+                    current_climates = self.config_entry.data.get(CONF_CLIMATES, [])
 
                     # Filter out selected entities
                     updated_covers = [c for c in current_covers if c.get(CONF_NAME) not in entities_to_remove]
@@ -1371,6 +1529,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     updated_sensors = [s for s in current_sensors if s.get(CONF_NAME) not in entities_to_remove]
                     updated_lights = [l for l in current_lights if l.get(CONF_NAME) not in entities_to_remove]
                     updated_switches = [sw for sw in current_switches if sw.get(CONF_NAME) not in entities_to_remove]
+                    updated_climates = [cl for cl in current_climates if cl.get(CONF_NAME) not in entities_to_remove]
 
                     # Update config entry
                     new_data = dict(self.config_entry.data)
@@ -1379,6 +1538,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     new_data[CONF_SENSORS] = updated_sensors
                     new_data[CONF_LIGHTS] = updated_lights
                     new_data[CONF_SWITCHES] = updated_switches
+                    new_data[CONF_CLIMATES] = updated_climates
 
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, data=new_data
@@ -1432,6 +1592,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                     entity_type = "sensor"
                                     break
 
+                        # Check if it's a climate
+                        if not entity_config:
+                            for cl in current_climates:
+                                if cl.get(CONF_NAME) == entity_name:
+                                    entity_config = cl
+                                    entity_type = "climate"
+                                    break
+
                         if entity_config and entity_type:
                             # Construct unique_id based on entity type
                             if entity_type == "light":
@@ -1467,6 +1635,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                 if value_join_str and value_join_str[0] == 'a':
                                     join_num = value_join_str[1:]
                                     unique_id = f"crestron_sensor_ui_a{join_num}"
+                                else:
+                                    continue
+                            elif entity_type == "climate":
+                                # Use setpoint join for floor warming
+                                sp_join_str = entity_config.get(CONF_FLOOR_SP_JOIN, "")
+                                if sp_join_str and sp_join_str[0] == 'a':
+                                    join_num = sp_join_str[1:]
+                                    unique_id = f"crestron_climate_ui_a{join_num}"
                                 else:
                                     continue
 
@@ -1530,6 +1706,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_options.append({
                 "label": f"{s.get(CONF_NAME)} (Sensor - {s.get(CONF_VALUE_JOIN)})",
                 "value": s.get(CONF_NAME)
+            })
+        for cl in current_climates:
+            entity_options.append({
+                "label": f"{cl.get(CONF_NAME)} (Climate - {cl.get(CONF_FLOOR_SP_JOIN)})",
+                "value": cl.get(CONF_NAME)
             })
 
         if not entity_options:
