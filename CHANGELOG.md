@@ -5,7 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.16.4] - 2025-11-18
+## [1.17.0] - 2025-11-18
+
+### Added - Complete Dimmer/Keypad Redesign
+- **Event Platform** - New platform for button press events (press, double_press, hold)
+- **Select Platform** - LED binding dropdowns to sync LEDs with any HA entity
+- **Simple Configuration** - Single form replaces multi-step wizard
+- **Sequential Join Assignment** - Enter base join, system auto-assigns remaining joins
+- **Real Entity Integration** - Creates event, switch, select, and light entities
+- **LED Binding System** - Dropdown lists all HA entities, LED follows state automatically
+- **Device Registry** - All entities grouped under single device
+
+### Changed - Breaking Changes
+- Simplified configuration from multi-step to single form (4 fields)
+- Button actions configured via HA automations (not config flow)
+- LED feedback configured via select dropdown (not config flow)
+- Join assignment: 3 joins per button (press d10, double d11, hold d12)
+
+### Removed
+- v1.16.x dimmer configuration (multi-step wizard) - marked as deprecated
+
+### Technical Details
+- Event entities fire: event_type="crestron_button" with action: press/double_press/hold
+- LED switches use press join for OUTPUT (bidirectional join usage)
+- Select entities scan entity registry for bindable domains
+- State mapping: 15+ domains, 30+ state mappings to LED on/off
+- Sequential validation: base join + (button_count * 3 - 1) must be <= 250
+
+## [1.16.4] - 2025-11-18 [DEPRECATED]
+
+### Deprecated
+- This version's dimmer/keypad implementation is replaced by v1.17.0
+- Multi-step wizard configuration removed in favor of simple single-form approach
+- Use v1.17.0 for new installations
 
 ### Added
 - **Button number display** in dimmer configuration - Form title now shows "Configure Button X of Y"

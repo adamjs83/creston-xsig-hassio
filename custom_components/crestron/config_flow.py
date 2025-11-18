@@ -61,7 +61,7 @@ from .const import (
     CONF_HVAC_ACTION_HEAT_JOIN,
     CONF_HVAC_ACTION_COOL_JOIN,
     CONF_HVAC_ACTION_IDLE_JOIN,
-    # Dimmer/Keypad constants
+    # Dimmer/Keypad constants (v1.16.x - deprecated)
     CONF_LIGHTING_LOAD,
     CONF_BUTTON_COUNT,
     CONF_BUTTONS,
@@ -72,6 +72,11 @@ from .const import (
     CONF_ACTION,
     CONF_SERVICE_DATA,
     DOMAIN_ACTIONS,
+    # Dimmer/Keypad constants (v1.17.0+)
+    CONF_BASE_JOIN,
+    CONF_HAS_LIGHTING_LOAD,
+    CONF_LIGHT_ON_JOIN,
+    CONF_LIGHT_BRIGHTNESS_JOIN,
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 
@@ -480,8 +485,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             _LOGGER.debug("Dimmer menu action selected: %s", next_step)
             if next_step == "add_dimmer":
                 self._editing_join = None  # Clear editing state
-                _LOGGER.debug("Calling async_step_add_dimmer_basic")
-                return await self.async_step_add_dimmer_basic()
+                _LOGGER.debug("Calling async_step_add_dimmer_simple (v1.17.0)")
+                return await self.async_step_add_dimmer_simple()
             elif next_step == "edit_dimmers":
                 return await self.async_step_select_dimmer_to_edit()
             elif next_step == "remove_dimmers":
@@ -513,6 +518,136 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="dimmer_menu",
             data_schema=menu_schema,
+        )
+
+    async def async_step_add_dimmer_simple(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add dimmer/keypad - simplified single-form approach (v1.17.0)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                name = user_input.get(CONF_NAME, "").strip()
+                base_join_str = user_input.get(CONF_BASE_JOIN, "").strip()
+                button_count = int(user_input.get(CONF_BUTTON_COUNT, "4"))
+                has_lighting = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
+                light_on_join_str = user_input.get(CONF_LIGHT_ON_JOIN, "").strip() if has_lighting else None
+                light_brightness_join_str = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
+
+                # Validate name
+                if not name:
+                    errors[CONF_NAME] = "name_required"
+
+                # Validate base join (digital format)
+                if not base_join_str or not (base_join_str[0] == 'd' and base_join_str[1:].isdigit()):
+                    errors[CONF_BASE_JOIN] = "invalid_join_format"
+                else:
+                    base_join_num = int(base_join_str[1:])
+                    # Validate join range: need button_count * 3 sequential joins
+                    max_join_needed = base_join_num + (button_count * 3) - 1
+                    if max_join_needed > 250:
+                        errors[CONF_BASE_JOIN] = "join_range_exceeded"
+
+                # Validate lighting load joins if provided
+                if has_lighting:
+                    if not light_on_join_str or not (light_on_join_str[0] == 'd' and light_on_join_str[1:].isdigit()):
+                        errors[CONF_LIGHT_ON_JOIN] = "invalid_join_format"
+
+                    if light_brightness_join_str and not (light_brightness_join_str[0] == 'a' and light_brightness_join_str[1:].isdigit()):
+                        errors[CONF_LIGHT_BRIGHTNESS_JOIN] = "invalid_join_format"
+
+                # Check for join conflicts
+                if not errors:
+                    joins_to_check = []
+
+                    # Add button joins (press, double, hold for each button)
+                    for i in range(button_count):
+                        offset = i * 3
+                        joins_to_check.append(f"d{base_join_num + offset}")  # press
+                        joins_to_check.append(f"d{base_join_num + offset + 1}")  # double
+                        joins_to_check.append(f"d{base_join_num + offset + 2}")  # hold
+
+                    # Add lighting load joins
+                    if has_lighting:
+                        joins_to_check.append(light_on_join_str)
+                        if light_brightness_join_str:
+                            joins_to_check.append(light_brightness_join_str)
+
+                    conflict = self._check_join_conflicts(joins_to_check)
+                    if conflict:
+                        errors["base"] = "join_conflict"
+
+                if not errors:
+                    # Build dimmer config
+                    dimmer_config = {
+                        CONF_NAME: name,
+                        CONF_BASE_JOIN: base_join_str,
+                        CONF_BUTTON_COUNT: button_count,
+                    }
+
+                    if has_lighting:
+                        dimmer_config[CONF_HAS_LIGHTING_LOAD] = True
+                        dimmer_config[CONF_LIGHT_ON_JOIN] = light_on_join_str
+                        if light_brightness_join_str:
+                            dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
+
+                    # Save dimmer
+                    current_dimmers = self.config_entry.data.get(CONF_DIMMERS, []).copy()
+                    current_dimmers.append(dimmer_config)
+
+                    updated_data = {**self.config_entry.data, CONF_DIMMERS: current_dimmers}
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=updated_data
+                    )
+
+                    _LOGGER.info(
+                        "Added dimmer '%s' with %d buttons (base join: %s)",
+                        name, button_count, base_join_str
+                    )
+
+                    # Reload integration
+                    await self._async_reload_integration()
+
+                    # Return to dimmer menu
+                    return await self.async_step_dimmer_menu()
+
+            except Exception as ex:
+                _LOGGER.exception("Unexpected error adding dimmer: %s", ex)
+                errors["base"] = "unknown"
+
+        # Show form
+        dimmer_schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME): selector.TextSelector(),
+                vol.Required(CONF_BASE_JOIN): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_BUTTON_COUNT, default="4"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "2 Buttons", "value": "2"},
+                            {"label": "3 Buttons", "value": "3"},
+                            {"label": "4 Buttons", "value": "4"},
+                            {"label": "5 Buttons", "value": "5"},
+                            {"label": "6 Buttons", "value": "6"},
+                        ],
+                    )
+                ),
+                vol.Optional(CONF_HAS_LIGHTING_LOAD, default=False): selector.BooleanSelector(),
+                vol.Optional(CONF_LIGHT_ON_JOIN): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Optional(CONF_LIGHT_BRIGHTNESS_JOIN): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_dimmer_simple",
+            data_schema=dimmer_schema,
+            errors=errors,
         )
 
     async def async_step_add_to_join(

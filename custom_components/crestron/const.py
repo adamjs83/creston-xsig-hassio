@@ -69,7 +69,7 @@ CONF_FEEDBACK = "feedback"
 CONF_ACTION = "action"
 CONF_SERVICE_DATA = "service_data"
 
-# Domain action mappings for dimmer buttons
+# Domain action mappings for dimmer buttons (v1.16.x - deprecated)
 DOMAIN_ACTIONS = {
     "light": ["turn_on", "turn_off", "toggle"],
     "switch": ["turn_on", "turn_off", "toggle"],
@@ -84,4 +84,89 @@ DOMAIN_ACTIONS = {
     "input_boolean": ["turn_on", "turn_off", "toggle"],
     "automation": ["turn_on", "turn_off", "toggle", "trigger"],
     "group": ["turn_on", "turn_off", "toggle"],
+}
+
+# Dimmer/Keypad Device Types (v1.17.0+)
+DEVICE_TYPE_DIMMER_KEYPAD = "dimmer_keypad"
+CONF_BASE_JOIN = "base_join"
+CONF_HAS_LIGHTING_LOAD = "has_lighting_load"
+CONF_LIGHT_ON_JOIN = "light_on_join"
+CONF_LIGHT_BRIGHTNESS_JOIN = "light_brightness_join"
+
+# Entity types for dimmer/keypad
+ENTITY_TYPE_BUTTON_EVENT = "button_event"
+ENTITY_TYPE_BUTTON_LED = "button_led"
+ENTITY_TYPE_LED_BINDING = "led_binding"
+ENTITY_TYPE_DIMMER_LIGHT = "dimmer_light"
+
+# LED Binding: Bindable entity domains (v1.17.0+)
+# These domains can be bound to LED switches for state feedback
+BINDABLE_DOMAINS = {
+    "light": ["on", "off"],
+    "switch": ["on", "off"],
+    "binary_sensor": ["on", "off"],
+    "lock": ["locked", "unlocked"],
+    "cover": ["open", "closed", "opening", "closing"],
+    "media_player": ["playing", "paused", "idle", "off"],
+    "climate": ["heat", "cool", "heat_cool", "auto", "off"],
+    "fan": ["on", "off"],
+    "input_boolean": ["on", "off"],
+    "automation": ["on", "off"],
+    "vacuum": ["cleaning", "docked", "paused", "idle", "returning"],
+    "alarm_control_panel": ["armed_away", "armed_home", "armed_night", "disarmed"],
+    "person": ["home", "not_home"],
+    "device_tracker": ["home", "not_home"],
+    "sun": ["above_horizon", "below_horizon"],
+}
+
+# LED Binding: State to LED on/off mapping (v1.17.0+)
+# Maps entity states to LED on (True) or off (False)
+STATE_TO_LED = {
+    # Common states
+    "on": True,
+    "off": False,
+    "true": True,
+    "false": False,
+
+    # Lock states
+    "locked": True,
+    "unlocked": False,
+    "locking": True,
+    "unlocking": False,
+
+    # Cover states
+    "open": True,
+    "closed": False,
+    "opening": True,
+    "closing": True,
+
+    # Media player states
+    "playing": True,
+    "paused": False,
+    "idle": False,
+
+    # Climate states
+    "heat": True,
+    "cool": True,
+    "heat_cool": True,
+    "auto": True,
+
+    # Vacuum states
+    "cleaning": True,
+    "docked": False,
+    "returning": True,
+
+    # Alarm states
+    "armed_away": True,
+    "armed_home": True,
+    "armed_night": True,
+    "disarmed": False,
+
+    # Presence states
+    "home": True,
+    "not_home": False,
+
+    # Sun states
+    "above_horizon": True,
+    "below_horizon": False,
 }

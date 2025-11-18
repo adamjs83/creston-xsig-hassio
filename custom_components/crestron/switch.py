@@ -8,7 +8,15 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_NAME, CONF_DEVICE_CLASS
-from .const import HUB, DOMAIN, CONF_SWITCH_JOIN, CONF_SWITCHES
+from .const import (
+    HUB,
+    DOMAIN,
+    CONF_SWITCH_JOIN,
+    CONF_SWITCHES,
+    CONF_DIMMERS,
+    CONF_BASE_JOIN,
+    CONF_BUTTON_COUNT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,13 +92,50 @@ async def async_setup_entry(hass, entry, async_add_entities):
         async_add_entities(entities)
         _LOGGER.info("Added %d switch entities from config entry", len(entities))
 
+    # v1.17.0+: Create LED switches from dimmer/keypad configurations
+    dimmers = entry.data.get(CONF_DIMMERS, [])
+    led_entities = []
+
+    for dimmer in dimmers:
+        dimmer_name = dimmer.get(CONF_NAME, "Unknown")
+        base_join = dimmer.get(CONF_BASE_JOIN)
+        button_count = dimmer.get(CONF_BUTTON_COUNT, 2)
+
+        _LOGGER.debug(
+            "Creating LED switch entities for dimmer '%s' (%d buttons)",
+            dimmer_name,
+            button_count,
+        )
+
+        # Create LED switches (1 per button)
+        # Uses the press join for OUTPUT (bidirectional join usage)
+        for button_num in range(1, button_count + 1):
+            # Calculate press join for this button
+            base_offset = (button_num - 1) * 3
+            press_join = int(base_join[1:]) + base_offset
+
+            led_config = {
+                CONF_NAME: f"{dimmer_name} LED {button_num}",
+                CONF_SWITCH_JOIN: press_join,
+                CONF_DEVICE_CLASS: "switch",
+            }
+
+            led_entity = CrestronSwitch(hub, led_config, from_ui=True, is_led=True, dimmer_name=dimmer_name)
+            led_entities.append(led_entity)
+
+    if led_entities:
+        async_add_entities(led_entities)
+        _LOGGER.info("Added %d LED switch entities from dimmers", len(led_entities))
+
     return True
 
 
 class CrestronSwitch(SwitchEntity, RestoreEntity):
-    def __init__(self, hub, config, from_ui=False):
+    def __init__(self, hub, config, from_ui=False, is_led=False, dimmer_name=None):
         self._hub = hub
         self._from_ui = from_ui  # Track if this is a UI-created entity
+        self._is_led = is_led  # Track if this is an LED switch
+        self._dimmer_name = dimmer_name  # Parent dimmer name (for device grouping)
         self._name = config.get(CONF_NAME)
         self._switch_join = config.get(CONF_SWITCH_JOIN)
         self._device_class = config.get(CONF_DEVICE_CLASS, "switch")
@@ -132,6 +177,8 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
     @property
     def unique_id(self):
         """Return unique ID for this entity."""
+        if self._is_led:
+            return f"crestron_led_{self._dimmer_name}_d{self._switch_join}"
         if self._from_ui:
             return f"crestron_switch_ui_d{self._switch_join}"
         return f"crestron_switch_d{self._switch_join}"
@@ -139,6 +186,16 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info for this entity."""
+        # LED switches group under dimmer device
+        if self._is_led and self._dimmer_name:
+            return DeviceInfo(
+                identifiers={(DOMAIN, f"dimmer_{self._dimmer_name}")},
+                name=self._dimmer_name,
+                manufacturer="Crestron",
+                model="Keypad/Dimmer",
+            )
+
+        # Regular switches group under main Crestron device
         return DeviceInfo(
             identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
             name="Crestron Control System",
