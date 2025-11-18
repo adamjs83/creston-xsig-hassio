@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Set up Crestron XSIG",
-        "description": "Configure the port for your Crestron XSIG gateway. Entity configuration will continue to use YAML (for now).",
+        "description": "Configure the port for your Crestron XSIG gateway. Join configuration can be done after setup via the Configure button.",
         "data": {
           "port": "XSIG Port"
         },
@@ -19,6 +19,212 @@
     },
     "abort": {
       "already_configured": "This port is already configured. Use a different port for multiple Crestron systems."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage Crestron Joins",
+        "description": "Choose an action to manage your to_joins (HA→Crestron feedback) and from_joins (Crestron→HA scripts).",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "add_to_join": {
+        "title": "Add to_join (HA → Crestron)",
+        "description": "Send Home Assistant state to Crestron for feedback. The join will update Crestron whenever the entity state changes.",
+        "data": {
+          "join": "Join Number",
+          "entity_id": "Entity",
+          "attribute": "Attribute (optional)",
+          "value_template": "Value Template (optional)"
+        },
+        "data_description": {
+          "join": "Join number (e.g., d15 for digital, a10 for analog, s5 for serial)",
+          "entity_id": "Entity to monitor (e.g., light.master_bedroom)",
+          "attribute": "Entity attribute to send (e.g., brightness). Leave blank to send state.",
+          "value_template": "Advanced: Jinja2 template for custom value logic"
+        }
+      },
+      "add_from_join": {
+        "title": "Add from_join (Crestron → HA)",
+        "description": "Run a Home Assistant service when Crestron triggers this join. Useful for button presses and macros.",
+        "data": {
+          "join": "Join Number",
+          "service": "Service",
+          "target_entity": "Target Entity (optional)"
+        },
+        "data_description": {
+          "join": "Join number (e.g., d100 for digital button press)",
+          "service": "Service to call (e.g., light.toggle, script.goodnight)",
+          "target_entity": "Entity to target (optional, e.g., light.kitchen)"
+        }
+      },
+      "select_join_to_edit": {
+        "title": "Select Join to Edit",
+        "description": "Choose a join to edit. The form will be pre-filled with current values.",
+        "data": {
+          "join_to_edit": "Join to Edit"
+        }
+      },
+      "remove_joins": {
+        "title": "Remove Joins",
+        "description": "Select one or more joins to remove. The integration will reload after removal.",
+        "data": {
+          "joins_to_remove": "Joins to Remove"
+        }
+      },
+      "add_cover": {
+        "title": "Add Cover Entity",
+        "description": "Create a cover (shade/blind) entity. Position join is required (analog). Optional joins add feedback and control features.",
+        "data": {
+          "name": "Entity Name",
+          "pos_join": "Position Join",
+          "type": "Type",
+          "is_opening_join": "Opening State Join (optional)",
+          "is_closing_join": "Closing State Join (optional)",
+          "is_closed_join": "Closed State Join (optional)",
+          "stop_join": "Stop Command Join (optional)"
+        },
+        "data_description": {
+          "name": "Friendly name for this cover (e.g., Living Room Shade)",
+          "pos_join": "Analog join for position control (e.g., a30)",
+          "type": "Device type (shade for window shades/blinds)",
+          "is_opening_join": "Digital join for opening state feedback (e.g., d31)",
+          "is_closing_join": "Digital join for closing state feedback (e.g., d32)",
+          "is_closed_join": "Digital join for closed state feedback (e.g., d33)",
+          "stop_join": "Digital join for stop command (e.g., d34)"
+        }
+      },
+      "add_binary_sensor": {
+        "title": "Add Binary Sensor Entity",
+        "description": "Create a binary sensor entity for digital state monitoring (on/off, open/closed, etc.). Device class determines the icon and behavior.",
+        "data": {
+          "name": "Entity Name",
+          "is_on_join": "State Join",
+          "device_class": "Device Class"
+        },
+        "data_description": {
+          "name": "Friendly name for this sensor (e.g., Front Door Motion)",
+          "is_on_join": "Digital join for state feedback (e.g., d100)",
+          "device_class": "Sensor type (determines icon and behavior)"
+        }
+      },
+      "select_entity_to_edit": {
+        "title": "Select Entity to Edit",
+        "description": "Choose an entity to edit. The form will be pre-filled with current values.",
+        "data": {
+          "entity_to_edit": "Entity to Edit"
+        }
+      },
+      "remove_entities": {
+        "title": "Remove Entities",
+        "description": "Select one or more entities to remove. The integration will reload after removal.",
+        "data": {
+          "entities_to_remove": "Entities to Remove"
+        }
+      },
+      "add_dimmer_basic": {
+        "title": "Add Dimmer/Keypad - Basic Info",
+        "description": "Configure basic dimmer/keypad settings. You'll configure lighting load and buttons in the next steps.",
+        "data": {
+          "name": "Dimmer/Keypad Name",
+          "button_count": "Number of Buttons",
+          "has_lighting_load": "Has Lighting Load?"
+        },
+        "data_description": {
+          "name": "Friendly name (e.g., Kitchen Keypad)",
+          "button_count": "Number of buttons to configure (2-6)",
+          "has_lighting_load": "Does this dimmer control a lighting load with brightness?"
+        }
+      },
+      "add_dimmer_lighting": {
+        "title": "Add Dimmer/Keypad - Lighting Load",
+        "description": "Configure the lighting load for {dimmer_name}. This creates a dimmable light entity.",
+        "data": {
+          "light_name": "Light Entity Name",
+          "is_on_join": "On/Off Join",
+          "has_brightness": "Has Brightness Control?",
+          "brightness_join": "Brightness Join (optional)"
+        },
+        "data_description": {
+          "light_name": "Name for the light entity (e.g., Kitchen Lights)",
+          "is_on_join": "Digital join for on/off (e.g., d1)",
+          "has_brightness": "Can this light be dimmed?",
+          "brightness_join": "Analog join for brightness 0-255 (e.g., a1)"
+        }
+      },
+      "add_dimmer_button": {
+        "title": "Configure Button {button_num} of {total_buttons}",
+        "description": "Configure actions for button {button_num} on {dimmer_name}. All actions are optional - configure only what you need.",
+        "data": {
+          "config_press": "Enable Press Action?",
+          "press_join": "Press Join",
+          "press_entity": "Press Entity",
+          "press_action": "Press Action",
+          "press_service_data": "Press Service Data (YAML)",
+          "config_double_press": "Enable Double Press Action?",
+          "double_press_join": "Double Press Join",
+          "double_press_entity": "Double Press Entity",
+          "double_press_action": "Double Press Action",
+          "double_service_data": "Double Press Service Data (YAML)",
+          "config_hold": "Enable Hold Action?",
+          "hold_join": "Hold Join",
+          "hold_entity": "Hold Entity",
+          "hold_action": "Hold Action",
+          "hold_service_data": "Hold Service Data (YAML)",
+          "config_feedback": "Enable Button Feedback?",
+          "feedback_join": "Feedback Join",
+          "feedback_entity": "Feedback Entity"
+        },
+        "data_description": {
+          "config_press": "Configure what happens on button press",
+          "press_join": "Digital join for press (e.g., d10)",
+          "press_entity": "Entity to control",
+          "press_action": "Action to perform",
+          "press_service_data": "Optional: Additional service parameters in YAML format",
+          "config_double_press": "Configure what happens on double press",
+          "double_press_join": "Digital join for double press (e.g., d11)",
+          "double_press_entity": "Entity to control",
+          "double_press_action": "Action to perform",
+          "double_service_data": "Optional: Additional service parameters in YAML format",
+          "config_hold": "Configure what happens on button hold",
+          "hold_join": "Digital join for hold (e.g., d12)",
+          "hold_entity": "Entity to control",
+          "hold_action": "Action to perform",
+          "hold_service_data": "Optional: Additional service parameters in YAML format",
+          "config_feedback": "Sync HA entity state to button LED",
+          "feedback_join": "Digital join for LED feedback (e.g., d13)",
+          "feedback_entity": "Entity to monitor for feedback"
+        }
+      },
+      "dimmer_menu": {
+        "title": "Manage Dimmers/Keypads",
+        "description": "Configure Crestron dimmers and keypads with button actions and lighting loads.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "select_dimmer_to_edit": {
+        "title": "Select Dimmer to Edit",
+        "description": "Choose a dimmer/keypad to edit.",
+        "data": {
+          "dimmer_to_edit": "Dimmer/Keypad to Edit"
+        }
+      },
+      "remove_dimmers": {
+        "title": "Remove Dimmers/Keypads",
+        "description": "Select one or more dimmers/keypads to remove. Associated entities will be removed from Home Assistant.",
+        "data": {
+          "dimmers_to_remove": "Dimmers/Keypads to Remove"
+        }
+      }
+    },
+    "error": {
+      "invalid_join_format": "Join must be in format: d1-d250, a1-a250, or s1-s250 (e.g., d15, a10, s5)",
+      "join_already_exists": "This join number is already configured. Remove it first or use a different join number.",
+      "entity_already_exists": "An entity with this name already exists. Choose a different name.",
+      "unknown": "An unexpected error occurred. Check the logs for details."
     }
   }
 }

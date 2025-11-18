@@ -2368,7 +2368,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 # Parse button configuration
                 button_config = {"number": button_num}
 
-                # Press action (always configured if join provided)
+                # Press action
+                config_press = user_input.get("config_press", False)
                 press_join = user_input.get("press_join", "").strip()
                 press_entity = user_input.get("press_entity")
                 press_action = user_input.get("press_action")
@@ -2393,9 +2394,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 feedback_join = user_input.get("feedback_join", "").strip()
                 feedback_entity = user_input.get("feedback_entity")
 
-                # Validate press (if configured)
-                if press_join:
-                    if not (press_join[0] == 'd' and press_join[1:].isdigit()):
+                # Validate press
+                if config_press:
+                    if not press_join or not (press_join[0] == 'd' and press_join[1:].isdigit()):
                         errors["press_join"] = "invalid_join_format"
                     elif not press_entity or not press_action:
                         errors["press_entity"] = "entity_and_action_required"
@@ -2498,6 +2499,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         button_schema = vol.Schema(
             {
                 # Press action
+                vol.Optional("config_press", default=False): selector.BooleanSelector(),
                 vol.Optional("press_join"): selector.TextSelector(
                     selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),

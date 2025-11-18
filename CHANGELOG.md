@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.4] - 2025-11-18
+
+### Added
+- **Button number display** in dimmer configuration - Form title now shows "Configure Button X of Y"
+- **Optional press action** - Press action now has an enable checkbox like double press and hold
+- Comprehensive UI strings for all dimmer configuration steps
+
+### Fixed
+- Button configuration forms now display which button is being configured
+- Press action is now truly optional with enable/disable checkbox
+- All dimmer configuration steps have proper titles and descriptions
+
+### Technical Details
+- Added strings.json entries for add_dimmer_basic, add_dimmer_lighting, add_dimmer_button
+- Button title uses description_placeholders: "Configure Button {button_num} of {total_buttons}"
+- Added config_press checkbox to button schema (matches config_double_press and config_hold pattern)
+- Press validation now checks config_press flag before requiring press_join
+- Translations synchronized to en.json
+
 ## [1.16.3] - 2025-11-18
 
 ### Fixed

@@ -124,6 +124,101 @@
           "entities_to_remove": "Entities to Remove"
         }
       },
+      "add_dimmer_basic": {
+        "title": "Add Dimmer/Keypad - Basic Info",
+        "description": "Configure basic dimmer/keypad settings. You'll configure lighting load and buttons in the next steps.",
+        "data": {
+          "name": "Dimmer/Keypad Name",
+          "button_count": "Number of Buttons",
+          "has_lighting_load": "Has Lighting Load?"
+        },
+        "data_description": {
+          "name": "Friendly name (e.g., Kitchen Keypad)",
+          "button_count": "Number of buttons to configure (2-6)",
+          "has_lighting_load": "Does this dimmer control a lighting load with brightness?"
+        }
+      },
+      "add_dimmer_lighting": {
+        "title": "Add Dimmer/Keypad - Lighting Load",
+        "description": "Configure the lighting load for {dimmer_name}. This creates a dimmable light entity.",
+        "data": {
+          "light_name": "Light Entity Name",
+          "is_on_join": "On/Off Join",
+          "has_brightness": "Has Brightness Control?",
+          "brightness_join": "Brightness Join (optional)"
+        },
+        "data_description": {
+          "light_name": "Name for the light entity (e.g., Kitchen Lights)",
+          "is_on_join": "Digital join for on/off (e.g., d1)",
+          "has_brightness": "Can this light be dimmed?",
+          "brightness_join": "Analog join for brightness 0-255 (e.g., a1)"
+        }
+      },
+      "add_dimmer_button": {
+        "title": "Configure Button {button_num} of {total_buttons}",
+        "description": "Configure actions for button {button_num} on {dimmer_name}. All actions are optional - configure only what you need.",
+        "data": {
+          "config_press": "Enable Press Action?",
+          "press_join": "Press Join",
+          "press_entity": "Press Entity",
+          "press_action": "Press Action",
+          "press_service_data": "Press Service Data (YAML)",
+          "config_double_press": "Enable Double Press Action?",
+          "double_press_join": "Double Press Join",
+          "double_press_entity": "Double Press Entity",
+          "double_press_action": "Double Press Action",
+          "double_service_data": "Double Press Service Data (YAML)",
+          "config_hold": "Enable Hold Action?",
+          "hold_join": "Hold Join",
+          "hold_entity": "Hold Entity",
+          "hold_action": "Hold Action",
+          "hold_service_data": "Hold Service Data (YAML)",
+          "config_feedback": "Enable Button Feedback?",
+          "feedback_join": "Feedback Join",
+          "feedback_entity": "Feedback Entity"
+        },
+        "data_description": {
+          "config_press": "Configure what happens on button press",
+          "press_join": "Digital join for press (e.g., d10)",
+          "press_entity": "Entity to control",
+          "press_action": "Action to perform",
+          "press_service_data": "Optional: Additional service parameters in YAML format",
+          "config_double_press": "Configure what happens on double press",
+          "double_press_join": "Digital join for double press (e.g., d11)",
+          "double_press_entity": "Entity to control",
+          "double_press_action": "Action to perform",
+          "double_service_data": "Optional: Additional service parameters in YAML format",
+          "config_hold": "Configure what happens on button hold",
+          "hold_join": "Digital join for hold (e.g., d12)",
+          "hold_entity": "Entity to control",
+          "hold_action": "Action to perform",
+          "hold_service_data": "Optional: Additional service parameters in YAML format",
+          "config_feedback": "Sync HA entity state to button LED",
+          "feedback_join": "Digital join for LED feedback (e.g., d13)",
+          "feedback_entity": "Entity to monitor for feedback"
+        }
+      },
+      "dimmer_menu": {
+        "title": "Manage Dimmers/Keypads",
+        "description": "Configure Crestron dimmers and keypads with button actions and lighting loads.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "select_dimmer_to_edit": {
+        "title": "Select Dimmer to Edit",
+        "description": "Choose a dimmer/keypad to edit.",
+        "data": {
+          "dimmer_to_edit": "Dimmer/Keypad to Edit"
+        }
+      },
+      "remove_dimmers": {
+        "title": "Remove Dimmers/Keypads",
+        "description": "Select one or more dimmers/keypads to remove. Associated entities will be removed from Home Assistant.",
+        "data": {
+          "dimmers_to_remove": "Dimmers/Keypads to Remove"
+        }
+      }
     },
     "error": {
       "invalid_join_format": "Join must be in format: d1-d250, a1-a250, or s1-s250 (e.g., d15, a10, s5)",
