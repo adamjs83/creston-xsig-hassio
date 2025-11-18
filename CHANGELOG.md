@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.3] - 2025-11-18
+
+### Fixed
+- Fixed "Unknown error occurred" when submitting dimmer configuration forms
+- Removed unsupported `placeholder` parameter from TextSelectorConfig instances
+- Error: `extra keys not allowed @ data['placeholder']`
+
+### Technical Details
+- TextSelectorConfig does not support the `placeholder` parameter in Home Assistant
+- Changed all TextSelector instances to use `type=selector.TextSelectorType.TEXT` pattern
+- Fixed in both button configuration (7 instances) and lighting load configuration (2 instances)
+- This fixes the validation error that prevented dimmer configuration forms from submitting
+
 ## [1.16.2] - 2025-11-18
 
 ### Fixed

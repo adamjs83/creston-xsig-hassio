@@ -2338,11 +2338,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Required("light_name"): selector.TextSelector(),
                 vol.Required(CONF_IS_ON_JOIN): selector.TextSelector(
-                    selector.TextSelectorConfig(placeholder="d1")
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
                 vol.Optional("has_brightness", default=False): selector.BooleanSelector(),
                 vol.Optional(CONF_BRIGHTNESS_JOIN): selector.TextSelector(
-                    selector.TextSelectorConfig(placeholder="a1")
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
             }
         )
@@ -2499,7 +2499,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 # Press action
                 vol.Optional("press_join"): selector.TextSelector(
-                    selector.TextSelectorConfig(placeholder=f"d{button_num}0")
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
                 vol.Optional("press_entity"): selector.EntitySelector(),
                 vol.Optional("press_action"): selector.SelectSelector(
@@ -2511,14 +2511,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional("press_service_data"): selector.TextSelector(
                     selector.TextSelectorConfig(
                         multiline=True,
-                        placeholder="brightness: 255\ntransition: 2"
+                        type=selector.TextSelectorType.TEXT,
                     )
                 ),
 
                 # Double press action
                 vol.Optional("config_double_press", default=False): selector.BooleanSelector(),
                 vol.Optional("double_press_join"): selector.TextSelector(
-                    selector.TextSelectorConfig(placeholder=f"d{button_num}1")
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
                 vol.Optional("double_press_entity"): selector.EntitySelector(),
                 vol.Optional("double_press_action"): selector.SelectSelector(
@@ -2530,14 +2530,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional("double_service_data"): selector.TextSelector(
                     selector.TextSelectorConfig(
                         multiline=True,
-                        placeholder="brightness: 128"
+                        type=selector.TextSelectorType.TEXT,
                     )
                 ),
 
                 # Hold action
                 vol.Optional("config_hold", default=False): selector.BooleanSelector(),
                 vol.Optional("hold_join"): selector.TextSelector(
-                    selector.TextSelectorConfig(placeholder=f"d{button_num}2")
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
                 vol.Optional("hold_entity"): selector.EntitySelector(),
                 vol.Optional("hold_action"): selector.SelectSelector(
@@ -2549,14 +2549,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional("hold_service_data"): selector.TextSelector(
                     selector.TextSelectorConfig(
                         multiline=True,
-                        placeholder="brightness: 1"
+                        type=selector.TextSelectorType.TEXT,
                     )
                 ),
 
                 # Feedback
                 vol.Optional("config_feedback", default=False): selector.BooleanSelector(),
                 vol.Optional("feedback_join"): selector.TextSelector(
-                    selector.TextSelectorConfig(placeholder=f"d{button_num + 20}")
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
                 vol.Optional("feedback_entity"): selector.EntitySelector(),
             }
