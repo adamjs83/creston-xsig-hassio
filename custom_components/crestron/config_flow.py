@@ -569,7 +569,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 base_join_str = user_input.get(CONF_BASE_JOIN, "").strip()
                 button_count = int(user_input.get(CONF_BUTTON_COUNT, "4"))
                 has_lighting = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
-                light_on_join_str = user_input.get(CONF_LIGHT_ON_JOIN, "").strip() if has_lighting else None
                 light_brightness_join_str = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
 
                 # Validate name
@@ -586,12 +585,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     if max_join_needed > 250:
                         errors[CONF_BASE_JOIN] = "join_range_exceeded"
 
-                # Validate lighting load joins if provided
+                # Validate lighting load brightness join if provided
                 if has_lighting:
-                    if not light_on_join_str or not (light_on_join_str[0] == 'd' and light_on_join_str[1:].isdigit()):
-                        errors[CONF_LIGHT_ON_JOIN] = "invalid_join_format"
-
-                    if light_brightness_join_str and not (light_brightness_join_str[0] == 'a' and light_brightness_join_str[1:].isdigit()):
+                    if not light_brightness_join_str or not (light_brightness_join_str[0] == 'a' and light_brightness_join_str[1:].isdigit()):
                         errors[CONF_LIGHT_BRIGHTNESS_JOIN] = "invalid_join_format"
 
                 # Check for join conflicts
@@ -605,11 +601,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         joins_to_check.append(f"d{base_join_num + offset + 1}")  # double
                         joins_to_check.append(f"d{base_join_num + offset + 2}")  # hold
 
-                    # Add lighting load joins
-                    if has_lighting:
-                        joins_to_check.append(light_on_join_str)
-                        if light_brightness_join_str:
-                            joins_to_check.append(light_brightness_join_str)
+                    # Add lighting load brightness join
+                    if has_lighting and light_brightness_join_str:
+                        joins_to_check.append(light_brightness_join_str)
 
                     conflict = self._check_join_conflicts(joins_to_check)
                     if conflict:
@@ -623,11 +617,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_BUTTON_COUNT: button_count,
                     }
 
-                    if has_lighting:
+                    if has_lighting and light_brightness_join_str:
                         dimmer_config[CONF_HAS_LIGHTING_LOAD] = True
-                        dimmer_config[CONF_LIGHT_ON_JOIN] = light_on_join_str
-                        if light_brightness_join_str:
-                            dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
+                        dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
 
                     # Save dimmer
                     current_dimmers = self.config_entry.data.get(CONF_DIMMERS, []).copy()
@@ -672,9 +664,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
                 ),
                 vol.Optional(CONF_HAS_LIGHTING_LOAD, default=False): selector.BooleanSelector(),
-                vol.Optional(CONF_LIGHT_ON_JOIN): selector.TextSelector(
-                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
-                ),
                 vol.Optional(CONF_LIGHT_BRIGHTNESS_JOIN): selector.TextSelector(
                     selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
@@ -702,7 +691,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 name = user_input.get(CONF_NAME, "").strip()
                 button_count = self._dimmer_button_count
                 has_lighting = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
-                light_on_join_str = user_input.get(CONF_LIGHT_ON_JOIN, "").strip() if has_lighting else None
                 light_brightness_join_str = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
 
                 # Validate name
@@ -741,16 +729,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         if btn_num in button_joins:
                             button_joins[btn_num]["hold"] = hold_join
 
-                # Validate lighting load joins if provided
+                # Validate lighting load brightness join if provided
                 if has_lighting:
-                    if not light_on_join_str or not (light_on_join_str[0] == 'd' and light_on_join_str[1:].isdigit()):
-                        errors[CONF_LIGHT_ON_JOIN] = "invalid_join_format"
-                    else:
-                        joins_to_check.append(light_on_join_str)
-
-                    if light_brightness_join_str and not (light_brightness_join_str[0] == 'a' and light_brightness_join_str[1:].isdigit()):
+                    if not light_brightness_join_str or not (light_brightness_join_str[0] == 'a' and light_brightness_join_str[1:].isdigit()):
                         errors[CONF_LIGHT_BRIGHTNESS_JOIN] = "invalid_join_format"
-                    elif light_brightness_join_str:
+                    else:
                         joins_to_check.append(light_brightness_join_str)
 
                 # Check for join conflicts
@@ -767,11 +750,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         "manual_joins": button_joins,  # Store manual join mapping
                     }
 
-                    if has_lighting:
+                    if has_lighting and light_brightness_join_str:
                         dimmer_config[CONF_HAS_LIGHTING_LOAD] = True
-                        dimmer_config[CONF_LIGHT_ON_JOIN] = light_on_join_str
-                        if light_brightness_join_str:
-                            dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
+                        dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
 
                     # Save dimmer
                     current_dimmers = self.config_entry.data.get(CONF_DIMMERS, []).copy()
@@ -833,9 +814,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         # Add lighting load fields
         schema_fields[vol.Optional(CONF_HAS_LIGHTING_LOAD, default=False)] = selector.BooleanSelector()
-        schema_fields[vol.Optional(CONF_LIGHT_ON_JOIN)] = selector.TextSelector(
-            selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
-        )
         schema_fields[vol.Optional(CONF_LIGHT_BRIGHTNESS_JOIN)] = selector.TextSelector(
             selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
         )
@@ -3158,15 +3136,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 entity_reg.async_remove(entity_id)
 
         # Remove lighting load entity if present
-        if dimmer.get(CONF_LIGHTING_LOAD):
-            lighting_load = dimmer[CONF_LIGHTING_LOAD]
-            is_on_join = lighting_load.get(CONF_IS_ON_JOIN)
-
-            unique_id = f"crestron_light_dimmer_{is_on_join}"
-            entity_id = entity_reg.async_get_entity_id("light", DOMAIN, unique_id)
-            if entity_id:
-                _LOGGER.debug("Removing dimmer light entity: %s", entity_id)
-                entity_reg.async_remove(entity_id)
+        if dimmer.get(CONF_HAS_LIGHTING_LOAD):
+            brightness_join_str = dimmer.get(CONF_LIGHT_BRIGHTNESS_JOIN)
+            if brightness_join_str:
+                brightness_join = int(brightness_join_str[1:])  # Remove 'a' prefix
+                unique_id = f"crestron_light_dimmer_{dimmer_name}_a{brightness_join}"
+                entity_id = entity_reg.async_get_entity_id("light", DOMAIN, unique_id)
+                if entity_id:
+                    _LOGGER.debug("Removing dimmer light entity: %s", entity_id)
+                    entity_reg.async_remove(entity_id)
 
         # Remove the device from device registry
         device_identifier = (DOMAIN, f"dimmer_{dimmer_name}")

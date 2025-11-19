@@ -1,6 +1,6 @@
 # Crestron XSIG Integration for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-1.17.2-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
+[![Version](https://img.shields.io/badge/version-1.17.3-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -328,8 +328,7 @@ Use the **Configure** button → **Manage Dimmers/Keypads** to add Crestron keyp
 - **Name** - Friendly name for the dimmer/keypad
 - **Button Count** - 2 to 6 buttons
 - **Lighting Load** (optional) - Control a dimmer's lighting load
-  - On/Off join (digital)
-  - Brightness join (analog, 0-255)
+  - Brightness join (analog, 0-65535) - Controls both on/off and brightness level
 
 **Entities Created Automatically:**
 
@@ -408,9 +407,14 @@ In your Crestron program:
 2. Wire LED feedback signals from the **same digital joins** (bidirectional)
    - Example: Button 1 press join d10 is used for both INPUT (button press) and OUTPUT (LED feedback)
    - This bidirectional approach allows Home Assistant to both detect button presses and control LED state
-3. If using lighting load: wire dimmer control joins for on/off and brightness
+3. If using lighting load: wire dimmer control to a single analog join (0-65535)
+   - The analog join controls both on/off and brightness level
+   - Value 0 = off, values 1-65535 = on with varying brightness
+   - No separate digital on/off join is needed
 
-**Important:** The same join number is used for button input and LED output. This is critical for the feedback system to work correctly.
+**Important:**
+- Button joins are bidirectional (same join for input and output)
+- Lighting load uses a single analog join for full dimmer control
 
 ## Complete Example
 

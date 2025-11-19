@@ -139,16 +139,14 @@
           "base_join": "Base Join (Button 1 Press)",
           "button_count": "Number of Buttons",
           "has_lighting_load": "Has Lighting Load?",
-          "light_on_join": "Light On/Off Join",
-          "light_brightness_join": "Light Brightness Join (optional)"
+          "light_brightness_join": "Light Brightness Join"
         },
         "data_description": {
           "name": "Friendly name (e.g., Kitchen Keypad)",
           "base_join": "First digital join (e.g., d10). System auto-assigns: d10=press, d11=double, d12=hold, d13-d15=button2, etc.",
           "button_count": "Number of buttons (2-6). Each button uses 3 sequential joins.",
-          "has_lighting_load": "Does this dimmer control a light with brightness?",
-          "light_on_join": "Digital join for light on/off (e.g., d1)",
-          "light_brightness_join": "Analog join for brightness 0-255 (e.g., a1)"
+          "has_lighting_load": "Does this dimmer control a light?",
+          "light_brightness_join": "Analog join for brightness 0-65535 (e.g., a1)"
         }
       },
       "add_dimmer_manual": {
@@ -176,8 +174,7 @@
           "button_6_double": "Button 6 - Double Press Join",
           "button_6_hold": "Button 6 - Hold Join",
           "has_lighting_load": "Has Lighting Load?",
-          "light_on_join": "Light On/Off Join",
-          "light_brightness_join": "Light Brightness Join (optional)"
+          "light_brightness_join": "Light Brightness Join"
         },
         "data_description": {
           "name": "Friendly name (e.g., Kitchen Keypad)",
@@ -200,9 +197,8 @@
           "button_6_press": "Digital join for button 6 press",
           "button_6_double": "Digital join for button 6 double press",
           "button_6_hold": "Digital join for button 6 hold",
-          "has_lighting_load": "Does this dimmer control a light with brightness?",
-          "light_on_join": "Digital join for light on/off (e.g., d1)",
-          "light_brightness_join": "Analog join for brightness 0-255 (e.g., a1)"
+          "has_lighting_load": "Does this dimmer control a light?",
+          "light_brightness_join": "Analog join for brightness 0-65535 (e.g., a1)"
         }
       },
       "dimmer_menu": {

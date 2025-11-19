@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.3] - 2025-11-18
+
+### Fixed
+- **Dimmer Lighting Load** - Removed unnecessary digital on/off join; dimmers now use single analog join (0-65535) for both on/off and brightness control
+- **Device Grouping** - Dimmer lighting load entities now properly grouped under dimmer device in Home Assistant
+
+### Changed
+- Lighting load configuration simplified - only requires brightness join (analog), no separate on/off join
+- Light entities from dimmers use unique_id format: `crestron_light_dimmer_{name}_a{join}`
+- Updated cleanup code to use brightness_join instead of obsolete is_on_join
+- Updated UI strings and descriptions to reflect single analog join requirement
+- Updated README with correct Crestron programming instructions (single analog join for dimmer control)
+
+### Technical Details
+- Light platform (`light.py`) now creates entities from dimmer configs with device grouping
+- Config flow no longer asks for `light_on_join`, only `light_brightness_join`
+- Dimmer lights automatically grouped under parent dimmer device
+- Analog join range: 0 (off), 1-65535 (on with varying brightness)
+
 ## [1.17.2] - 2025-11-18
 
 ### Fixed

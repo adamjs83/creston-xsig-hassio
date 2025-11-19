@@ -11,7 +11,15 @@ from homeassistant.components.light import (
 from homeassistant.const import CONF_NAME, CONF_TYPE, STATE_ON
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
-from .const import HUB, DOMAIN, CONF_BRIGHTNESS_JOIN, CONF_LIGHTS
+from .const import (
+    HUB,
+    DOMAIN,
+    CONF_BRIGHTNESS_JOIN,
+    CONF_LIGHTS,
+    CONF_DIMMERS,
+    CONF_HAS_LIGHTING_LOAD,
+    CONF_LIGHT_BRIGHTNESS_JOIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,13 +63,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     # Get light configurations from config entry
     light_configs = entry.data.get(CONF_LIGHTS, [])
-
-    if not light_configs:
-        _LOGGER.debug("No light entities configured in config entry")
-        return True
-
-    # Parse join strings to integers and create entities
     entities = []
+
+    # Parse join strings to integers and create regular light entities
     for light_config in light_configs:
         # Parse joins from string format ("a30") to integers
         parsed_config = {
@@ -83,6 +87,46 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
         entities.append(CrestronLight(hub, parsed_config, from_ui=True))
 
+    # Create light entities from dimmer configs (v1.17.3+)
+    dimmers = entry.data.get(CONF_DIMMERS, [])
+    for dimmer in dimmers:
+        if not dimmer.get(CONF_HAS_LIGHTING_LOAD):
+            continue
+
+        dimmer_name = dimmer.get(CONF_NAME)
+        brightness_join_str = dimmer.get(CONF_LIGHT_BRIGHTNESS_JOIN)
+
+        if not brightness_join_str:
+            continue
+
+        # Parse brightness join
+        if brightness_join_str[0] == 'a':
+            brightness_join = int(brightness_join_str[1:])
+        else:
+            _LOGGER.warning(
+                "Skipping dimmer light for '%s': invalid brightness_join format %s",
+                dimmer_name,
+                brightness_join_str
+            )
+            continue
+
+        # Create light entity for dimmer's lighting load
+        light_config = {
+            CONF_NAME: f"{dimmer_name} Light",
+            CONF_TYPE: "brightness",
+            CONF_BRIGHTNESS_JOIN: brightness_join,
+        }
+
+        entities.append(
+            CrestronLight(
+                hub,
+                light_config,
+                from_ui=True,
+                is_dimmer_light=True,
+                dimmer_name=dimmer_name
+            )
+        )
+
     if entities:
         async_add_entities(entities)
         _LOGGER.info("Added %d light entities from config entry", len(entities))
@@ -91,9 +135,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class CrestronLight(LightEntity, RestoreEntity):
-    def __init__(self, hub, config, from_ui=False):
+    def __init__(self, hub, config, from_ui=False, is_dimmer_light=False, dimmer_name=None):
         self._hub = hub
         self._from_ui = from_ui  # Track if this is a UI-created entity
+        self._is_dimmer_light = is_dimmer_light  # Track if this is a dimmer's lighting load
+        self._dimmer_name = dimmer_name  # Parent dimmer name (for device grouping)
         self._name = config.get(CONF_NAME)
         self._brightness_join = config.get(CONF_BRIGHTNESS_JOIN)
 
@@ -145,6 +191,8 @@ class CrestronLight(LightEntity, RestoreEntity):
     @property
     def unique_id(self):
         """Return unique ID for this entity."""
+        if self._is_dimmer_light:
+            return f"crestron_light_dimmer_{self._dimmer_name}_a{self._brightness_join}"
         if self._from_ui:
             return f"crestron_light_ui_a{self._brightness_join}"
         return f"crestron_light_a{self._brightness_join}"
@@ -152,6 +200,16 @@ class CrestronLight(LightEntity, RestoreEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info for this entity."""
+        # Dimmer lights group under dimmer device
+        if self._is_dimmer_light and self._dimmer_name:
+            return DeviceInfo(
+                identifiers={(DOMAIN, f"dimmer_{self._dimmer_name}")},
+                name=self._dimmer_name,
+                manufacturer="Crestron",
+                model="Keypad/Dimmer",
+            )
+
+        # Regular lights group under main Crestron device
         return DeviceInfo(
             identifiers={(DOMAIN, f"crestron_{self._hub.port}")},
             name="Crestron Control System",
