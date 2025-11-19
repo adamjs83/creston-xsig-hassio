@@ -93,6 +93,7 @@ class CrestronButtonEvent(EventEntity):
 
     _attr_event_types = EVENT_TYPES
     _attr_device_class = EventDeviceClass.BUTTON
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -110,7 +111,7 @@ class CrestronButtonEvent(EventEntity):
         self._press_join = press_join
         self._double_join = double_join
         self._hold_join = hold_join
-        self._name = f"{dimmer_name} Button {button_num}"
+        self._name = f"Button {button_num}"
 
     @property
     def name(self):

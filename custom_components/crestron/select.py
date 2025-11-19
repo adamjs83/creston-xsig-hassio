@@ -71,6 +71,7 @@ class CrestronLEDBinding(SelectEntity):
     """Representation of a Crestron LED binding select entity."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -88,7 +89,7 @@ class CrestronLEDBinding(SelectEntity):
         self._led_entity_id = led_entity_id
         self._bound_entity = None
         self._state_listener = None
-        self._name = f"{dimmer_name} LED {button_num} Binding"
+        self._name = f"LED {button_num} Binding"
 
         # Initial options (will be updated in async_added_to_hass)
         self._attr_options = ["none"]
