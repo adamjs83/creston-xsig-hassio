@@ -111,8 +111,8 @@ class CrestronButtonEvent(EventEntity):
         self._double_join = double_join
         self._hold_join = hold_join
 
-        # Entity naming
-        self._attr_name = f"{dimmer_name} Button {button_num}"
+        # Entity naming (device name auto-prepended by HA due to _attr_has_entity_name = True)
+        self._attr_name = f"Button {button_num}"
         self._attr_unique_id = f"crestron_event_{dimmer_name}_button_{button_num}"
 
         # Device info (group under dimmer device)

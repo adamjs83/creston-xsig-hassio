@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.5] - 2025-11-18
+
+### Fixed
+- **Entity Naming** - Fixed event and select entity names to work properly with Home Assistant's automatic device name prepending
+  - Event entities now correctly display as "{Dimmer Name} Button 1" (was incorrectly duplicating name)
+  - Select entities now correctly display as "{Dimmer Name} LED 1 Binding" (was incorrectly duplicating name)
+
+### Technical Details
+- Event and select entities have `_attr_has_entity_name = True`, which tells HA to auto-prepend device name
+- Changed entity names from f"{dimmer_name} Button {button_num}" to f"Button {button_num}"
+- Changed entity names from f"{dimmer_name} LED {button_num} Binding" to f"LED {button_num} Binding"
+- HA automatically prepends device name (dimmer_name) when displaying
+- Switch and light entities remain unchanged (they don't use _attr_has_entity_name)
+- No impact on other platforms (covers, binary sensors, sensors, climate, media players)
+
 ## [1.17.4] - 2025-11-18
 
 ### Fixed
