@@ -20,6 +20,7 @@ A Home Assistant custom component for integrating with Crestron control systems 
   - LED binding to Home Assistant entities
   - Optional lighting load control
   - Auto-sequential or manual join assignment
+  - Modern `has_entity_name` pattern for context-aware naming (v1.18.0+)
 - **Template-based state synchronization** (Home Assistant → Crestron)
 - **Script execution** from join changes (Crestron → Home Assistant)
 - **Automatic reconnection** on connection loss
@@ -416,6 +417,52 @@ In your Crestron program:
 - Button joins are bidirectional (same join for input and output)
 - Lighting load uses a single analog join for full dimmer control
 
+### Modern Entity Naming (v1.18.0+)
+
+Dimmer/keypad entities use Home Assistant's modern `has_entity_name = True` pattern for cleaner, context-aware naming.
+
+**How it works:**
+
+Home Assistant automatically combines device name + entity name:
+- **Device:** "Kitchen Keypad" (configured dimmer name)
+- **Entity:** "Button 1" (feature identifier)
+- **Result:** "Kitchen Keypad Button 1" (friendly name)
+
+**Context-aware display:**
+
+Entity names appear differently depending on where you view them:
+
+1. **Within Device Page** (Settings → Devices → Your Dimmer):
+   - Shows: "Light", "Button 1", "LED 1 Binding"
+   - Why: Device name is already shown at the top, no redundancy needed
+
+2. **Dashboards, Automations, Entity Lists**:
+   - Shows: "Kitchen Keypad Light", "Kitchen Keypad Button 1"
+   - Why: Full context needed when device name isn't displayed
+
+3. **Entity Attributes** (Developer Tools → States):
+   - `friendly_name`: "Kitchen Keypad Button 1" (full name stored)
+
+**Example entity names for a dimmer named "Kitchen Keypad":**
+
+| Entity Type | Entity Name | Friendly Name (Full) | Display in Device Page |
+|-------------|-------------|---------------------|----------------------|
+| Event | "Button 1" | "Kitchen Keypad Button 1" | "Button 1" |
+| Event | "Button 2" | "Kitchen Keypad Button 2" | "Button 2" |
+| Select | "LED 1 Binding" | "Kitchen Keypad LED 1 Binding" | "LED 1 Binding" |
+| Select | "LED 2 Binding" | "Kitchen Keypad LED 2 Binding" | "LED 2 Binding" |
+| Switch | "LED 1" | "Kitchen Keypad LED 1" | "LED 1" |
+| Switch | "LED 2" | "Kitchen Keypad LED 2" | "LED 2" |
+| Light | "Light" | "Kitchen Keypad Light" | "Light" |
+
+**Benefits:**
+- ✅ Future-proof (mandatory for new integrations per HA standards)
+- ✅ Automatic updates when device is renamed
+- ✅ Cleaner code without name duplication
+- ✅ Matches modern integrations (Z-Wave, Zigbee, Matter, etc.)
+
+**Note:** Only dimmer-related entities use this pattern. Standalone switches, lights, covers, etc. continue to use full names as configured.
+
 ## Complete Example
 
 ```yaml
@@ -503,11 +550,68 @@ logger:
 3. **Values incorrect**: For temperatures, remember to use tenths (multiply by 10)
 4. **Template errors**: Verify template syntax and entity IDs in `to_joins`
 
+## Roadmap
+
+### Current Status (v1.18.0)
+
+**Fully Implemented:**
+- ✅ UI-based configuration with Config Flow
+- ✅ UI join management (to_joins, from_joins)
+- ✅ UI entity management for: Covers, Binary Sensors, Sensors, Switches, Lights, Climate
+- ✅ UI dimmer/keypad management with button events and LED control
+- ✅ Modern `has_entity_name = True` pattern for dimmer entities
+- ✅ Automatic YAML import
+- ✅ Multiple platform support (8 platforms)
+- ✅ Template-based state synchronization
+- ✅ Script execution from join changes
+- ✅ Auto-sequential and manual join assignment for dimmers
+- ✅ LED binding with 15+ supported domains
+
+### Planned Features
+
+**High Priority:**
+- 🔄 UI entity management for Media Players
+- 🔄 Extend modern `has_entity_name` pattern to other entity types (covers, climate, etc.)
+- 🔄 Entity naming consistency review across all platforms
+
+**Medium Priority:**
+- 📋 Scene support - Trigger Crestron scenes from HA
+- 📋 Number entities - For analog value sliders
+- 📋 Enhanced diagnostics and troubleshooting tools
+- 📋 Connection status sensor
+
+**Low Priority / Future Consideration:**
+- 💡 Translation support for entity names
+- 💡 Custom device icons for dimmers/keypads
+- 💡 Bulk operations for join management
+- 💡 Join conflict detection and warnings
+
+**Not Planned:**
+- ❌ YAML configuration for dimmers/keypads (UI-only by design)
+- ❌ Bidirectional serial join support (technical limitations)
+
+### Completed Milestones
+
+- ✅ **v1.18.0** - Modern entity naming pattern
+- ✅ **v1.17.x** - Complete dimmer/keypad support
+- ✅ **v1.8.0-v1.14.0** - UI entity management for 6 platforms
+- ✅ **v1.7.0** - UI join management and YAML import
+- ✅ **v1.6.0** - Config Flow implementation
+
+### Version Philosophy
+
+- **Major versions (2.0.0)**: Breaking changes, architecture updates
+- **Minor versions (1.x.0)**: New features, new entity types, new platforms
+- **Patch versions (1.x.x)**: Bug fixes, improvements, minor enhancements
+
+We follow [Semantic Versioning](https://semver.org/) and maintain backward compatibility whenever possible.
+
 ## Credits
 
 This component is forked from the excellent work by [@npope](https://github.com/npope) - [home-assistant-crestron-component](https://github.com/npope/home-assistant-crestron-component)
 
 ### Enhancements in this fork:
+- **v1.18.0**: Modern entity naming with `has_entity_name = True` pattern for dimmer entities
 - **v1.17.0**: Complete dimmer/keypad support with button events and LED control
 - **v1.17.1**: Manual join assignment mode for flexible keypad configuration
 - **v1.17.2**: Automatic device and entity cleanup on dimmer removal
