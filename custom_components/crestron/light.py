@@ -112,7 +112,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
         # Create light entity for dimmer's lighting load
         light_config = {
-            CONF_NAME: f"{dimmer_name} Light",
+            CONF_NAME: "Light",
             CONF_TYPE: "brightness",
             CONF_BRIGHTNESS_JOIN: brightness_join,
         }
@@ -217,6 +217,11 @@ class CrestronLight(LightEntity, RestoreEntity):
             model="XSIG Gateway",
             sw_version="1.6.0",
         )
+
+    @property
+    def has_entity_name(self):
+        """Return if entity should use modern naming with device name prefix."""
+        return self._is_dimmer_light  # True for dimmer lights (part of dimmer device)
 
     @property
     def should_poll(self):

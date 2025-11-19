@@ -124,7 +124,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 press_join = int(base_join[1:]) + base_offset
 
             led_config = {
-                CONF_NAME: f"{dimmer_name} LED {button_num}",
+                CONF_NAME: f"LED {button_num}",
                 CONF_SWITCH_JOIN: press_join,
                 CONF_DEVICE_CLASS: "switch",
             }
@@ -212,6 +212,11 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
             model="XSIG Gateway",
             sw_version="1.6.0",
         )
+
+    @property
+    def has_entity_name(self):
+        """Return if entity should use modern naming with device name prefix."""
+        return self._is_led  # True for LED switches (part of dimmer device)
 
     @property
     def should_poll(self):

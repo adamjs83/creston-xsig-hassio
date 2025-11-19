@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2025-11-18
+
+### Added
+- **Modern Entity Naming** - Implemented Home Assistant's modern `has_entity_name = True` pattern for all dimmer entities
+  - Home Assistant now automatically combines device name + entity name
+  - Example: Device "Kitchen" + Entity "Button 1" = Friendly Name "Kitchen Button 1"
+  - Aligns with Home Assistant best practices and future standards
+
+### Changed
+- **Event Entities** - Added `_attr_has_entity_name = True`, entity name now "Button 1" instead of "Kitchen Button 1"
+- **Select Entities** - Added `_attr_has_entity_name = True`, entity name now "LED 1 Binding" instead of "Kitchen LED 1 Binding"
+- **LED Switch Entities** - Added conditional `has_entity_name` property (True for LED switches), entity name now "LED 1" instead of "Kitchen LED 1"
+- **Dimmer Light Entities** - Added conditional `has_entity_name` property (True for dimmer lights), entity name now "Light" instead of "Kitchen Light"
+
+### Technical Details
+- Event entities (`event.py`): Added `_attr_has_entity_name = True` class attribute
+- Select entities (`select.py`): Added `_attr_has_entity_name = True` class attribute
+- Switch entities (`switch.py`): Added `has_entity_name` property that returns True only for LED switches (dimmer-related)
+- Light entities (`light.py`): Added `has_entity_name` property that returns True only for dimmer lights
+- Regular standalone switches and lights remain unchanged (still use full names)
+- Device name is set in `device_info.name` and Home Assistant handles the combination
+
+### Benefits
+- **Future-proof** - Matches mandatory pattern for new integrations per HA documentation
+- **Automatic name updates** - When users rename a dimmer device, all entity names update automatically
+- **Cleaner code** - No duplication of device name in entity names
+- **Better organization** - Clear separation of device vs entity naming
+- **HA ecosystem alignment** - Matches how modern integrations work (Z-Wave, Zigbee, etc.)
+
+### Migration Notes
+- **IMPORTANT**: After upgrading to v1.18.0, you MUST remove and re-add all dimmers for the new naming to take effect
+- Existing entities will keep their old names until recreated
+- Entity IDs should remain the same (unique_id format unchanged)
+- Only dimmer-related entities are affected (events, selects, LED switches, dimmer lights)
+
 ## [1.17.7] - 2025-11-18
 
 ### Fixed
