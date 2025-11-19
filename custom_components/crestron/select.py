@@ -69,7 +69,6 @@ async def async_setup_entry(
 class CrestronLEDBinding(SelectEntity):
     """Representation of a Crestron LED binding select entity."""
 
-    _attr_has_entity_name = True
     _attr_should_poll = False
 
     def __init__(
@@ -89,8 +88,8 @@ class CrestronLEDBinding(SelectEntity):
         self._bound_entity = None
         self._state_listener = None
 
-        # Entity naming (device name auto-prepended by HA due to _attr_has_entity_name = True)
-        self._attr_name = f"LED {button_num} Binding"
+        # Entity naming
+        self._attr_name = f"{dimmer_name} LED {button_num} Binding"
         self._attr_unique_id = f"crestron_led_binding_{dimmer_name}_button_{button_num}"
 
         # Initial options (will be updated in async_added_to_hass)

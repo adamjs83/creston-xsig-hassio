@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.6] - 2025-11-18
+
+### Fixed
+- **Entity Naming** - Removed `_attr_has_entity_name` approach and use full entity names directly
+  - Event entities now correctly show "{Dimmer Name} Button 1"
+  - Select entities now correctly show "{Dimmer Name} LED 1 Binding"
+  - Matches the working approach used by switch and light entities
+
+### Changed
+- Removed `_attr_has_entity_name = True` from event.py and select.py
+- Changed back to full entity names: f"{dimmer_name} Button {button_num}" and f"{dimmer_name} LED {button_num} Binding"
+- Simpler, more consistent approach across all entity types
+- No more reliance on HA's automatic device name prepending
+
 ## [1.17.5] - 2025-11-18
 
 ### Fixed
