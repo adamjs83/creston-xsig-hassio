@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.4] - 2025-11-18
+
+### Fixed
+- **Entity Naming** - All dimmer entities now include dimmer name for better organization
+  - Event entities: "{Dimmer Name} Button 1" instead of "Button 1"
+  - Select entities: "{Dimmer Name} LED 1 Binding" instead of "LED 1 Binding"
+  - Switch entities: Already correct - "{Dimmer Name} LED 1"
+  - Light entities: Already correct - "{Dimmer Name} Light"
+
+### Changed
+- Updated `event.py`: Changed entity name from f"Button {button_num}" to f"{dimmer_name} Button {button_num}"
+- Updated `select.py`: Changed entity name from f"LED {button_num} Binding" to f"{dimmer_name} LED {button_num} Binding"
+
 ## [1.17.3] - 2025-11-18
 
 ### Fixed

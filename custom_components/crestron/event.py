@@ -112,7 +112,7 @@ class CrestronButtonEvent(EventEntity):
         self._hold_join = hold_join
 
         # Entity naming
-        self._attr_name = f"Button {button_num}"
+        self._attr_name = f"{dimmer_name} Button {button_num}"
         self._attr_unique_id = f"crestron_event_{dimmer_name}_button_{button_num}"
 
         # Device info (group under dimmer device)

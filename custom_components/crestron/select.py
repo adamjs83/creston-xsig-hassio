@@ -90,7 +90,7 @@ class CrestronLEDBinding(SelectEntity):
         self._state_listener = None
 
         # Entity naming
-        self._attr_name = f"LED {button_num} Binding"
+        self._attr_name = f"{dimmer_name} LED {button_num} Binding"
         self._attr_unique_id = f"crestron_led_binding_{dimmer_name}_button_{button_num}"
 
         # Initial options (will be updated in async_added_to_hass)
