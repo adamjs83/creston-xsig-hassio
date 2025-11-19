@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant, Event, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import (
     DOMAIN,
@@ -87,22 +88,31 @@ class CrestronLEDBinding(SelectEntity):
         self._led_entity_id = led_entity_id
         self._bound_entity = None
         self._state_listener = None
-
-        # Entity naming
-        self._attr_name = f"{dimmer_name} LED {button_num} Binding"
-        self._attr_unique_id = f"crestron_led_binding_{dimmer_name}_button_{button_num}"
+        self._name = f"{dimmer_name} LED {button_num} Binding"
 
         # Initial options (will be updated in async_added_to_hass)
         self._attr_options = ["none"]
         self._attr_current_option = "none"
 
-        # Device info (group under dimmer device)
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"dimmer_{dimmer_name}")},
-            "name": dimmer_name,
-            "manufacturer": "Crestron",
-            "model": "Keypad/Dimmer",
-        }
+    @property
+    def name(self):
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self):
+        """Return unique ID for the entity."""
+        return f"crestron_led_binding_{self._dimmer_name}_button_{self._button_num}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"dimmer_{self._dimmer_name}")},
+            name=self._dimmer_name,
+            manufacturer="Crestron",
+            model="Keypad/Dimmer",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Update options when entity is added."""

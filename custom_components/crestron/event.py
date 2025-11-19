@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import (
     DOMAIN,
@@ -109,18 +110,27 @@ class CrestronButtonEvent(EventEntity):
         self._press_join = press_join
         self._double_join = double_join
         self._hold_join = hold_join
+        self._name = f"{dimmer_name} Button {button_num}"
 
-        # Entity naming
-        self._attr_name = f"{dimmer_name} Button {button_num}"
-        self._attr_unique_id = f"crestron_event_{dimmer_name}_button_{button_num}"
+    @property
+    def name(self):
+        """Return the name of the entity."""
+        return self._name
 
-        # Device info (group under dimmer device)
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"dimmer_{dimmer_name}")},
-            "name": dimmer_name,
-            "manufacturer": "Crestron",
-            "model": "Keypad/Dimmer",
-        }
+    @property
+    def unique_id(self):
+        """Return unique ID for the entity."""
+        return f"crestron_event_{self._dimmer_name}_button_{self._button_num}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"dimmer_{self._dimmer_name}")},
+            name=self._dimmer_name,
+            manufacturer="Crestron",
+            model="Keypad/Dimmer",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks when entity is added."""

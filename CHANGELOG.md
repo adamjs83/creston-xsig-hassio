@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.7] - 2025-11-18
+
+### Fixed
+- **Entity Naming (Final Fix)** - Converted from attribute-based to property-based approach for event and select entities
+  - Changed `_attr_name` to `name` property (matching switch.py pattern)
+  - Changed `_attr_unique_id` to `unique_id` property
+  - Changed `_attr_device_info` dict to `device_info` property returning DeviceInfo object
+  - Event entities now correctly display as "{Dimmer Name} Button 1"
+  - Select entities now correctly display as "{Dimmer Name} LED 1 Binding"
+
+### Changed
+- Added DeviceInfo import to event.py and select.py
+- Converted from `_attr_` pattern to property methods
+- Now matches the working implementation pattern from switch.py and light.py
+
 ## [1.17.6] - 2025-11-18
 
 ### Fixed
