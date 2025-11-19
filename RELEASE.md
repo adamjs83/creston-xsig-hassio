@@ -22,7 +22,7 @@ Follow semantic versioning: **MAJOR.MINOR.PATCH**
 ### 1. README.md
 Update version badge on line 3:
 ```markdown
-[![Version](https://img.shields.io/badge/version-X.Y.Z-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
+[![Version](https://img.shields.io/badge/version-X.Y.Z-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
 ```
 
 ### 2. custom_components/crestron/manifest.json
@@ -124,8 +124,8 @@ git push --tags
 
 ### Step 5: Verify Automation
 - GitHub Actions will trigger automatically
-- Check workflow: https://github.com/adamjs83/crestron_custom_component/actions
-- Release appears: https://github.com/adamjs83/crestron_custom_component/releases
+- Check workflow: https://github.com/adamjs83/creston-xsig-hassio/actions
+- Release appears: https://github.com/adamjs83/creston-xsig-hassio/releases
 - Should complete in ~2-3 minutes
 
 ## Commit Message Format

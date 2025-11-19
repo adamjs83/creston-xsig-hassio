@@ -84,7 +84,7 @@ jobs:
 
           1. Open HACS in Home Assistant
           2. Go to Integrations → ⋮ → Custom repositories
-          3. Add: `https://github.com/adamjs83/crestron_custom_component`
+          3. Add: `https://github.com/adamjs83/creston-xsig-hassio`
           4. Category: Integration
           5. Search for "Crestron XSIG Integration"
           6. Click "Download"
@@ -92,20 +92,20 @@ jobs:
 
           ### Manual Installation
 
-          1. Download the [Source Code (zip)](https://github.com/adamjs83/crestron_custom_component/archive/refs/tags/v${{ steps.version.outputs.version }}.zip)
+          1. Download the [Source Code (zip)](https://github.com/adamjs83/creston-xsig-hassio/archive/refs/tags/v${{ steps.version.outputs.version }}.zip)
           2. Extract the archive
           3. Copy `custom_components/crestron` to your Home Assistant `custom_components` directory
           4. Restart Home Assistant
 
           ## Documentation
 
-          - [README](https://github.com/adamjs83/crestron_custom_component/blob/main/README.md)
-          - [Configuration Guide](https://github.com/adamjs83/crestron_custom_component/blob/main/README.md#configuration)
-          - [CHANGELOG](https://github.com/adamjs83/crestron_custom_component/blob/main/CHANGELOG.md)
+          - [README](https://github.com/adamjs83/creston-xsig-hassio/blob/main/README.md)
+          - [Configuration Guide](https://github.com/adamjs83/creston-xsig-hassio/blob/main/README.md#configuration)
+          - [CHANGELOG](https://github.com/adamjs83/creston-xsig-hassio/blob/main/CHANGELOG.md)
 
           ## Support
 
-          - [Report Issues](https://github.com/adamjs83/crestron_custom_component/issues)
+          - [Report Issues](https://github.com/adamjs83/creston-xsig-hassio/issues)
 
           ---
 

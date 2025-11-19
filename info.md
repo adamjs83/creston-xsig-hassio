@@ -37,7 +37,7 @@ crestron:
   port: 16384  # XSIG port on your processor
 ```
 
-For detailed configuration examples, see the [README](https://github.com/adamjs83/crestron_custom_component/blob/main/README.md).
+For detailed configuration examples, see the [README](https://github.com/adamjs83/creston-xsig-hassio/blob/main/README.md).
 
 ## Requirements
 
@@ -47,4 +47,4 @@ For detailed configuration examples, see the [README](https://github.com/adamjs8
 
 ## Support
 
-For issues and feature requests, please use the [GitHub issue tracker](https://github.com/adamjs83/crestron_custom_component/issues).
+For issues and feature requests, please use the [GitHub issue tracker](https://github.com/adamjs83/creston-xsig-hassio/issues).

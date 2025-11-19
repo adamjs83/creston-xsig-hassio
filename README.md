@@ -1,6 +1,6 @@
 # Crestron XSIG Integration for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-1.18.0-blue.svg)](https://github.com/adamjs83/crestron_custom_component/releases)
+[![Version](https://img.shields.io/badge/version-1.18.0-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -34,7 +34,7 @@ A Home Assistant custom component for integrating with Crestron control systems 
 2. Click on "Integrations"
 3. Click the three dots in the top right corner
 4. Select "Custom repositories"
-5. Add this repository URL: `https://github.com/adamjs83/crestron_custom_component`
+5. Add this repository URL: `https://github.com/adamjs83/creston-xsig-hassio`
 6. Category: Integration
 7. Click "Add"
 8. Find "Crestron XSIG Integration" and click "Download"
