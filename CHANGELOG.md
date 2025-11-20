@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.3] - 2025-01-20
+
+### Changed
+- **LED Binding Diagnostics** - Enhanced logging for LED binding troubleshooting
+  - Added detailed logging when bindings are configured
+  - Increased sync logging to INFO level with full service call details
+  - Added error handling and logging for switch service calls
+  - Logs now show LED entity_id, bound entity state, and service call results
+
+### Technical Details
+- Updated `select.py` _sync_led_state() with comprehensive logging
+- Added try/except around service calls to catch and log errors
+- Helps diagnose LED binding issues where physical LEDs don't respond to bound entity changes
+
 ## [1.19.2] - 2025-01-20
 
 ### Fixed

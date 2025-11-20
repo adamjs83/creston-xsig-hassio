@@ -162,7 +162,10 @@ class CrestronLEDBinding(SelectEntity):
                 self._handle_bound_state_change,
             )
             _LOGGER.info(
-                "LED %d now bound to %s", self._button_num, self._bound_entity
+                "LED %d now bound to %s (LED switch: %s)",
+                self._button_num,
+                self._bound_entity,
+                self._led_entity_id,
             )
 
             # Immediately sync current state
@@ -191,22 +194,34 @@ class CrestronLEDBinding(SelectEntity):
         state_value = state.state
         should_be_on = STATE_TO_LED.get(state_value, False)
 
-        _LOGGER.debug(
-            "LED %d sync: %s is '%s' → LED %s",
+        _LOGGER.info(
+            "LED %d sync: %s is '%s' → LED %s (calling switch.%s on %s)",
             self._button_num,
             self._bound_entity,
             state_value,
             "ON" if should_be_on else "OFF",
+            "turn_on" if should_be_on else "turn_off",
+            self._led_entity_id,
         )
 
         # Update LED via Home Assistant service call
         service = "turn_on" if should_be_on else "turn_off"
-        await self.hass.services.async_call(
-            "switch",
-            service,
-            {"entity_id": self._led_entity_id},
-            blocking=True,
-        )
+        try:
+            await self.hass.services.async_call(
+                "switch",
+                service,
+                {"entity_id": self._led_entity_id},
+                blocking=True,
+            )
+            _LOGGER.debug("LED %d switch service call succeeded", self._button_num)
+        except Exception as ex:
+            _LOGGER.error(
+                "LED %d failed to call switch.%s on %s: %s",
+                self._button_num,
+                service,
+                self._led_entity_id,
+                ex,
+            )
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up when entity is removed."""
