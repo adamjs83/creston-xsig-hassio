@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.2] - 2025-01-20
+
+### Fixed
+- **LED Switch Entities** - Fixed creation of LED switches from dimmer configurations
+  - LED switch entities were not being created when no regular switches were configured
+  - Removed early return in switch.py that prevented dimmer LED processing
+  - LED switches now correctly created for all dimmers regardless of regular switch configuration
+
+### Technical Details
+- Updated `switch.py` async_setup_entry() to remove early return at line 66
+- Function now processes dimmer configurations even when CONF_SWITCHES is empty
+- Affects all dimmer/keypad entities with button LEDs
+
 ## [1.19.1] - 2025-01-20
 
 ### Fixed

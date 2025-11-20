@@ -61,10 +61,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # Get switch configurations from config entry
     switch_configs = entry.data.get(CONF_SWITCHES, [])
 
-    if not switch_configs:
-        _LOGGER.debug("No switch entities configured in config entry")
-        return True
-
     # Parse join strings to integers and create entities
     entities = []
     for switch_config in switch_configs:
