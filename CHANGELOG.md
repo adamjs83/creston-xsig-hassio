@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2025-01-19
+
+### Added
+- **Complete UI Entity Management for Media Players** ⭐ **FINAL PLATFORM COMPLETE**
+  - Add/Edit/Remove media player entities via Configure button
+  - Device class selection: TV, Speaker, or Receiver
+  - Required: Source selection with customizable source names
+  - Optional features:
+    - Power control (power on join)
+    - Volume control (mute join, volume join)
+    - Transport controls (play, pause, stop, next, previous)
+  - Supports both YAML and UI configuration (dual config mode)
+  - Automatic entity registry cleanup when removed
+  - Hub persistence during reload (no connection drops)
+
+### Changed
+- **Media Player Platform** - Updated to support UI-based configuration
+  - Dynamic feature detection based on configured joins
+  - Unique ID prefix "ui_" for UI entities to prevent conflicts with YAML entities
+  - Device class now configurable (tv, speaker, receiver)
+  - Turn on/off support with optional power joins
+  - Transport control methods (play, pause, stop, next, previous)
+
+### Technical Details
+- Added constants: `CONF_MEDIA_PLAYERS`, `CONF_POWER_ON_JOIN`, `CONF_POWER_OFF_JOIN`, `CONF_PLAY_JOIN`, `CONF_PAUSE_JOIN`, `CONF_STOP_JOIN`, `CONF_NEXT_JOIN`, `CONF_PREVIOUS_JOIN`, `CONF_REPEAT_JOIN`, `CONF_SHUFFLE_JOIN`
+- Updated `config_flow.py`: Added media player forms, edit/remove support, entity registry cleanup
+- Updated `media_player.py`: Added `from_ui` parameter, dynamic `supported_features` calculation, transport control methods
+- Source configuration via multiline text input (format: "number: name")
+
+### Milestone Achievement
+- ✅ **ALL 9 PLATFORMS NOW HAVE UI ENTITY MANAGEMENT** (100% complete)
+  - Lights ✅
+  - Switches ✅
+  - Covers ✅
+  - Binary Sensors ✅
+  - Sensors ✅
+  - Climate (Floor Warming + Standard HVAC) ✅
+  - Dimmers/Keypads ✅
+  - Media Players ✅ **NEW**
+
+### Benefits
+- **No more YAML editing** - All entity types can now be managed through the UI
+- **Consistent experience** - Same UI patterns across all platforms
+- **Easy source configuration** - Simple text format for adding multiple sources
+- **Flexible features** - Enable only the features you need
+- **Future-proof** - Ready for Home Assistant UI-first direction
+
 ## [1.18.0] - 2025-11-18
 
 ### Added

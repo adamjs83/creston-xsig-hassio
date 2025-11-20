@@ -25,7 +25,18 @@ from .const import (
     CONF_VOLUME_JOIN,
     CONF_SOURCE_NUM_JOIN,
     CONF_SOURCES,
+    CONF_MEDIA_PLAYERS,
+    CONF_POWER_ON_JOIN,
+    CONF_POWER_OFF_JOIN,
+    CONF_PLAY_JOIN,
+    CONF_PAUSE_JOIN,
+    CONF_STOP_JOIN,
+    CONF_NEXT_JOIN,
+    CONF_PREVIOUS_JOIN,
+    CONF_REPEAT_JOIN,
+    CONF_SHUFFLE_JOIN,
 )
+from homeassistant.const import CONF_DEVICE_CLASS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,37 +58,123 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up Crestron media players from a config entry.
+    """Set up Crestron media players from a config entry (v1.19.0+)."""
+    hub = hass.data[DOMAIN].get(HUB) or hass.data[DOMAIN].get(entry.entry_id, {}).get(HUB)
+    if not hub:
+        _LOGGER.error("Hub not found for media player setup")
+        return False
 
-    For v1.6.0, entities are still configured via YAML.
-    This stub enables device registry linkage for future entity options flow.
-    """
-    # No entities added from config entry in v1.6.0
-    # YAML platform setup (above) handles entity creation
+    media_players = entry.data.get(CONF_MEDIA_PLAYERS, [])
+    if not media_players:
+        _LOGGER.debug("No UI media players configured")
+        return True
+
+    entities = []
+    for mp_config in media_players:
+        # Parse join numbers (convert "a1" to 1, "d1" to 1, etc.)
+        parsed_config = dict(mp_config)
+
+        # Parse source_num_join (required, analog)
+        source_num_join_str = mp_config.get(CONF_SOURCE_NUM_JOIN, "")
+        if source_num_join_str and source_num_join_str[0] == 'a':
+            parsed_config[CONF_SOURCE_NUM_JOIN] = int(source_num_join_str[1:])
+
+        # Parse optional joins
+        join_mappings = [
+            (CONF_POWER_ON_JOIN, 'd'),
+            (CONF_MUTE_JOIN, 'd'),
+            (CONF_VOLUME_JOIN, 'a'),
+            (CONF_PLAY_JOIN, 'd'),
+            (CONF_PAUSE_JOIN, 'd'),
+            (CONF_STOP_JOIN, 'd'),
+            (CONF_NEXT_JOIN, 'd'),
+            (CONF_PREVIOUS_JOIN, 'd'),
+            (CONF_REPEAT_JOIN, 'd'),
+            (CONF_SHUFFLE_JOIN, 'd'),
+        ]
+
+        for join_key, expected_type in join_mappings:
+            join_str = mp_config.get(join_key, "")
+            if join_str and join_str[0] == expected_type:
+                parsed_config[join_key] = int(join_str[1:])
+            elif join_key in parsed_config:
+                # Remove if invalid or empty
+                parsed_config.pop(join_key, None)
+
+        # Create entity with from_ui flag
+        entity = CrestronRoom(hub, parsed_config, from_ui=True)
+        entities.append(entity)
+
+    if entities:
+        async_add_entities(entities)
+        _LOGGER.info(f"Set up {len(entities)} UI media player(s)")
+
     return True
 
 
 class CrestronRoom(MediaPlayerEntity, RestoreEntity):
-    def __init__(self, hub, config):
+    def __init__(self, hub, config, from_ui=False):
         self._hub = hub
         self._name = config.get(CONF_NAME, "Unnamed Device")
-        self._device_class = "speaker"
-        self._attr_supported_features = (
-            MediaPlayerEntityFeature.SELECT_SOURCE
-            | MediaPlayerEntityFeature.VOLUME_MUTE
-            | MediaPlayerEntityFeature.VOLUME_SET
-            | MediaPlayerEntityFeature.TURN_OFF
-        )
-        self._mute_join = config.get(CONF_MUTE_JOIN)
-        self._volume_join = config.get(CONF_VOLUME_JOIN)
+        self._device_class = config.get(CONF_DEVICE_CLASS, "speaker")
+        self._from_ui = from_ui
+
+        # Join configuration
         self._source_number_join = config.get(CONF_SOURCE_NUM_JOIN)
         self._sources = config.get(CONF_SOURCES, {})
+        self._mute_join = config.get(CONF_MUTE_JOIN)
+        self._volume_join = config.get(CONF_VOLUME_JOIN)
+        self._power_on_join = config.get(CONF_POWER_ON_JOIN)
+        self._power_off_join = config.get(CONF_POWER_OFF_JOIN)
+        self._play_join = config.get(CONF_PLAY_JOIN)
+        self._pause_join = config.get(CONF_PAUSE_JOIN)
+        self._stop_join = config.get(CONF_STOP_JOIN)
+        self._next_join = config.get(CONF_NEXT_JOIN)
+        self._previous_join = config.get(CONF_PREVIOUS_JOIN)
+        self._repeat_join = config.get(CONF_REPEAT_JOIN)
+        self._shuffle_join = config.get(CONF_SHUFFLE_JOIN)
+
+        # Calculate supported features based on available joins
+        self._attr_supported_features = self._calculate_supported_features()
 
         # State restoration variables
         self._restored_state = None
         self._restored_source = None
         self._restored_volume = None
         self._restored_is_muted = None
+
+    def _calculate_supported_features(self):
+        """Calculate supported features based on configured joins."""
+        features = 0
+
+        # Source selection (required)
+        if self._source_number_join and self._sources:
+            features |= MediaPlayerEntityFeature.SELECT_SOURCE
+            features |= MediaPlayerEntityFeature.TURN_OFF  # source=0 turns off
+
+        # Power control
+        if self._power_on_join:
+            features |= MediaPlayerEntityFeature.TURN_ON
+
+        # Volume control
+        if self._mute_join:
+            features |= MediaPlayerEntityFeature.VOLUME_MUTE
+        if self._volume_join:
+            features |= MediaPlayerEntityFeature.VOLUME_SET
+
+        # Transport controls
+        if self._play_join:
+            features |= MediaPlayerEntityFeature.PLAY
+        if self._pause_join:
+            features |= MediaPlayerEntityFeature.PAUSE
+        if self._stop_join:
+            features |= MediaPlayerEntityFeature.STOP
+        if self._next_join:
+            features |= MediaPlayerEntityFeature.NEXT_TRACK
+        if self._previous_join:
+            features |= MediaPlayerEntityFeature.PREVIOUS_TRACK
+
+        return features
 
     async def async_added_to_hass(self):
         """Register callbacks and restore state."""
@@ -112,6 +209,8 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
     @property
     def unique_id(self):
         """Return unique ID for this entity."""
+        if self._from_ui:
+            return f"crestron_media_player_ui_a{self._source_number_join}"
         return f"crestron_media_player_a{self._source_number_join}"
 
     @property
@@ -191,4 +290,39 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
                 self._hub.set_analog(self._source_number_join, input_num)
 
     async def async_turn_off(self):
-        self._hub.set_analog(self._source_number_join, 0)
+        """Turn off the media player by setting source to 0."""
+        if self._power_off_join:
+            self._hub.set_digital(self._power_off_join, True)
+        else:
+            # Fallback: set source to 0
+            self._hub.set_analog(self._source_number_join, 0)
+
+    async def async_turn_on(self):
+        """Turn on the media player."""
+        if self._power_on_join:
+            self._hub.set_digital(self._power_on_join, True)
+
+    async def async_media_play(self):
+        """Send play command."""
+        if self._play_join:
+            self._hub.set_digital(self._play_join, True)
+
+    async def async_media_pause(self):
+        """Send pause command."""
+        if self._pause_join:
+            self._hub.set_digital(self._pause_join, True)
+
+    async def async_media_stop(self):
+        """Send stop command."""
+        if self._stop_join:
+            self._hub.set_digital(self._stop_join, True)
+
+    async def async_media_next_track(self):
+        """Send next track command."""
+        if self._next_join:
+            self._hub.set_digital(self._next_join, True)
+
+    async def async_media_previous_track(self):
+        """Send previous track command."""
+        if self._previous_join:
+            self._hub.set_digital(self._previous_join, True)

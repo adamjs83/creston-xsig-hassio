@@ -34,6 +34,17 @@ CONF_VALUE_JOIN = "value_join"
 CONF_DIVISOR = "divisor"
 CONF_SWITCH_JOIN = "switch_join"
 
+# Media player constants (v1.19.0+)
+CONF_POWER_ON_JOIN = "power_on_join"
+CONF_POWER_OFF_JOIN = "power_off_join"
+CONF_PLAY_JOIN = "play_join"
+CONF_PAUSE_JOIN = "pause_join"
+CONF_STOP_JOIN = "stop_join"
+CONF_NEXT_JOIN = "next_join"
+CONF_PREVIOUS_JOIN = "previous_join"
+CONF_REPEAT_JOIN = "repeat_join"
+CONF_SHUFFLE_JOIN = "shuffle_join"
+
 # Entity storage (v1.8.0+)
 CONF_COVERS = "covers"
 CONF_BINARY_SENSORS = "binary_sensors"
@@ -42,6 +53,7 @@ CONF_LIGHTS = "lights"
 CONF_SWITCHES = "switches"
 CONF_CLIMATES = "climates"
 CONF_DIMMERS = "dimmers"
+CONF_MEDIA_PLAYERS = "media_players"
 
 # Climate additional constants
 CONF_MODE_HEAT_COOL_JOIN = "mode_heat_cool_join"

@@ -1,6 +1,6 @@
 # Crestron XSIG Integration for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-1.18.0-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
+[![Version](https://img.shields.io/badge/version-1.19.0-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -325,6 +325,215 @@ Use the **Configure** button → **Manage Dimmers/Keypads** to add Crestron keyp
    - Useful for non-sequential join assignments
    - Example: Button 1 press=d10, double=d20, hold=d30
 
+### Auto-Sequential Join Assignment (Detailed Guide)
+
+The auto-sequential method is the recommended approach for most installations. You specify a single base join, and the system automatically assigns sequential joins for all button functions.
+
+#### How Auto-Sequential Works
+
+When you configure a dimmer with auto-sequential mode, the system assigns **3 consecutive digital joins per button**:
+- **Join 1**: Button press event
+- **Join 2**: Button double-press event
+- **Join 3**: Button hold event
+
+**Formula:** Each button uses 3 joins starting from `base_join + (button_number - 1) * 3`
+
+#### Join Assignment Tables by Button Count
+
+##### 2-Button Keypad (Base join: d10)
+| Button | Press | Double Press | Hold | Total Joins Used |
+|--------|-------|--------------|------|------------------|
+| Button 1 | d10 | d11 | d12 | d10-d15 (6 joins) |
+| Button 2 | d13 | d14 | d15 | |
+
+##### 3-Button Keypad (Base join: d10)
+| Button | Press | Double Press | Hold | Total Joins Used |
+|--------|-------|--------------|------|------------------|
+| Button 1 | d10 | d11 | d12 | d10-d18 (9 joins) |
+| Button 2 | d13 | d14 | d15 | |
+| Button 3 | d16 | d17 | d18 | |
+
+##### 4-Button Keypad (Base join: d10)
+| Button | Press | Double Press | Hold | Total Joins Used |
+|--------|-------|--------------|------|------------------|
+| Button 1 | d10 | d11 | d12 | d10-d21 (12 joins) |
+| Button 2 | d13 | d14 | d15 | |
+| Button 3 | d16 | d17 | d18 | |
+| Button 4 | d19 | d20 | d21 | |
+
+##### 5-Button Keypad (Base join: d10)
+| Button | Press | Double Press | Hold | Total Joins Used |
+|--------|-------|--------------|------|------------------|
+| Button 1 | d10 | d11 | d12 | d10-d24 (15 joins) |
+| Button 2 | d13 | d14 | d15 | |
+| Button 3 | d16 | d17 | d18 | |
+| Button 4 | d19 | d20 | d21 | |
+| Button 5 | d22 | d23 | d24 | |
+
+##### 6-Button Keypad (Base join: d10)
+| Button | Press | Double Press | Hold | Total Joins Used |
+|--------|-------|--------------|------|------------------|
+| Button 1 | d10 | d11 | d12 | d10-d27 (18 joins) |
+| Button 2 | d13 | d14 | d15 | |
+| Button 3 | d16 | d17 | d18 | |
+| Button 4 | d19 | d20 | d21 | |
+| Button 5 | d22 | d23 | d24 | |
+| Button 6 | d25 | d26 | d27 | |
+
+#### What Goes on Each Join
+
+**Digital Button Joins:**
+
+Each button join carries two types of signals:
+
+1. **INPUT (Button Press → Home Assistant)**: Crestron sends signals TO Home Assistant
+   - Press join: Pulse when button tapped once
+   - Double press join: Pulse when button tapped twice quickly
+   - Hold join: Signal when button pressed and held
+
+2. **OUTPUT (LED Feedback → Crestron)**: Home Assistant sends signals TO Crestron
+   - **Same join numbers** as button presses (e.g., Button 1 press uses d10 for both button input AND LED feedback output)
+   - LED state controlled via LED binding or manual LED switch entity
+   - Provides visual feedback on keypad
+
+**Note:** While button press and LED feedback use the same join numbers, they are separate signals - button presses flow FROM Crestron TO Home Assistant, while LED feedback flows FROM Home Assistant TO Crestron.
+
+**Analog Lighting Load Join (Optional):**
+
+If you configure a lighting load (dimmer with lights):
+- **Join type**: Analog (a)
+- **Range**: 0-65535
+  - 0 = Light off
+  - 1-65535 = Light on with varying brightness
+  - No separate on/off digital join needed
+- **Typical join**: Usually a separate analog join (e.g., a1, a50, etc.)
+- **Not part of the sequential button join range**
+- **Bidirectional**: Home Assistant controls dimmer level, Crestron can send feedback
+
+#### Step-by-Step Configuration in Home Assistant
+
+1. **Navigate to Integration Settings**:
+   - Go to Settings → Devices & Services
+   - Find "Crestron XSIG Integration"
+   - Click **Configure**
+
+2. **Add Dimmer/Keypad**:
+   - Select "Add Dimmer/Keypad"
+   - Choose "Auto-Sequential" mode
+
+3. **Configure Settings**:
+   - **Name**: Enter friendly name (e.g., "Kitchen Keypad")
+   - **Button Count**: Select 2-6 buttons
+   - **Base Join**: Enter starting digital join (e.g., d10)
+   - **Lighting Load** (optional):
+     - Check "Include lighting load" if dimmer controls lights
+     - Enter analog join (e.g., a50)
+
+4. **Save Configuration**:
+   - Click Submit
+   - Entities are created automatically
+
+#### Crestron Programming for Auto-Sequential
+
+In your Crestron SIMPL Windows or SIMPL+ program:
+
+**For a 4-button keypad with base join d10:**
+
+```
+Button 1:
+  Press signal (to HA)    → XSIG Digital Join d10
+  Double signal (to HA)   → XSIG Digital Join d11
+  Hold signal (to HA)     → XSIG Digital Join d12
+  LED feedback (from HA)  → XSIG Digital Join d10 (same as press)
+
+Button 2:
+  Press signal (to HA)    → XSIG Digital Join d13
+  Double signal (to HA)   → XSIG Digital Join d14
+  Hold signal (to HA)     → XSIG Digital Join d15
+  LED feedback (from HA)  → XSIG Digital Join d13 (same as press)
+
+Button 3:
+  Press signal (to HA)    → XSIG Digital Join d16
+  Double signal (to HA)   → XSIG Digital Join d17
+  Hold signal (to HA)     → XSIG Digital Join d18
+  LED feedback (from HA)  → XSIG Digital Join d16 (same as press)
+
+Button 4:
+  Press signal (to HA)    → XSIG Digital Join d19
+  Double signal (to HA)   → XSIG Digital Join d20
+  Hold signal (to HA)     → XSIG Digital Join d21
+  LED feedback (from HA)  → XSIG Digital Join d19 (same as press)
+```
+
+**If dimmer has lighting load (analog join a50):**
+```
+Dimmer Output Level (from HA) → XSIG Analog Join a50
+Dimmer Feedback (to HA)       → XSIG Analog Join a50 (same join)
+  - 0 = Off
+  - 1-65535 = On with brightness
+```
+
+#### Example: Complete 4-Button Dimmer Configuration
+
+**Home Assistant Configuration:**
+- **Name**: "Master Bedroom Keypad"
+- **Mode**: Auto-Sequential
+- **Base Join**: d100
+- **Button Count**: 4
+- **Lighting Load**: Yes
+- **Lighting Load Join**: a25
+
+**Join Assignment:**
+| Function | Join | Direction | Purpose |
+|----------|------|-----------|---------|
+| Button 1 Press | d100 | Crestron → HA | Button press detection |
+| Button 1 LED | d100 | HA → Crestron | LED feedback (same join) |
+| Button 1 Double | d101 | Crestron → HA | Double press detection |
+| Button 1 Hold | d102 | Crestron → HA | Hold detection |
+| Button 2 Press | d103 | Crestron → HA | Button press detection |
+| Button 2 LED | d103 | HA → Crestron | LED feedback (same join) |
+| Button 2 Double | d104 | Crestron → HA | Double press detection |
+| Button 2 Hold | d105 | Crestron → HA | Hold detection |
+| Button 3 Press | d106 | Crestron → HA | Button press detection |
+| Button 3 LED | d106 | HA → Crestron | LED feedback (same join) |
+| Button 3 Double | d107 | Crestron → HA | Double press detection |
+| Button 3 Hold | d108 | Crestron → HA | Hold detection |
+| Button 4 Press | d109 | Crestron → HA | Button press detection |
+| Button 4 LED | d109 | HA → Crestron | LED feedback (same join) |
+| Button 4 Double | d110 | Crestron → HA | Double press detection |
+| Button 4 Hold | d111 | Crestron → HA | Hold detection |
+| Lighting Load | a25 | Both | Dimmer level (0-65535) |
+
+**Entities Created in Home Assistant:**
+- `event.master_bedroom_keypad_button_1` (fires press/double_press/hold events)
+- `event.master_bedroom_keypad_button_2`
+- `event.master_bedroom_keypad_button_3`
+- `event.master_bedroom_keypad_button_4`
+- `select.master_bedroom_keypad_led_1_binding` (bind LED to HA entity)
+- `select.master_bedroom_keypad_led_2_binding`
+- `select.master_bedroom_keypad_led_3_binding`
+- `select.master_bedroom_keypad_led_4_binding`
+- `switch.master_bedroom_keypad_led_1` (manual LED control)
+- `switch.master_bedroom_keypad_led_2`
+- `switch.master_bedroom_keypad_led_3`
+- `switch.master_bedroom_keypad_led_4`
+- `light.master_bedroom_keypad_light` (dimmer lighting load)
+
+#### Choosing a Base Join
+
+**Best Practices:**
+- Choose a base join that doesn't conflict with other entities
+- Leave room for expansion (e.g., if you have 4 buttons but might add more keypads, plan accordingly)
+- Common ranges:
+  - d10-d50: Small systems
+  - d100-d200: Medium systems (easier to remember/organize)
+  - d500+: Large systems with many devices
+
+**Example Join Planning:**
+- Keypad 1 (Kitchen, 4 buttons): d10-d21 (12 joins)
+- Keypad 2 (Living Room, 6 buttons): d25-d42 (18 joins)
+- Keypad 3 (Master Bedroom, 4 buttons): d50-d61 (12 joins)
+
 **Configuration Options:**
 - **Name** - Friendly name for the dimmer/keypad
 - **Button Count** - 2 to 6 buttons
@@ -348,7 +557,7 @@ Each dimmer/keypad creates the following entities grouped under one device:
 
 3. **LED Switch Entities** (one per button) - Direct LED control:
    - Manual LED on/off control
-   - Bidirectional (same join for input and output)
+   - Uses button press join for LED OUTPUT (HA → Crestron)
    - Can be controlled by LED binding or manually
 
 4. **Light Entity** (if lighting load configured) - Dimmer light control:
@@ -405,17 +614,22 @@ This provides the same feedback behavior as traditional Crestron programming, bu
 
 In your Crestron program:
 1. Wire button press signals to digital joins (press, double press, hold)
-2. Wire LED feedback signals from the **same digital joins** (bidirectional)
-   - Example: Button 1 press join d10 is used for both INPUT (button press) and OUTPUT (LED feedback)
-   - This bidirectional approach allows Home Assistant to both detect button presses and control LED state
+   - These are INPUT signals: Crestron → Home Assistant
+2. Wire LED feedback signals to the **same digital joins**
+   - These are OUTPUT signals: Home Assistant → Crestron
+   - Example: Button 1 press uses d10 for button press INPUT and d10 for LED feedback OUTPUT
+   - Same join number, but separate signal directions
+   - Allows Home Assistant to both detect button presses and control LED state
 3. If using lighting load: wire dimmer control to a single analog join (0-65535)
-   - The analog join controls both on/off and brightness level
+   - Home Assistant sends dimmer level to Crestron (OUTPUT: HA → Crestron)
+   - Crestron can send feedback to Home Assistant (INPUT: Crestron → HA)
    - Value 0 = off, values 1-65535 = on with varying brightness
    - No separate digital on/off join is needed
 
 **Important:**
-- Button joins are bidirectional (same join for input and output)
+- Button press joins and LED feedback use the same join numbers but are separate signals (one input, one output)
 - Lighting load uses a single analog join for full dimmer control
+- Only the press join is used for LED feedback, not double press or hold joins
 
 ### Modern Entity Naming (v1.18.0+)
 
