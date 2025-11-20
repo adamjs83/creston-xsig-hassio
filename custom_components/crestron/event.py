@@ -135,10 +135,8 @@ class CrestronButtonEvent(EventEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks when entity is added."""
-        # Register listeners for all three joins
-        self._hub.register_callback(self._press_join, self._handle_press)
-        self._hub.register_callback(self._double_join, self._handle_double_press)
-        self._hub.register_callback(self._hold_join, self._handle_hold)
+        # Register single global callback (hub doesn't support join-specific callbacks)
+        self._hub.register_callback(self.process_callback)
 
         _LOGGER.debug(
             "Registered button %d event listeners: %s (press), %s (double), %s (hold)",
@@ -150,9 +148,18 @@ class CrestronButtonEvent(EventEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Unregister callbacks when entity is removed."""
-        self._hub.unregister_callback(self._press_join)
-        self._hub.unregister_callback(self._double_join)
-        self._hub.unregister_callback(self._hold_join)
+        self._hub.remove_callback(self.process_callback)
+
+    async def process_callback(self, cbtype: str, value: str) -> None:
+        """Process hub callback and check if it's for one of our joins."""
+        # cbtype format: "d2" for digital join 2, "a5" for analog join 5, etc.
+        # Check if this callback is for one of our monitored joins
+        if cbtype == self._press_join:
+            self._handle_press(value)
+        elif cbtype == self._double_join:
+            self._handle_double_press(value)
+        elif cbtype == self._hold_join:
+            self._handle_hold(value)
 
     @callback
     def _handle_press(self, value: str) -> None:

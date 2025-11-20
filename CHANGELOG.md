@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.1] - 2025-01-20
+
+### Fixed
+- **Button Event Entities** - Fixed callback registration in event.py
+  - Button event entities were failing with `TypeError: CrestronXsig.register_callback() takes 2 positional arguments but 3 were given`
+  - Changed from join-specific callback registration to global callback with join filtering
+  - Matches pattern used in other platforms (light.py, switch.py, etc.)
+  - Fixes button press, double press, and hold events for all dimmer/keypad entities
+
+### Technical Details
+- Updated `event.py` async_added_to_hass() to use `self._hub.register_callback(self.process_callback)`
+- Added `process_callback(cbtype, value)` method that filters callbacks by checking against monitored joins
+- Updated `async_will_remove_from_hass()` to use `self._hub.remove_callback()`
+- Verified switch.py and select.py use correct callback patterns (no changes needed)
+
 ## [1.19.0] - 2025-01-19
 
 ### Added
