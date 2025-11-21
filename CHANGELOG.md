@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.4] - 2025-01-21
+
+### Fixed
+- **CRITICAL: Multi-Hub Support for Dimmer Entities** - Fixed button events and LED binding with multiple Crestron hub instances
+  - Fixed: Button event entities registered callbacks on wrong hub when multiple config entries exist
+  - Fixed: LED binding select entities connected to wrong hub in multi-hub configurations
+  - Root cause: event.py and select.py used global hub reference instead of config entry-specific hub
+  - Changed: Both files now correctly retrieve hub from `hass.data[DOMAIN][entry.entry_id]`
+  - Result: Button press events and LED binding now work correctly with multiple hubs on different ports
+  - Removed temporary debug logging added in v1.20.3 (no longer needed)
+
+### Technical Details
+- **Problem:** When running multiple Crestron hub instances (e.g., port 16384 and port 26475):
+  - event.py line 36: `hub = hass.data[DOMAIN][HUB]` always grabbed global hub
+  - select.py line 33: Same issue
+  - Button events registered on wrong hub, never received callbacks from correct hub
+- **Solution:** Match pattern used in other platforms (light.py, switch.py, etc.):
+  - Get hub from config entry: `hass.data[DOMAIN].get(config_entry.entry_id)`
+  - Handle dict format and direct reference fallback
+  - Only use global HUB as last resort for backward compatibility
+- **Impact:** Fixes button press detection and LED binding for dimmer/keypad entities in multi-hub setups
+
 ## [1.20.3] - 2025-01-21
 
 ### Added

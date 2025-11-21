@@ -30,7 +30,22 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Crestron LED binding select entities from a config entry."""
-    hub = hass.data[DOMAIN][HUB]
+    # Get hub for this specific config entry (supports multiple hubs)
+    hub_data = hass.data[DOMAIN].get(config_entry.entry_id)
+    if hub_data:
+        # Hub data is stored as dict with HUB key
+        if isinstance(hub_data, dict):
+            hub = hub_data.get(HUB)
+        else:
+            hub = hub_data  # Fallback for direct hub reference
+    else:
+        # Fallback to global HUB key (for single hub setups)
+        hub = hass.data[DOMAIN].get(HUB)
+
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for LED binding select entities")
+        return
+
     dimmers = config_entry.data.get(CONF_DIMMERS, [])
 
     if not dimmers:

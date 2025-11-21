@@ -33,7 +33,22 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Crestron button event entities from a config entry."""
-    hub = hass.data[DOMAIN][HUB]
+    # Get hub for this specific config entry (supports multiple hubs)
+    hub_data = hass.data[DOMAIN].get(config_entry.entry_id)
+    if hub_data:
+        # Hub data is stored as dict with HUB key
+        if isinstance(hub_data, dict):
+            hub = hub_data.get(HUB)
+        else:
+            hub = hub_data  # Fallback for direct hub reference
+    else:
+        # Fallback to global HUB key (for single hub setups)
+        hub = hass.data[DOMAIN].get(HUB)
+
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for event entities")
+        return
+
     dimmers = config_entry.data.get(CONF_DIMMERS, [])
 
     if not dimmers:
@@ -153,18 +168,6 @@ class CrestronButtonEvent(EventEntity):
     async def process_callback(self, cbtype: str, value: str) -> None:
         """Process hub callback and check if it's for one of our joins."""
         # cbtype format: "d2" for digital join 2, "a5" for analog join 5, etc.
-        # TEMPORARY DEBUG: Log only digital joins to reduce spam
-        if cbtype.startswith("d"):
-            _LOGGER.debug(
-                "Button %d received callback: %s = %s (monitoring: %s, %s, %s)",
-                self._button_num,
-                cbtype,
-                value,
-                self._press_join,
-                self._double_join,
-                self._hold_join,
-            )
-
         # Check if this callback is for one of our monitored joins
         if cbtype == self._press_join:
             self._handle_press(value)
