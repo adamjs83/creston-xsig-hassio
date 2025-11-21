@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.3] - 2025-01-21
+
+### Added
+- **Event Entity Diagnostics** - Added debug logging for button event entities
+  - Event entities now log all incoming digital join callbacks when debug logging enabled
+  - Helps troubleshoot button press detection issues
+  - Shows what joins are being received vs. what the entity is monitoring
+  - Filters to digital joins only to reduce log spam
+  - Enable with: `custom_components.crestron.event: debug` in logger config
+
+### Technical Details
+- Added temporary diagnostic logging to `process_callback()` in event.py
+- Logs format: "Button X received callback: dY = Z (monitoring: dA, dB, dC)"
+- Only logs digital joins (d*) to avoid flooding logs with analog/serial data
+- Useful for debugging Crestron-to-HA button press communication
+
 ## [1.20.2] - 2025-01-21
 
 ### Fixed
