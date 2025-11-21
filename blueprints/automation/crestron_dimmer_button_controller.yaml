@@ -13,7 +13,7 @@ blueprint:
   input:
     dimmer_device:
       name: Dimmer/Keypad Device
-      description: Select your Crestron dimmer/keypad device first. Button selectors below will auto-filter to show only this device's buttons.
+      description: Select your Crestron dimmer/keypad device (used for LED switch auto-discovery)
       selector:
         device:
           filter:
@@ -24,13 +24,11 @@ blueprint:
     # ========== Button 1 ==========
     button_1_event:
       name: "Button 1 Event Entity (Optional)"
-      description: The entity selector will show only event entities from your selected dimmer device
+      description: Select the button 1 event entity (e.g., event.dimmer_name_button_1)
       default: ""
       selector:
         entity:
-          filter:
-            - domain: event
-              device_id: !input dimmer_device
+          domain: event
 
     button_1_press:
       name: "Button 1 - Press Action (Optional)"
@@ -64,13 +62,11 @@ blueprint:
     # ========== Button 2 ==========
     button_2_event:
       name: "Button 2 Event Entity (Optional)"
-      description: Auto-filtered to show only this dimmer's button entities
+      description: Select the button 2 event entity
       default: ""
       selector:
         entity:
-          filter:
-            - domain: event
-              device_id: !input dimmer_device
+          domain: event
 
     button_2_press:
       name: "Button 2 - Press Action (Optional)"
@@ -104,13 +100,11 @@ blueprint:
     # ========== Button 3 ==========
     button_3_event:
       name: "Button 3 Event Entity (Optional)"
-      description: Auto-filtered to show only this dimmer's button entities
+      description: Select the button 3 event entity
       default: ""
       selector:
         entity:
-          filter:
-            - domain: event
-              device_id: !input dimmer_device
+          domain: event
 
     button_3_press:
       name: "Button 3 - Press Action (Optional)"
@@ -144,13 +138,11 @@ blueprint:
     # ========== Button 4 ==========
     button_4_event:
       name: "Button 4 Event Entity (Optional)"
-      description: Auto-filtered to show only this dimmer's button entities
+      description: Select the button 4 event entity
       default: ""
       selector:
         entity:
-          filter:
-            - domain: event
-              device_id: !input dimmer_device
+          domain: event
 
     button_4_press:
       name: "Button 4 - Press Action (Optional)"
@@ -184,13 +176,11 @@ blueprint:
     # ========== Button 5 ==========
     button_5_event:
       name: "Button 5 Event Entity (Optional)"
-      description: Auto-filtered to show only this dimmer's button entities
+      description: Select the button 5 event entity
       default: ""
       selector:
         entity:
-          filter:
-            - domain: event
-              device_id: !input dimmer_device
+          domain: event
 
     button_5_press:
       name: "Button 5 - Press Action (Optional)"
@@ -224,13 +214,11 @@ blueprint:
     # ========== Button 6 ==========
     button_6_event:
       name: "Button 6 Event Entity (Optional)"
-      description: Auto-filtered to show only this dimmer's button entities
+      description: Select the button 6 event entity
       default: ""
       selector:
         entity:
-          filter:
-            - domain: event
-              device_id: !input dimmer_device
+          domain: event
 
     button_6_press:
       name: "Button 6 - Press Action (Optional)"
