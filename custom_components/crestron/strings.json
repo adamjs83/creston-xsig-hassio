@@ -215,6 +215,13 @@
           "dimmer_to_edit": "Dimmer/Keypad to Edit"
         }
       },
+      "edit_dimmer": {
+        "title": "Edit Dimmer/Keypad: {dimmer_name}",
+        "description": "Choose an action for {dimmer_name} ({button_count} buttons).",
+        "data": {
+          "action": "Action"
+        }
+      },
       "remove_dimmers": {
         "title": "Remove Dimmers/Keypads",
         "description": "Select one or more dimmers/keypads to remove. Associated entities will be removed from Home Assistant.",

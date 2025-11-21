@@ -796,15 +796,40 @@ class DimmerHandler:
     ) -> FlowResult:
         """Edit an existing dimmer (full reconfiguration)."""
         if user_input is not None:
-            # User chose to reconfigure
-            # Start from beginning with current config pre-filled
-            return await self.async_step_add_dimmer_basic()
+            next_step = user_input.get("action")
+            if next_step == "reconfigure":
+                # User chose to reconfigure
+                # Start from beginning with current config pre-filled
+                return await self.async_step_add_dimmer_basic()
+            elif next_step == "back":
+                # Go back to dimmer selection
+                self.flow._editing_join = None
+                return await self.flow.async_step_select_dimmer_to_edit()
 
-        return self.flow.async_show_menu(
+        # Show edit dimmer menu
+        dimmer_name = self.flow._editing_join.get(CONF_NAME, "")
+        button_count = self.flow._editing_join.get(CONF_BUTTON_COUNT, 0)
+
+        menu_schema = vol.Schema(
+            {
+                vol.Required("action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"label": "Reconfigure Dimmer/Keypad", "value": "reconfigure"},
+                            {"label": "← Back", "value": "back"},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.flow.async_show_form(
             step_id="edit_dimmer",
-            menu_options=["reconfigure", "back"],
+            data_schema=menu_schema,
             description_placeholders={
-                "dimmer_name": self.flow._editing_join.get(CONF_NAME, ""),
+                "dimmer_name": dimmer_name,
+                "button_count": str(button_count),
             },
         )
 
