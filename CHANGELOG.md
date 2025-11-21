@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.6] - 2025-01-21
+
+### Fixed
+- **Config Flow: Dimmer Edit Menu** - Fixed blank menu options when editing dimmers
+  - Issue: When selecting a dimmer to edit, two blank options with right-facing arrows were displayed
+  - Clicking either option resulted in an error
+  - Root cause: `async_step_edit_dimmer` used `async_show_menu()` without proper strings.json translations
+  - Solution: Changed to `async_show_form()` with schema that defines labeled options directly
+  - Now displays proper labels: "Reconfigure Dimmer/Keypad" and "← Back"
+  - Consistent with all other menus in the codebase
+
 ## [1.20.5] - 2025-01-21
 
 ### Added
