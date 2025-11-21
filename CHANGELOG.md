@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.8] - 2025-11-21
+
+### Changed (Breaking)
+- **LED Binding Moved to Blueprint**
+  - LED binding is now configured directly in the blueprint automation
+  - Select entities for LED binding (`select.{dimmer}_button_{n}_led_binding`) are deprecated and no longer created
+  - Existing users: Reconfigure LED bindings in the blueprint (one-time setup required)
+  - All other dimmer functionality unchanged: event entities, LED switches, lighting load, device grouping
+
+### Fixed
+- **Recorder Database Errors** - Eliminated 32KB `entity_registry_updated` errors
+  - Previous implementation stored all bindable entities in select entity options
+  - With 300+ entities, this exceeded Home Assistant's 32KB database limit
+  - New blueprint approach uses native HA entity picker with no database storage
+
+### Benefits
+- Better UX: Native Home Assistant entity picker with built-in search
+- No entity proliferation: Removes 6 select entities per dimmer
+- Simpler integration: LED binding logic in one place (blueprint)
+- More maintainable: ~200 lines of code removed from integration
+
+### Migration Guide
+**For existing users with LED bindings configured:**
+1. Open your dimmer blueprint automation in Home Assistant
+2. In the blueprint inputs, re-select the entities you want bound to each LED
+3. Save the automation
+4. Old select entities will no longer be created and can be safely deleted
+
+**Example:**
+- Before: Set `select.kitchen_keypad_button_1_led_binding` to `light.kitchen`
+- After: Set blueprint input `Button 1 - LED Binding` to `light.kitchen`
+
 ## [1.20.7] - 2025-11-21
 
 ### Changed

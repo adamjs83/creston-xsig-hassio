@@ -294,6 +294,32 @@ trigger:
     entity_id: !input button_6_entity
     id: button_6
 
+  # LED Binding State Triggers (v1.20.8+)
+  # Sync LED switches when bound entity states change
+  - platform: state
+    entity_id: !input button_1_led_entity
+    id: led_1_sync
+
+  - platform: state
+    entity_id: !input button_2_led_entity
+    id: led_2_sync
+
+  - platform: state
+    entity_id: !input button_3_led_entity
+    id: led_3_sync
+
+  - platform: state
+    entity_id: !input button_4_led_entity
+    id: led_4_sync
+
+  - platform: state
+    entity_id: !input button_5_led_entity
+    id: led_5_sync
+
+  - platform: state
+    entity_id: !input button_6_led_entity
+    id: led_6_sync
+
 action:
   - variables:
       event_type: "{{ trigger.to_state.attributes.event_type }}"
@@ -413,65 +439,66 @@ action:
           - "{{ event_type == 'hold' }}"
         sequence: !input button_6_hold
 
-  # Set LED binding after action (optional)
+  # LED State Sync (v1.20.8+)
+  # Directly control LED switches based on bound entity states
   - choose:
+      # Button 1 LED Sync
       - conditions:
           - condition: trigger
-            id: button_1
+            id: led_1_sync
           - "{{ button_1_led != '' }}"
         sequence:
-          - service: select.select_option
-            data:
-              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_1_led_binding"
-              option: "{{ button_1_led }}"
+          - service: "switch.turn_{{ 'on' if trigger.to_state.state in ['on', 'home', 'playing', 'open', 'locked', 'cleaning', 'heat', 'cool', 'auto', 'heat_cool', 'armed_away', 'armed_home', 'armed_night', 'above_horizon'] else 'off' }}"
+            target:
+              entity_id: "switch.{{ dimmer_name | lower | replace(' ', '_') }}_led_1"
 
+      # Button 2 LED Sync
       - conditions:
           - condition: trigger
-            id: button_2
+            id: led_2_sync
           - "{{ button_2_led != '' }}"
         sequence:
-          - service: select.select_option
-            data:
-              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_2_led_binding"
-              option: "{{ button_2_led }}"
+          - service: "switch.turn_{{ 'on' if trigger.to_state.state in ['on', 'home', 'playing', 'open', 'locked', 'cleaning', 'heat', 'cool', 'auto', 'heat_cool', 'armed_away', 'armed_home', 'armed_night', 'above_horizon'] else 'off' }}"
+            target:
+              entity_id: "switch.{{ dimmer_name | lower | replace(' ', '_') }}_led_2"
 
+      # Button 3 LED Sync
       - conditions:
           - condition: trigger
-            id: button_3
+            id: led_3_sync
           - "{{ button_3_led != '' }}"
         sequence:
-          - service: select.select_option
-            data:
-              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_3_led_binding"
-              option: "{{ button_3_led }}"
+          - service: "switch.turn_{{ 'on' if trigger.to_state.state in ['on', 'home', 'playing', 'open', 'locked', 'cleaning', 'heat', 'cool', 'auto', 'heat_cool', 'armed_away', 'armed_home', 'armed_night', 'above_horizon'] else 'off' }}"
+            target:
+              entity_id: "switch.{{ dimmer_name | lower | replace(' ', '_') }}_led_3"
 
+      # Button 4 LED Sync
       - conditions:
           - condition: trigger
-            id: button_4
+            id: led_4_sync
           - "{{ button_4_led != '' }}"
         sequence:
-          - service: select.select_option
-            data:
-              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_4_led_binding"
-              option: "{{ button_4_led }}"
+          - service: "switch.turn_{{ 'on' if trigger.to_state.state in ['on', 'home', 'playing', 'open', 'locked', 'cleaning', 'heat', 'cool', 'auto', 'heat_cool', 'armed_away', 'armed_home', 'armed_night', 'above_horizon'] else 'off' }}"
+            target:
+              entity_id: "switch.{{ dimmer_name | lower | replace(' ', '_') }}_led_4"
 
+      # Button 5 LED Sync
       - conditions:
           - condition: trigger
-            id: button_5
+            id: led_5_sync
           - "{{ button_5_led != '' }}"
         sequence:
-          - service: select.select_option
-            data:
-              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_5_led_binding"
-              option: "{{ button_5_led }}"
+          - service: "switch.turn_{{ 'on' if trigger.to_state.state in ['on', 'home', 'playing', 'open', 'locked', 'cleaning', 'heat', 'cool', 'auto', 'heat_cool', 'armed_away', 'armed_home', 'armed_night', 'above_horizon'] else 'off' }}"
+            target:
+              entity_id: "switch.{{ dimmer_name | lower | replace(' ', '_') }}_led_5"
 
+      # Button 6 LED Sync
       - conditions:
           - condition: trigger
-            id: button_6
+            id: led_6_sync
           - "{{ button_6_led != '' }}"
         sequence:
-          - service: select.select_option
-            data:
-              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_6_led_binding"
-              option: "{{ button_6_led }}"
+          - service: "switch.turn_{{ 'on' if trigger.to_state.state in ['on', 'home', 'playing', 'open', 'locked', 'cleaning', 'heat', 'cool', 'auto', 'heat_cool', 'armed_away', 'armed_home', 'armed_night', 'above_horizon'] else 'off' }}"
+            target:
+              entity_id: "switch.{{ dimmer_name | lower | replace(' ', '_') }}_led_6"
     default: []

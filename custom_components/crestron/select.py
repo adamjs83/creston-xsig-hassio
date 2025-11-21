@@ -29,7 +29,19 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Crestron LED binding select entities from a config entry."""
+    """Set up Crestron LED binding select entities from a config entry.
+
+    DEPRECATED (v1.20.8): LED binding is now handled directly in the blueprint.
+    This function no longer creates entities to avoid database size issues.
+    """
+    _LOGGER.info(
+        "LED binding select entities are deprecated as of v1.20.8. "
+        "LED binding is now configured in the blueprint automation. "
+        "No select entities will be created."
+    )
+    return
+
+    # DEPRECATED CODE BELOW - Kept for reference
     # Get hub for this specific config entry (supports multiple hubs)
     hub_data = hass.data[DOMAIN].get(config_entry.entry_id)
     if hub_data:

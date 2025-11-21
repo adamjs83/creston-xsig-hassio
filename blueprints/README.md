@@ -99,21 +99,26 @@ You can configure complex sequences for each button:
     message: "Good night mode activated"
 ```
 
-## How LED Binding Works
+## How LED Binding Works (v1.20.8+)
 
-When you configure LED binding for a button:
-1. The LED automatically mirrors the state of the bound entity
-2. Supported entity types:
-   - Lights (on/off)
-   - Switches (on/off)
-   - Media players (playing/paused)
-   - Climate (heating/cooling/idle)
-   - Covers (open/closed)
-   - Locks (locked/unlocked)
+LED binding is now configured directly in the blueprint automation:
+
+1. **Configure in Blueprint**: Select the entity you want to bind to each LED (e.g., `light.kitchen`)
+2. **Automatic State Sync**: The automation monitors the bound entity and updates the LED automatically
+3. **Native Entity Picker**: Use Home Assistant's built-in entity picker with search functionality
+4. **Supported States**:
+   - `on`, `off` - Lights, switches, fans
+   - `home`, `not_home` - Person, device tracker
+   - `playing`, `paused`, `idle` - Media players
+   - `heat`, `cool`, `auto` - Climate
+   - `open`, `closed`, `opening`, `closing` - Covers
+   - `locked`, `unlocked` - Locks
+   - `armed_away`, `armed_home`, `disarmed` - Alarm panels
    - And many more!
 
-3. The LED updates automatically whenever the bound entity changes state
-4. No additional automation needed - it's handled by the integration
+5. **Real-time Updates**: LED changes instantly when bound entity state changes
+
+**Note:** LED binding select entities (`select.{dimmer}_button_{n}_led_binding`) were deprecated in v1.20.8. All LED binding is now handled in the blueprint.
 
 ## Tips
 
@@ -135,9 +140,10 @@ When you configure LED binding for a button:
 - Ensure the button event entities show in **Developer Tools** → **States**
 
 **LED binding doesn't work:**
-- Verify the select entity exists: `select.{dimmer_name}_button_{n}_led_binding`
-- Check that the bound entity name is correct
-- LED binding updates may take a few seconds to take effect
+- Verify the bound entity is selected in the blueprint configuration
+- Check that the LED switch entity exists: `switch.{dimmer_name}_led_{n}`
+- Ensure the bound entity's state is one of the supported states (on, home, playing, etc.)
+- Check the automation trace in **Developer Tools** → **Traces** to see if the LED sync trigger fired
 
 ## Support
 
