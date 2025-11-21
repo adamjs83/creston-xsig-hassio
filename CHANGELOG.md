@@ -5,7 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.20.9] - 2025-11-21
+## [1.21.0] - 2025-11-21
+
+### Changed
+- **Blueprint Major UX Overhaul: Complete Auto-Discovery**
+  - **Select dimmer device ONCE** - everything else is automatic
+  - Button event entities auto-discovered from device (no manual selection needed!)
+  - LED switch entities auto-discovered from device
+  - User only configures actions and LED bindings (optional)
+  - Removed 6 redundant button entity selectors
+
+### Before vs After
+**Before (v1.20.9):**
+- Select dimmer device
+- Select button 1 event entity
+- Select button 2 event entity
+- ... (6 selections)
+- Configure actions
+- Select LED bindings
+
+**After (v1.21.0):**
+- Select dimmer device ✨ **THAT'S IT!**
+- Configure actions (optional)
+- Select LED bindings (optional)
+
+### Technical Details
+- Auto-discovers button event entities using `device_entities()` with regex matching
+- Auto-discovers LED switch entities from same device
+- Triggers use template variables instead of user inputs
+- Cleaner, more intuitive configuration experience
+
+### Benefits
+- **80% fewer manual selections** (1 device vs 7 entities)
+- Impossible to mismatch button entities with wrong device
+- Faster setup for new dimmers
+- More user-friendly for non-technical users
+
+## [1.20.9] - 2025-11-21 [SUPERSEDED]
 
 ### Changed
 - **Blueprint UX Improvement: Device Selector**
