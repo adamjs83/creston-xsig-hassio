@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.9] - 2025-11-21
+
+### Changed
+- **Blueprint UX Improvement: Device Selector**
+  - Replaced manual text input for dimmer name with device selector dropdown
+  - Automatically derives LED switch entity IDs from selected device
+  - No more typing errors or mismatches between dimmer name and entity IDs
+  - Uses Home Assistant's native device picker with filtering
+
+### Technical Details
+- Blueprint now uses `device_entities()` to dynamically discover LED switches
+- Device filter ensures only Crestron Keypad/Dimmer devices are shown
+- LED entity IDs are automatically matched using regex patterns
+
 ## [1.20.8] - 2025-11-21
 
 ### Changed (Breaking)
