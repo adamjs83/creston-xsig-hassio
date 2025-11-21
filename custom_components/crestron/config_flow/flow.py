@@ -1,102 +1,20 @@
-"""Config flow for Crestron XSIG integration."""
+"""Config flow classes for Crestron XSIG integration."""
 import logging
-import socket
 from typing import Any
 
-import voluptuous as vol
-import yaml
-
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import selector, entity_registry as er, device_registry as dr
 
-from .const import (
+from ..const import (
     DOMAIN,
     CONF_PORT,
     CONF_TO_HUB,
     CONF_FROM_HUB,
-    CONF_COVERS,
-    CONF_BINARY_SENSORS,
-    CONF_SENSORS,
-    CONF_LIGHTS,
-    CONF_SWITCHES,
-    CONF_CLIMATES,
-    CONF_DIMMERS,
-    CONF_MEDIA_PLAYERS,
-    CONF_POS_JOIN,
-    CONF_IS_OPENING_JOIN,
-    CONF_IS_CLOSING_JOIN,
-    CONF_IS_CLOSED_JOIN,
-    CONF_STOP_JOIN,
-    CONF_IS_ON_JOIN,
-    CONF_VALUE_JOIN,
-    CONF_DIVISOR,
-    CONF_BRIGHTNESS_JOIN,
-    CONF_SWITCH_JOIN,
-    # Climate joins - floor_warming
-    CONF_FLOOR_MODE_JOIN,
-    CONF_FLOOR_MODE_FB_JOIN,
-    CONF_FLOOR_SP_JOIN,
-    CONF_FLOOR_SP_FB_JOIN,
-    CONF_FLOOR_TEMP_JOIN,
-    # Climate joins - standard HVAC
-    CONF_HEAT_SP_JOIN,
-    CONF_COOL_SP_JOIN,
-    CONF_REG_TEMP_JOIN,
-    CONF_MODE_HEAT_JOIN,
-    CONF_MODE_COOL_JOIN,
-    CONF_MODE_AUTO_JOIN,
-    CONF_MODE_OFF_JOIN,
-    CONF_FAN_ON_JOIN,
-    CONF_FAN_AUTO_JOIN,
-    CONF_H1_JOIN,
-    CONF_H2_JOIN,
-    CONF_C1_JOIN,
-    CONF_C2_JOIN,
-    CONF_FA_JOIN,
-    CONF_MODE_HEAT_COOL_JOIN,
-    CONF_FAN_MODE_AUTO_JOIN,
-    CONF_FAN_MODE_ON_JOIN,
-    CONF_HVAC_ACTION_HEAT_JOIN,
-    CONF_HVAC_ACTION_COOL_JOIN,
-    CONF_HVAC_ACTION_IDLE_JOIN,
-    # Media player constants (v1.19.0+)
-    CONF_MUTE_JOIN,
-    CONF_VOLUME_JOIN,
-    CONF_SOURCE_NUM_JOIN,
-    CONF_SOURCES,
-    CONF_POWER_ON_JOIN,
-    CONF_POWER_OFF_JOIN,
-    CONF_PLAY_JOIN,
-    CONF_PAUSE_JOIN,
-    CONF_STOP_JOIN,
-    CONF_NEXT_JOIN,
-    CONF_PREVIOUS_JOIN,
-    CONF_REPEAT_JOIN,
-    CONF_SHUFFLE_JOIN,
-    # Dimmer/Keypad constants (v1.16.x - deprecated)
-    CONF_LIGHTING_LOAD,
-    CONF_BUTTON_COUNT,
-    CONF_BUTTONS,
-    CONF_PRESS,
-    CONF_DOUBLE_PRESS,
-    CONF_HOLD,
-    CONF_FEEDBACK,
-    CONF_ACTION,
-    CONF_SERVICE_DATA,
-    DOMAIN_ACTIONS,
-    # Dimmer/Keypad constants (v1.17.0+)
-    CONF_BASE_JOIN,
-    CONF_HAS_LIGHTING_LOAD,
-    CONF_LIGHT_ON_JOIN,
-    CONF_LIGHT_BRIGHTNESS_JOIN,
 )
-from homeassistant.const import CONF_NAME, CONF_TYPE, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 
-from .config_flow.validators import validate_port, PortInUse, InvalidPort, STEP_USER_DATA_SCHEMA
-from .config_flow.base import BaseOptionsFlow
+from .validators import validate_port, PortInUse, InvalidPort, STEP_USER_DATA_SCHEMA
+from .base import BaseOptionsFlow
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -219,13 +137,15 @@ class OptionsFlowHandler(BaseOptionsFlow):
         self._editing_join = None  # Track which join we're editing
 
         # Import handlers here to avoid circular imports
-        from .config_flow import MenuHandler, JoinSyncHandler, DimmerHandler
+        from .menus import MenuHandler
+        from .joins import JoinSyncHandler
+        from .dimmers import DimmerHandler
         self._menu_handler = MenuHandler(self)
         self._join_handler = JoinSyncHandler(self)
         self._dimmer_handler = DimmerHandler(self)
 
         # Import entity handlers here to avoid circular imports
-        from .config_flow.entities import (
+        from .entities import (
             EntityManager,
             BinarySensorEntityHandler,
             ClimateEntityHandler,
@@ -386,8 +306,6 @@ class OptionsFlowHandler(BaseOptionsFlow):
 
     # ========== Dimmer/Keypad Configuration Methods ==========
 
-    # ========== Dimmer/Keypad Configuration Methods ==========
-
     async def async_step_add_dimmer_basic(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -423,4 +341,3 @@ class OptionsFlowHandler(BaseOptionsFlow):
     ) -> FlowResult:
         """Remove selected dimmers."""
         return await self._dimmer_handler.async_step_remove_dimmers(user_input)
-

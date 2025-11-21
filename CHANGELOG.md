@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.1] - 2025-01-21
+
+### Fixed
+- **Integration Setup Failure** - Completed config_flow refactoring to fix initialization errors
+  - Fixed: Integration failed to load with `KeyError: 'crestron'` in all platforms
+  - Root cause: CrestronConfigFlow and OptionsFlowHandler were not exported from config_flow package
+  - Moved flow classes from standalone config_flow.py to config_flow/flow.py module
+  - Updated config_flow/__init__.py to properly export CrestronConfigFlow and OptionsFlowHandler
+  - Fixed circular import issues in OptionsFlowHandler initialization
+
+### Technical Details
+- **Problem:** v1.20.0 created config_flow/ package but left main classes in config_flow.py
+- Python's import resolution prioritizes packages over modules
+- Home Assistant couldn't find CrestronConfigFlow class → integration never initialized
+- All platforms failed because `hass.data[DOMAIN]` was never created
+- **Solution:** Completed the refactoring by moving all flow logic into the package
+- Created config_flow/flow.py (338 lines) with CrestronConfigFlow and OptionsFlowHandler
+- Updated imports to use relative package imports (.menus, .joins, etc.)
+- Deleted old standalone config_flow.py file
+
 ## [1.20.0] - 2025-01-21
 
 ### Changed

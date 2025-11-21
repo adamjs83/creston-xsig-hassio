@@ -15,6 +15,7 @@ from .entities import (
     SensorEntityHandler,
     SwitchEntityHandler,
 )
+from .flow import CrestronConfigFlow, OptionsFlowHandler
 
 __all__ = [
     'validate_port',
@@ -34,4 +35,6 @@ __all__ = [
     'MediaPlayerEntityHandler',
     'SensorEntityHandler',
     'SwitchEntityHandler',
+    'CrestronConfigFlow',
+    'OptionsFlowHandler',
 ]
