@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.5] - 2025-01-21
+
+### Added
+- **Automation Blueprint for Dimmer/Keypad Button Controller**
+  - Pre-built blueprint for easy dimmer/keypad configuration without writing YAML
+  - Configure actions for all button press types (press, double press, hold)
+  - Optional LED binding for visual feedback per button
+  - Support for up to 4 buttons per dimmer
+  - All buttons and actions are optional - configure only what you need
+  - Parallel execution mode supports multiple button presses simultaneously
+  - Comprehensive documentation with examples in `blueprints/README.md`
+  - One-click import from Home Assistant UI
+
+### Documentation
+- Added Blueprints section to main README with quick start guide
+- Added detailed blueprint usage guide in `blueprints/README.md`
+- Added example configurations for common use cases
+- Added import badge for easy blueprint installation
+
+### Files Added
+- `blueprints/automation/crestron_dimmer_button_controller.yaml` - Main blueprint file
+- `blueprints/README.md` - Blueprint documentation and examples
+
 ## [1.20.4] - 2025-01-21
 
 ### Fixed

@@ -1,6 +1,6 @@
 # Crestron XSIG Integration for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-1.20.4-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
+[![Version](https://img.shields.io/badge/version-1.20.5-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -21,6 +21,7 @@ A Home Assistant custom component for integrating with Crestron control systems 
   - Optional lighting load control
   - Auto-sequential or manual join assignment
   - Modern `has_entity_name` pattern for context-aware naming (v1.18.0+)
+- **Pre-built automation blueprints** for easy dimmer/keypad configuration (v1.20.5+)
 - **Template-based state synchronization** (Home Assistant → Crestron)
 - **Script execution** from join changes (Crestron → Home Assistant)
 - **Automatic reconnection** on connection loss
@@ -676,6 +677,35 @@ Entity names appear differently depending on where you view them:
 - ✅ Matches modern integrations (Z-Wave, Zigbee, Matter, etc.)
 
 **Note:** Only dimmer-related entities use this pattern. Standalone switches, lights, covers, etc. continue to use full names as configured.
+
+## Blueprints
+
+Pre-built automation blueprints make it easy to configure your Crestron dimmers/keypads without writing YAML.
+
+### Dimmer/Keypad Button Controller Blueprint
+
+[![Open your Home Assistant instance and show the blueprint import dialog.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fadamjs83%2Fcreston-xsig-hassio%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fcrestron_dimmer_button_controller.yaml)
+
+**Features:**
+- Configure actions for button presses (press, double press, hold)
+- Set LED binding for visual feedback
+- Support for up to 4 buttons per dimmer
+- All buttons and actions are optional
+
+**Quick Start:**
+1. Click the badge above to import the blueprint
+2. Go to **Settings** → **Automations & Scenes** → **Create Automation** → **Use a blueprint**
+3. Select **Crestron Dimmer/Keypad Button Controller**
+4. Choose your dimmer device
+5. Configure actions for the buttons you want to use
+
+**Example Use Cases:**
+- Button 1 Press: Toggle kitchen lights
+- Button 1 Hold: Turn off all kitchen lights
+- Button 2 Press: Activate "Movie Mode" scene
+- Button 2 LED Binding: Show TV state (on/off)
+
+**Full Documentation:** See [blueprints/README.md](./blueprints/README.md) for detailed usage instructions and examples.
 
 ## Complete Example
 

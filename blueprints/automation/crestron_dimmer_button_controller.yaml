@@ -1,0 +1,263 @@
+blueprint:
+  name: Crestron Dimmer/Keypad Button Controller
+  description: >
+    Configure actions for Crestron dimmer/keypad button presses (single, double, hold)
+    and optionally set LED binding for visual feedback. All buttons and actions are optional.
+
+    **Usage:** Select your dimmer device, then configure only the buttons and press types you need.
+    Leave any button/action blank if you don't want to use it.
+  domain: automation
+  author: adamjs83
+  source_url: https://github.com/adamjs83/creston-xsig-hassio/blob/main/blueprints/automation/crestron_dimmer_button_controller.yaml
+
+  input:
+    dimmer_device:
+      name: Crestron Dimmer/Keypad Device
+      description: Select the Crestron dimmer/keypad device
+      selector:
+        device:
+          integration: crestron
+          model: Keypad/Dimmer
+
+    # ========== Button 1 ==========
+    button_1_press:
+      name: "Button 1 - Press Action (Optional)"
+      description: Action to run when button 1 is pressed once
+      default: []
+      selector:
+        action: {}
+
+    button_1_double:
+      name: "Button 1 - Double Press Action (Optional)"
+      description: Action to run when button 1 is double pressed
+      default: []
+      selector:
+        action: {}
+
+    button_1_hold:
+      name: "Button 1 - Hold Action (Optional)"
+      description: Action to run when button 1 is held
+      default: []
+      selector:
+        action: {}
+
+    button_1_led_entity:
+      name: "Button 1 - LED Binding (Optional)"
+      description: Bind button 1 LED to an entity for automatic feedback (light, switch, etc.)
+      default: ""
+      selector:
+        entity:
+          multiple: false
+
+    # ========== Button 2 ==========
+    button_2_press:
+      name: "Button 2 - Press Action (Optional)"
+      description: Action to run when button 2 is pressed once
+      default: []
+      selector:
+        action: {}
+
+    button_2_double:
+      name: "Button 2 - Double Press Action (Optional)"
+      description: Action to run when button 2 is double pressed
+      default: []
+      selector:
+        action: {}
+
+    button_2_hold:
+      name: "Button 2 - Hold Action (Optional)"
+      description: Action to run when button 2 is held
+      default: []
+      selector:
+        action: {}
+
+    button_2_led_entity:
+      name: "Button 2 - LED Binding (Optional)"
+      description: Bind button 2 LED to an entity for automatic feedback
+      default: ""
+      selector:
+        entity:
+          multiple: false
+
+    # ========== Button 3 ==========
+    button_3_press:
+      name: "Button 3 - Press Action (Optional)"
+      description: Action to run when button 3 is pressed once
+      default: []
+      selector:
+        action: {}
+
+    button_3_double:
+      name: "Button 3 - Double Press Action (Optional)"
+      description: Action to run when button 3 is double pressed
+      default: []
+      selector:
+        action: {}
+
+    button_3_hold:
+      name: "Button 3 - Hold Action (Optional)"
+      description: Action to run when button 3 is held
+      default: []
+      selector:
+        action: {}
+
+    button_3_led_entity:
+      name: "Button 3 - LED Binding (Optional)"
+      description: Bind button 3 LED to an entity for automatic feedback
+      default: ""
+      selector:
+        entity:
+          multiple: false
+
+    # ========== Button 4 ==========
+    button_4_press:
+      name: "Button 4 - Press Action (Optional)"
+      description: Action to run when button 4 is pressed once
+      default: []
+      selector:
+        action: {}
+
+    button_4_double:
+      name: "Button 4 - Double Press Action (Optional)"
+      description: Action to run when button 4 is double pressed
+      default: []
+      selector:
+        action: {}
+
+    button_4_hold:
+      name: "Button 4 - Hold Action (Optional)"
+      description: Action to run when button 4 is held
+      default: []
+      selector:
+        action: {}
+
+    button_4_led_entity:
+      name: "Button 4 - LED Binding (Optional)"
+      description: Bind button 4 LED to an entity for automatic feedback
+      default: ""
+      selector:
+        entity:
+          multiple: false
+
+mode: parallel
+max: 10
+
+variables:
+  dimmer_device: !input dimmer_device
+  button_1_led: !input button_1_led_entity
+  button_2_led: !input button_2_led_entity
+  button_3_led: !input button_3_led_entity
+  button_4_led: !input button_4_led_entity
+
+trigger:
+  # All button events from the selected device
+  - platform: device
+    device_id: !input dimmer_device
+    domain: crestron
+    type: "press"
+    id: press
+
+  - platform: device
+    device_id: !input dimmer_device
+    domain: crestron
+    type: "double_press"
+    id: double_press
+
+  - platform: device
+    device_id: !input dimmer_device
+    domain: crestron
+    type: "hold"
+    id: hold
+
+action:
+  - variables:
+      button_num: "{{ trigger.event.data.button }}"
+      press_type: "{{ trigger.event.data.action }}"
+
+  - choose:
+      # ========== Button 1 ==========
+      - conditions:
+          - "{{ button_num == 1 and press_type == 'press' }}"
+        sequence: !input button_1_press
+
+      - conditions:
+          - "{{ button_num == 1 and press_type == 'double_press' }}"
+        sequence: !input button_1_double
+
+      - conditions:
+          - "{{ button_num == 1 and press_type == 'hold' }}"
+        sequence: !input button_1_hold
+
+      # ========== Button 2 ==========
+      - conditions:
+          - "{{ button_num == 2 and press_type == 'press' }}"
+        sequence: !input button_2_press
+
+      - conditions:
+          - "{{ button_num == 2 and press_type == 'double_press' }}"
+        sequence: !input button_2_double
+
+      - conditions:
+          - "{{ button_num == 2 and press_type == 'hold' }}"
+        sequence: !input button_2_hold
+
+      # ========== Button 3 ==========
+      - conditions:
+          - "{{ button_num == 3 and press_type == 'press' }}"
+        sequence: !input button_3_press
+
+      - conditions:
+          - "{{ button_num == 3 and press_type == 'double_press' }}"
+        sequence: !input button_3_double
+
+      - conditions:
+          - "{{ button_num == 3 and press_type == 'hold' }}"
+        sequence: !input button_3_hold
+
+      # ========== Button 4 ==========
+      - conditions:
+          - "{{ button_num == 4 and press_type == 'press' }}"
+        sequence: !input button_4_press
+
+      - conditions:
+          - "{{ button_num == 4 and press_type == 'double_press' }}"
+        sequence: !input button_4_double
+
+      - conditions:
+          - "{{ button_num == 4 and press_type == 'hold' }}"
+        sequence: !input button_4_hold
+
+  # Set LED binding after action (optional)
+  - choose:
+      - conditions:
+          - "{{ button_num == 1 and button_1_led != '' }}"
+        sequence:
+          - service: select.select_option
+            data:
+              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_1_led_binding"
+              option: "{{ button_1_led }}"
+
+      - conditions:
+          - "{{ button_num == 2 and button_2_led != '' }}"
+        sequence:
+          - service: select.select_option
+            data:
+              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_2_led_binding"
+              option: "{{ button_2_led }}"
+
+      - conditions:
+          - "{{ button_num == 3 and button_3_led != '' }}"
+        sequence:
+          - service: select.select_option
+            data:
+              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_3_led_binding"
+              option: "{{ button_3_led }}"
+
+      - conditions:
+          - "{{ button_num == 4 and button_4_led != '' }}"
+        sequence:
+          - service: select.select_option
+            data:
+              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_4_led_binding"
+              option: "{{ button_4_led }}"
+    default: []
