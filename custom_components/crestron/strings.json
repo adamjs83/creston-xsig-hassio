@@ -231,10 +231,10 @@
       }
     },
     "error": {
-      "invalid_join_format": "Join must be in format: d1-d250, a1-a250, or s1-s250 (e.g., d15, a10, s5)",
+      "invalid_join_format": "Join must be in format: d1-d4096, a1-a1024, or s1-s1024 (e.g., d15, a10, s5)",
       "join_already_exists": "This join number is already configured. Remove it first or use a different join number.",
       "join_conflict": "One or more joins conflict with existing configurations.",
-      "join_range_exceeded": "Base join too high. Need room for button_count × 3 sequential joins (max d250).",
+      "join_range_exceeded": "Base join too high. Need room for button_count × 3 sequential joins (max d4096).",
       "name_required": "Name is required.",
       "entity_already_exists": "An entity with this name already exists. Choose a different name.",
       "unknown": "An unexpected error occurred. Check the logs for details."

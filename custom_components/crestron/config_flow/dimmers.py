@@ -112,7 +112,7 @@ class DimmerHandler:
                     base_join_num = int(base_join_str[1:])
                     # Validate join range: need button_count * 3 sequential joins
                     max_join_needed = base_join_num + (button_count * 3) - 1
-                    if max_join_needed > 250:
+                    if max_join_needed > 4096:
                         errors[CONF_BASE_JOIN] = "join_range_exceeded"
 
                 # Validate lighting load brightness join if provided

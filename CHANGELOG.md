@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.7] - 2025-11-21
+
+### Changed
+- **Join Limits Increased to Protocol Maximum**
+  - Digital joins: d1-d250 → **d1-d4096** (protocol supports 12-bit encoding = 4096 joins)
+  - Analog joins: a1-a250 → **a1-a1024** (protocol supports 10-bit encoding = 1024 joins)
+  - Serial joins: s1-s250 → **s1-s1024** (protocol supports 10-bit encoding = 1024 joins)
+  - Previous 250 limit was artificially restrictive
+  - Crestron systems support thousands of joins as designed
+  - Updated validation in `config_flow/dimmers.py` and error messages in `strings.json` and `translations/en.json`
+
 ## [1.20.6] - 2025-01-21
 
 ### Fixed
@@ -396,7 +407,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LED switches use press join for OUTPUT (bidirectional join usage)
 - Select entities scan entity registry for bindable domains
 - State mapping: 15+ domains, 30+ state mappings to LED on/off
-- Sequential validation: base join + (button_count * 3 - 1) must be <= 250
+- Sequential validation: base join + (button_count * 3 - 1) must be <= 250 (increased to 4096 in v1.20.7)
 
 ## [1.16.4] - 2025-11-18 [DEPRECATED]
 
