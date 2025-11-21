@@ -15,9 +15,7 @@ blueprint:
       name: Dimmer/Keypad Device
       description: Select your Crestron dimmer/keypad device (used for LED switch auto-discovery)
       selector:
-        device:
-          filter:
-            - integration: crestron
+        device: {}
 
     # ========== Button 1 ==========
     button_1_event:
