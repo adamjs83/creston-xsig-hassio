@@ -5,13 +5,13 @@ from typing import Any
 import voluptuous as vol
 import yaml
 
+from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector, entity_registry as er, device_registry as dr
 
 from ..const import (
     DOMAIN,
     CONF_DIMMERS,
-    CONF_NAME,
     CONF_BASE_JOIN,
     CONF_BUTTON_COUNT,
     CONF_HAS_LIGHTING_LOAD,

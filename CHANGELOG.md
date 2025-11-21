@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.2] - 2025-01-21
+
+### Fixed
+- **Critical Import Error** - Fixed incorrect CONF_NAME import in dimmers.py
+  - Fixed: Integration failed to load with "cannot import name 'CONF_NAME' from 'custom_components.crestron.const'"
+  - Root cause: dimmers.py was importing CONF_NAME from custom const module instead of homeassistant.const
+  - Changed: `from ..const import CONF_NAME` → `from homeassistant.const import CONF_NAME`
+  - Result: Config flow now loads successfully, integration initializes properly
+
+### Technical Details
+- **Problem:** CONF_NAME is a Home Assistant built-in constant, not a custom Crestron constant
+- All other config_flow files correctly imported CONF_NAME from homeassistant.const
+- Only dimmers.py had incorrect import from ..const
+- This prevented entire integration from loading during startup
+- Fixed by moving CONF_NAME import to proper homeassistant.const source
+
 ## [1.20.1] - 2025-01-21
 
 ### Fixed
