@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2025-01-21
+
+### Changed
+- **Major Code Refactoring** - Restructured config_flow.py for improved maintainability
+  - Split monolithic 3,457-line config_flow.py into 16 modular files
+  - Main config_flow.py reduced to 426 lines (87.6% reduction)
+  - Created dedicated handler classes for validators, menus, joins, dimmers, and entities
+  - Each platform (cover, light, switch, sensor, etc.) now has its own handler module
+  - No user-facing changes - purely internal code organization improvements
+
+### Technical Details
+- **New structure:** `config_flow/` directory with modular handlers
+  - `validators.py` - Port validation and exception classes
+  - `base.py` - BaseOptionsFlow and helper utilities
+  - `menus.py` - Navigation menu handlers (293 lines)
+  - `joins.py` - Join sync configuration handlers (376 lines)
+  - `dimmers.py` - Dimmer/keypad wizard handlers (988 lines)
+  - `entities/` - Individual platform handlers (8 files, 1,883 lines total)
+- **Benefits:** Improved code navigation, reduced merge conflicts, better testability
+- **Pattern:** Handler delegation with `self.flow` references
+- All 16 files validated with Python syntax checking
+- Zero functional changes - pure refactoring for maintainability
+
 ## [1.19.3] - 2025-01-20
 
 ### Changed
