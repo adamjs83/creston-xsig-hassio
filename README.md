@@ -689,15 +689,16 @@ Pre-built automation blueprints make it easy to configure your Crestron dimmers/
 **Features:**
 - Configure actions for button presses (press, double press, hold)
 - Set LED binding for visual feedback
-- Support for up to 4 buttons per dimmer
+- Support for up to 6 buttons per dimmer
 - All buttons and actions are optional
 
 **Quick Start:**
 1. Click the badge above to import the blueprint
 2. Go to **Settings** → **Automations & Scenes** → **Create Automation** → **Use a blueprint**
 3. Select **Crestron Dimmer/Keypad Button Controller**
-4. Choose your dimmer device
-5. Configure actions for the buttons you want to use
+4. Enter your dimmer name
+5. Select the event entities for the buttons you want to use
+6. Configure actions for each button press type
 
 **Example Use Cases:**
 - Button 1 Press: Toggle kitchen lights

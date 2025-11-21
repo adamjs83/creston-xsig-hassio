@@ -4,22 +4,29 @@ blueprint:
     Configure actions for Crestron dimmer/keypad button presses (single, double, hold)
     and optionally set LED binding for visual feedback. All buttons and actions are optional.
 
-    **Usage:** Select your dimmer device, then configure only the buttons and press types you need.
-    Leave any button/action blank if you don't want to use it.
+    **Usage:** Select the button event entities for your dimmer, then configure actions for each press type.
+    Supports up to 6 buttons per dimmer. Leave any button/action blank if you don't want to use it.
   domain: automation
   author: adamjs83
   source_url: https://github.com/adamjs83/creston-xsig-hassio/blob/main/blueprints/automation/crestron_dimmer_button_controller.yaml
 
   input:
-    dimmer_device:
-      name: Crestron Dimmer/Keypad Device
-      description: Select the Crestron dimmer/keypad device
+    dimmer_name:
+      name: Dimmer/Keypad Name
+      description: Enter the name of your dimmer (used for LED binding entity IDs)
       selector:
-        device:
-          integration: crestron
-          model: Keypad/Dimmer
+        text:
 
     # ========== Button 1 ==========
+    button_1_entity:
+      name: "Button 1 Event Entity (Optional)"
+      description: Select the event entity for button 1 (e.g., event.dimmer_name_button_1)
+      default: null
+      selector:
+        entity:
+          domain: event
+          multiple: false
+
     button_1_press:
       name: "Button 1 - Press Action (Optional)"
       description: Action to run when button 1 is pressed once
@@ -50,6 +57,15 @@ blueprint:
           multiple: false
 
     # ========== Button 2 ==========
+    button_2_entity:
+      name: "Button 2 Event Entity (Optional)"
+      description: Select the event entity for button 2
+      default: null
+      selector:
+        entity:
+          domain: event
+          multiple: false
+
     button_2_press:
       name: "Button 2 - Press Action (Optional)"
       description: Action to run when button 2 is pressed once
@@ -80,6 +96,15 @@ blueprint:
           multiple: false
 
     # ========== Button 3 ==========
+    button_3_entity:
+      name: "Button 3 Event Entity (Optional)"
+      description: Select the event entity for button 3
+      default: null
+      selector:
+        entity:
+          domain: event
+          multiple: false
+
     button_3_press:
       name: "Button 3 - Press Action (Optional)"
       description: Action to run when button 3 is pressed once
@@ -110,6 +135,15 @@ blueprint:
           multiple: false
 
     # ========== Button 4 ==========
+    button_4_entity:
+      name: "Button 4 Event Entity (Optional)"
+      description: Select the event entity for button 4
+      default: null
+      selector:
+        entity:
+          domain: event
+          multiple: false
+
     button_4_press:
       name: "Button 4 - Press Action (Optional)"
       description: Action to run when button 4 is pressed once
@@ -139,125 +173,305 @@ blueprint:
         entity:
           multiple: false
 
+    # ========== Button 5 ==========
+    button_5_entity:
+      name: "Button 5 Event Entity (Optional)"
+      description: Select the event entity for button 5
+      default: null
+      selector:
+        entity:
+          domain: event
+          multiple: false
+
+    button_5_press:
+      name: "Button 5 - Press Action (Optional)"
+      description: Action to run when button 5 is pressed once
+      default: []
+      selector:
+        action: {}
+
+    button_5_double:
+      name: "Button 5 - Double Press Action (Optional)"
+      description: Action to run when button 5 is double pressed
+      default: []
+      selector:
+        action: {}
+
+    button_5_hold:
+      name: "Button 5 - Hold Action (Optional)"
+      description: Action to run when button 5 is held
+      default: []
+      selector:
+        action: {}
+
+    button_5_led_entity:
+      name: "Button 5 - LED Binding (Optional)"
+      description: Bind button 5 LED to an entity for automatic feedback
+      default: ""
+      selector:
+        entity:
+          multiple: false
+
+    # ========== Button 6 ==========
+    button_6_entity:
+      name: "Button 6 Event Entity (Optional)"
+      description: Select the event entity for button 6
+      default: null
+      selector:
+        entity:
+          domain: event
+          multiple: false
+
+    button_6_press:
+      name: "Button 6 - Press Action (Optional)"
+      description: Action to run when button 6 is pressed once
+      default: []
+      selector:
+        action: {}
+
+    button_6_double:
+      name: "Button 6 - Double Press Action (Optional)"
+      description: Action to run when button 6 is double pressed
+      default: []
+      selector:
+        action: {}
+
+    button_6_hold:
+      name: "Button 6 - Hold Action (Optional)"
+      description: Action to run when button 6 is held
+      default: []
+      selector:
+        action: {}
+
+    button_6_led_entity:
+      name: "Button 6 - LED Binding (Optional)"
+      description: Bind button 6 LED to an entity for automatic feedback
+      default: ""
+      selector:
+        entity:
+          multiple: false
+
 mode: parallel
 max: 10
 
 variables:
-  dimmer_device: !input dimmer_device
+  dimmer_name: !input dimmer_name
   button_1_led: !input button_1_led_entity
   button_2_led: !input button_2_led_entity
   button_3_led: !input button_3_led_entity
   button_4_led: !input button_4_led_entity
+  button_5_led: !input button_5_led_entity
+  button_6_led: !input button_6_led_entity
 
 trigger:
-  # All button events from the selected device
-  - platform: device
-    device_id: !input dimmer_device
-    domain: crestron
-    type: "press"
-    id: press
+  # Button 1
+  - platform: state
+    entity_id: !input button_1_entity
+    id: button_1
 
-  - platform: device
-    device_id: !input dimmer_device
-    domain: crestron
-    type: "double_press"
-    id: double_press
+  # Button 2
+  - platform: state
+    entity_id: !input button_2_entity
+    id: button_2
 
-  - platform: device
-    device_id: !input dimmer_device
-    domain: crestron
-    type: "hold"
-    id: hold
+  # Button 3
+  - platform: state
+    entity_id: !input button_3_entity
+    id: button_3
+
+  # Button 4
+  - platform: state
+    entity_id: !input button_4_entity
+    id: button_4
+
+  # Button 5
+  - platform: state
+    entity_id: !input button_5_entity
+    id: button_5
+
+  # Button 6
+  - platform: state
+    entity_id: !input button_6_entity
+    id: button_6
 
 action:
   - variables:
-      button_num: "{{ trigger.event.data.button }}"
-      press_type: "{{ trigger.event.data.action }}"
+      event_type: "{{ trigger.to_state.attributes.event_type }}"
 
   - choose:
       # ========== Button 1 ==========
       - conditions:
-          - "{{ button_num == 1 and press_type == 'press' }}"
+          - condition: trigger
+            id: button_1
+          - "{{ event_type == 'press' }}"
         sequence: !input button_1_press
 
       - conditions:
-          - "{{ button_num == 1 and press_type == 'double_press' }}"
+          - condition: trigger
+            id: button_1
+          - "{{ event_type == 'double_press' }}"
         sequence: !input button_1_double
 
       - conditions:
-          - "{{ button_num == 1 and press_type == 'hold' }}"
+          - condition: trigger
+            id: button_1
+          - "{{ event_type == 'hold' }}"
         sequence: !input button_1_hold
 
       # ========== Button 2 ==========
       - conditions:
-          - "{{ button_num == 2 and press_type == 'press' }}"
+          - condition: trigger
+            id: button_2
+          - "{{ event_type == 'press' }}"
         sequence: !input button_2_press
 
       - conditions:
-          - "{{ button_num == 2 and press_type == 'double_press' }}"
+          - condition: trigger
+            id: button_2
+          - "{{ event_type == 'double_press' }}"
         sequence: !input button_2_double
 
       - conditions:
-          - "{{ button_num == 2 and press_type == 'hold' }}"
+          - condition: trigger
+            id: button_2
+          - "{{ event_type == 'hold' }}"
         sequence: !input button_2_hold
 
       # ========== Button 3 ==========
       - conditions:
-          - "{{ button_num == 3 and press_type == 'press' }}"
+          - condition: trigger
+            id: button_3
+          - "{{ event_type == 'press' }}"
         sequence: !input button_3_press
 
       - conditions:
-          - "{{ button_num == 3 and press_type == 'double_press' }}"
+          - condition: trigger
+            id: button_3
+          - "{{ event_type == 'double_press' }}"
         sequence: !input button_3_double
 
       - conditions:
-          - "{{ button_num == 3 and press_type == 'hold' }}"
+          - condition: trigger
+            id: button_3
+          - "{{ event_type == 'hold' }}"
         sequence: !input button_3_hold
 
       # ========== Button 4 ==========
       - conditions:
-          - "{{ button_num == 4 and press_type == 'press' }}"
+          - condition: trigger
+            id: button_4
+          - "{{ event_type == 'press' }}"
         sequence: !input button_4_press
 
       - conditions:
-          - "{{ button_num == 4 and press_type == 'double_press' }}"
+          - condition: trigger
+            id: button_4
+          - "{{ event_type == 'double_press' }}"
         sequence: !input button_4_double
 
       - conditions:
-          - "{{ button_num == 4 and press_type == 'hold' }}"
+          - condition: trigger
+            id: button_4
+          - "{{ event_type == 'hold' }}"
         sequence: !input button_4_hold
+
+      # ========== Button 5 ==========
+      - conditions:
+          - condition: trigger
+            id: button_5
+          - "{{ event_type == 'press' }}"
+        sequence: !input button_5_press
+
+      - conditions:
+          - condition: trigger
+            id: button_5
+          - "{{ event_type == 'double_press' }}"
+        sequence: !input button_5_double
+
+      - conditions:
+          - condition: trigger
+            id: button_5
+          - "{{ event_type == 'hold' }}"
+        sequence: !input button_5_hold
+
+      # ========== Button 6 ==========
+      - conditions:
+          - condition: trigger
+            id: button_6
+          - "{{ event_type == 'press' }}"
+        sequence: !input button_6_press
+
+      - conditions:
+          - condition: trigger
+            id: button_6
+          - "{{ event_type == 'double_press' }}"
+        sequence: !input button_6_double
+
+      - conditions:
+          - condition: trigger
+            id: button_6
+          - "{{ event_type == 'hold' }}"
+        sequence: !input button_6_hold
 
   # Set LED binding after action (optional)
   - choose:
       - conditions:
-          - "{{ button_num == 1 and button_1_led != '' }}"
+          - condition: trigger
+            id: button_1
+          - "{{ button_1_led != '' }}"
         sequence:
           - service: select.select_option
             data:
-              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_1_led_binding"
+              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_1_led_binding"
               option: "{{ button_1_led }}"
 
       - conditions:
-          - "{{ button_num == 2 and button_2_led != '' }}"
+          - condition: trigger
+            id: button_2
+          - "{{ button_2_led != '' }}"
         sequence:
           - service: select.select_option
             data:
-              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_2_led_binding"
+              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_2_led_binding"
               option: "{{ button_2_led }}"
 
       - conditions:
-          - "{{ button_num == 3 and button_3_led != '' }}"
+          - condition: trigger
+            id: button_3
+          - "{{ button_3_led != '' }}"
         sequence:
           - service: select.select_option
             data:
-              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_3_led_binding"
+              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_3_led_binding"
               option: "{{ button_3_led }}"
 
       - conditions:
-          - "{{ button_num == 4 and button_4_led != '' }}"
+          - condition: trigger
+            id: button_4
+          - "{{ button_4_led != '' }}"
         sequence:
           - service: select.select_option
             data:
-              entity_id: "select.{{ device_attr(dimmer_device, 'name') | lower | replace(' ', '_') }}_button_4_led_binding"
+              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_4_led_binding"
               option: "{{ button_4_led }}"
+
+      - conditions:
+          - condition: trigger
+            id: button_5
+          - "{{ button_5_led != '' }}"
+        sequence:
+          - service: select.select_option
+            data:
+              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_5_led_binding"
+              option: "{{ button_5_led }}"
+
+      - conditions:
+          - condition: trigger
+            id: button_6
+          - "{{ button_6_led != '' }}"
+        sequence:
+          - service: select.select_option
+            data:
+              entity_id: "select.{{ dimmer_name | lower | replace(' ', '_') }}_button_6_led_binding"
+              option: "{{ button_6_led }}"
     default: []

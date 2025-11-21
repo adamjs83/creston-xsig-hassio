@@ -11,7 +11,7 @@ This directory contains Home Assistant blueprints for the Crestron XSIG integrat
 Comprehensive automation blueprint for configuring Crestron dimmer/keypad buttons with:
 - Actions for each button press type (press, double press, hold)
 - Optional LED binding for visual feedback
-- Support for up to 4 buttons per dimmer
+- Support for up to 6 buttons per dimmer
 - All buttons and actions are optional
 
 ## Installation
@@ -45,8 +45,10 @@ Or manually:
 1. Go to **Settings** → **Automations & Scenes**
 2. Click **Create Automation** → **Use a blueprint**
 3. Select **Crestron Dimmer/Keypad Button Controller**
-4. Select your Crestron dimmer device
-5. Configure actions for the buttons you want to use
+4. Enter your dimmer name (e.g., "Kitchen Keypad" or "TTTTEST")
+5. Select the event entities for the buttons you want to use (e.g., `event.kitchen_keypad_button_1`)
+6. Configure actions for each button press type
+7. Optionally set LED binding to mirror entity states
 
 ### Example Configuration
 

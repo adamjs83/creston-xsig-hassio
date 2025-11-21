@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pre-built blueprint for easy dimmer/keypad configuration without writing YAML
   - Configure actions for all button press types (press, double press, hold)
   - Optional LED binding for visual feedback per button
-  - Support for up to 4 buttons per dimmer
+  - Support for up to 6 buttons per dimmer
   - All buttons and actions are optional - configure only what you need
   - Parallel execution mode supports multiple button presses simultaneously
   - Comprehensive documentation with examples in `blueprints/README.md`
