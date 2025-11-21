@@ -5,7 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.21.0] - 2025-11-21
+## [1.21.1] - 2025-11-21
+
+### Fixed
+- **Blueprint Template Error** - Fixed "Entity {{ button_1_event }} is neither a valid entity ID" error
+  - Root cause: Templates not supported in trigger entity_id fields
+  - Solution: Added back button event entity selectors with smart device filtering
+  - Entity selectors now auto-filter to show only buttons from selected dimmer device
+  - UX improvement: Select device once, then button dropdowns only show that device's buttons
+
+### Changed
+- Button entity selectors are now optional with smart filtering
+- Each button selector automatically filters to show only event entities from the selected dimmer device
+- Maintains the improved UX while fixing the template validation error
+
+## [1.21.0] - 2025-11-21 [BROKEN - DO NOT USE]
 
 ### Changed
 - **Blueprint Major UX Overhaul: Complete Auto-Discovery**
