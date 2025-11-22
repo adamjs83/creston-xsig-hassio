@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.6] - 2025-01-22
+
+### Fixed
+- **Dimmer Edit Preserves LED Bindings** - Fixed critical data loss bug when editing dimmers
+  - Root cause: Dimmer handler used stale config_entry.data, wiping out LED bindings on save
+  - Solution: Get fresh entry before all dimmer save operations (consistent with LED binding handler)
+  - Now LED bindings survive: editing dimmers, adding dimmers, removing dimmers
+  - Fixed all 4 save locations: add_dimmer_simple, add_dimmer_manual, _save_dimmer, remove_dimmers
+  - Same pattern that fixed LED binding persistence in v1.22.5
+
+### Changed
+- Dimmer handler now uses fresh config entry pattern: `async_get_entry(entry_id)` before `async_update_entry()`
+- Consistent with LED binding handler and other entity handlers (covers, lights, sensors, etc.)
+
 ## [1.22.5] - 2025-01-22
 
 ### Fixed

@@ -151,14 +151,20 @@ class DimmerHandler:
                         dimmer_config[CONF_HAS_LIGHTING_LOAD] = True
                         dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
 
-                    # Save dimmer
-                    current_dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, []).copy()
-                    current_dimmers.append(dimmer_config)
+                    # Save dimmer - get fresh entry to preserve LED bindings
+                    fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+                    if not fresh_entry:
+                        _LOGGER.error("Config entry not found, cannot save dimmer")
+                        errors["base"] = "entry_not_found"
+                    else:
+                        current_dimmers = fresh_entry.data.get(CONF_DIMMERS, []).copy()
+                        current_dimmers.append(dimmer_config)
 
-                    updated_data = {**self.flow.config_entry.data, CONF_DIMMERS: current_dimmers}
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=updated_data
-                    )
+                        new_data = dict(fresh_entry.data)
+                        new_data[CONF_DIMMERS] = current_dimmers
+                        self.flow.hass.config_entries.async_update_entry(
+                            fresh_entry, data=new_data
+                        )
 
                     _LOGGER.info(
                         "Added dimmer '%s' with %d buttons (base join: %s)",
@@ -284,14 +290,20 @@ class DimmerHandler:
                         dimmer_config[CONF_HAS_LIGHTING_LOAD] = True
                         dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
 
-                    # Save dimmer
-                    current_dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, []).copy()
-                    current_dimmers.append(dimmer_config)
+                    # Save dimmer - get fresh entry to preserve LED bindings
+                    fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+                    if not fresh_entry:
+                        _LOGGER.error("Config entry not found, cannot save dimmer")
+                        errors["base"] = "entry_not_found"
+                    else:
+                        current_dimmers = fresh_entry.data.get(CONF_DIMMERS, []).copy()
+                        current_dimmers.append(dimmer_config)
 
-                    updated_data = {**self.flow.config_entry.data, CONF_DIMMERS: current_dimmers}
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=updated_data
-                    )
+                        new_data = dict(fresh_entry.data)
+                        new_data[CONF_DIMMERS] = current_dimmers
+                        self.flow.hass.config_entries.async_update_entry(
+                            fresh_entry, data=new_data
+                        )
 
                     _LOGGER.info(
                         "Added dimmer '%s' with %d buttons (manual joins)",
@@ -724,13 +736,20 @@ class DimmerHandler:
     async def _save_dimmer(self) -> FlowResult:
         """Save the dimmer configuration."""
         try:
-            current_dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, []).copy()
+            # Get fresh entry to preserve LED bindings
+            fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+            if not fresh_entry:
+                _LOGGER.error("Config entry not found, cannot save dimmer")
+                return self.flow.async_abort(reason="entry_not_found")
+
+            current_dimmers = fresh_entry.data.get(CONF_DIMMERS, []).copy()
             current_dimmers.append(self.flow._editing_join)
 
-            # Update config entry
-            updated_data = {**self.flow.config_entry.data, CONF_DIMMERS: current_dimmers}
+            # Update config entry with fresh data
+            new_data = dict(fresh_entry.data)
+            new_data[CONF_DIMMERS] = current_dimmers
             self.flow.hass.config_entries.async_update_entry(
-                self.flow.config_entry, data=updated_data
+                fresh_entry, data=new_data
             )
 
             _LOGGER.info(
@@ -848,31 +867,39 @@ class DimmerHandler:
                 dimmers_to_remove = user_input.get("dimmers_to_remove", [])
 
                 if dimmers_to_remove:
-                    # Filter out removed dimmers
-                    updated_dimmers = [
-                        d for d in current_dimmers
-                        if d.get(CONF_NAME) not in dimmers_to_remove
-                    ]
+                    # Get fresh entry to preserve LED bindings
+                    fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+                    if not fresh_entry:
+                        _LOGGER.error("Config entry not found, cannot remove dimmers")
+                        errors["base"] = "entry_not_found"
+                    else:
+                        # Filter out removed dimmers
+                        updated_dimmers = [
+                            d for d in current_dimmers
+                            if d.get(CONF_NAME) not in dimmers_to_remove
+                        ]
 
-                    # Update config entry
-                    updated_data = {**self.flow.config_entry.data, CONF_DIMMERS: updated_dimmers}
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=updated_data
-                    )
+                        # Update config entry with fresh data
+                        new_data = dict(fresh_entry.data)
+                        new_data[CONF_DIMMERS] = updated_dimmers
+                        self.flow.hass.config_entries.async_update_entry(
+                            fresh_entry, data=new_data
+                        )
 
-                    # Clean up entities generated by these dimmers
-                    for dimmer_name in dimmers_to_remove:
-                        dimmer = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
-                        if dimmer:
-                            # Remove all entities and device from registry
-                            await self._cleanup_dimmer_entities(dimmer)
+                        # Clean up entities generated by these dimmers
+                        for dimmer_name in dimmers_to_remove:
+                            dimmer = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
+                            if dimmer:
+                                # Remove all entities and device from registry
+                                await self._cleanup_dimmer_entities(dimmer)
 
-                    _LOGGER.info("Removed %s dimmer(s)", len(dimmers_to_remove))
+                        _LOGGER.info("Removed %s dimmer(s)", len(dimmers_to_remove))
 
-                    # Reload integration
-                    await self.flow._async_reload_integration()
+                        # Reload integration
+                        await self.flow._async_reload_integration()
 
-                return self.flow.async_create_entry(title="", data={})
+                if not errors:
+                    return self.flow.async_create_entry(title="", data={})
 
             except Exception as ex:
                 _LOGGER.exception("Unexpected error removing dimmers: %s", ex)
