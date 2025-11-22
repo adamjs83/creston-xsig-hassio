@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2025-01-21
+
+### Added
+- **LED Binding Manager** - Domain-filtered LED binding solution with zero database bloat
+  - Store LED bindings in config entry options instead of select entities (avoids 32KB limit)
+  - Domain-filtered entity selectors show only 15-50 relevant entities (vs 300+)
+  - Config flow UI: Settings → Crestron → Configure → Manage Dimmers/Keypads → Configure LED Bindings
+  - Automatic state synchronization via state listeners
+  - Support for invert flag (LED on when entity is off)
+  - Reload support without connection drops
+  - Persistent across Home Assistant restart
+
+### Changed
+- LED bindings now stored in `config_entry.options["led_bindings"]` (JSON format)
+- Select entities for LED binding deprecated (will be removed in future release)
+- Improved performance with O(1) lookups and direct callbacks
+
+### Technical Details
+- Created `led_binding_manager.py` - Core LED sync logic with automatic state listeners
+- Created `config_flow/led_bindings.py` - UI flow handler for LED configuration
+- Updated `__init__.py` - Register and initialize LED binding manager
+- Updated config flow menus to add LED binding configuration option
+- Supports all bindable domains: light, switch, cover, binary_sensor, climate, media_player, and more
+
 ## [1.21.1] - 2025-11-21
 
 ### Fixed
