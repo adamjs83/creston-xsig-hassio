@@ -135,7 +135,8 @@ class LEDBindingHandler:
             existing_bindings = fresh_entry.data.get(CONF_LED_BINDINGS, {}).get(dimmer_name, {})
 
         for btn_num in range(1, button_count + 1):
-            existing = existing_bindings.get(str(btn_num), {})
+            # Handle None values for unbound buttons
+            existing = existing_bindings.get(str(btn_num)) or {}
 
             # Entity selector (domain-filtered)
             # Only set default if there's an actual entity_id (avoid "Entity None" error)

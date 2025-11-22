@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.7] - 2025-01-22
+
+### Fixed
+- **LED Binding Edit with Unbound Buttons** - Fixed crash when editing LED bindings with empty buttons
+  - Root cause: Unbound buttons stored as `None`, but code expected dict
+  - Line 138: `existing_bindings.get(str(btn_num), {})` returned stored `None`, not default `{}`
+  - Line 162: Tried to call `.get("invert")` on `None` → AttributeError
+  - Solution: Use `or {}` to ensure `existing` is always a dict
+  - Now you can edit LED bindings even when some buttons are unbound
+
 ## [1.22.6] - 2025-01-22
 
 ### Fixed
