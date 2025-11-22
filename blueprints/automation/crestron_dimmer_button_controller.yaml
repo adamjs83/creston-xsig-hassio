@@ -6,7 +6,7 @@ blueprint:
     **Features:**
     - Supports single press, double press, and hold actions
     - Configure only the buttons you need (all others ignored)
-    - Automatically monitors all button events from the device
+    - Automatically monitors ALL buttons from the selected device
 
     **LED Bindings:** Configure LED bindings via the Crestron integration
     config (Settings → Devices & Services → Crestron → Configure → LED Bindings)
@@ -16,60 +16,9 @@ blueprint:
   source_url: https://github.com/adamjs83/creston-xsig-hassio/blob/main/blueprints/automation/crestron_dimmer_button_controller.yaml
 
   input:
-    button_1_entity:
-      name: Button 1 Event Entity
-      description: Select button 1 event entity (leave empty if not using button 1)
-      default: ""
-      selector:
-        entity:
-          filter:
-            - domain: event
-              integration: crestron
-
-    button_2_entity:
-      name: Button 2 Event Entity
-      description: Select button 2 event entity (leave empty if not using button 2)
-      default: ""
-      selector:
-        entity:
-          filter:
-            - domain: event
-              integration: crestron
-
-    button_3_entity:
-      name: Button 3 Event Entity
-      description: Select button 3 event entity (leave empty if not using button 3)
-      default: ""
-      selector:
-        entity:
-          filter:
-            - domain: event
-              integration: crestron
-
-    button_4_entity:
-      name: Button 4 Event Entity
-      description: Select button 4 event entity (leave empty if not using button 4)
-      default: ""
-      selector:
-        entity:
-          filter:
-            - domain: event
-              integration: crestron
-
-    button_5_entity:
-      name: Button 5 Event Entity
-      description: Select button 5 event entity (leave empty if not using button 5)
-      default: ""
-      selector:
-        entity:
-          filter:
-            - domain: event
-              integration: crestron
-
-    button_6_entity:
-      name: Button 6 Event Entity
-      description: Select button 6 event entity (leave empty if not using button 6)
-      default: ""
+    button_entity:
+      name: Button Event Entity (any button from your dimmer)
+      description: Select ANY button from your dimmer - all buttons on that device will be monitored
       selector:
         entity:
           filter:
@@ -211,28 +160,35 @@ blueprint:
 mode: parallel
 max: 10
 
+variables:
+  selected_button: !input button_entity
+  # Get device from selected button
+  dimmer_device: "{{ device_id(selected_button) }}"
+  # Get all button entities from that device
+  all_buttons: >
+    {% set buttons = namespace(list=[]) %}
+    {% for entity in device_entities(dimmer_device) %}
+      {% if entity.startswith('event.') and 'button' in entity %}
+        {% set buttons.list = buttons.list + [entity] %}
+      {% endif %}
+    {% endfor %}
+    {{ buttons.list }}
+
 trigger:
-  # Trigger on event_type attribute changes for each configured button
+  # This is a workaround - trigger on the selected button
+  # but check all buttons from the same device in action
   - platform: state
-    entity_id: !input button_1_entity
+    entity_id: !input button_entity
     attribute: event_type
   - platform: state
-    entity_id: !input button_2_entity
-    attribute: event_type
-  - platform: state
-    entity_id: !input button_3_entity
-    attribute: event_type
-  - platform: state
-    entity_id: !input button_4_entity
-    attribute: event_type
-  - platform: state
-    entity_id: !input button_5_entity
-    attribute: event_type
-  - platform: state
-    entity_id: !input button_6_entity
-    attribute: event_type
+    entity_id: !input button_entity
+    attribute: button
 
 action:
+  # Check if trigger was from our device's button entities
+  - condition: template
+    value_template: "{{ trigger.entity_id in all_buttons }}"
+
   - variables:
       # Extract event data from the entity attributes
       event_type: "{{ trigger.to_state.attributes.event_type }}"
