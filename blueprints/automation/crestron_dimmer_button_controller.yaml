@@ -6,7 +6,7 @@ blueprint:
     **Features:**
     - Supports single press, double press, and hold actions
     - Configure only the buttons you need (all others ignored)
-    - All button events from the selected device are monitored
+    - Automatically monitors all button events from the device
 
     **LED Bindings:** Configure LED bindings via the Crestron integration
     config (Settings → Devices & Services → Crestron → Configure → LED Bindings)
@@ -16,15 +16,65 @@ blueprint:
   source_url: https://github.com/adamjs83/creston-xsig-hassio/blob/main/blueprints/automation/crestron_dimmer_button_controller.yaml
 
   input:
-    dimmer_device:
-      name: Dimmer/Keypad Device
-      description: Select your Crestron dimmer/keypad device
+    button_1_entity:
+      name: Button 1 Event Entity
+      description: Select button 1 event entity (leave empty if not using button 1)
+      default: ""
       selector:
-        device:
+        entity:
           filter:
-            - integration: crestron
-              manufacturer: Crestron
-              model: Keypad/Dimmer
+            - domain: event
+              integration: crestron
+
+    button_2_entity:
+      name: Button 2 Event Entity
+      description: Select button 2 event entity (leave empty if not using button 2)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: crestron
+
+    button_3_entity:
+      name: Button 3 Event Entity
+      description: Select button 3 event entity (leave empty if not using button 3)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: crestron
+
+    button_4_entity:
+      name: Button 4 Event Entity
+      description: Select button 4 event entity (leave empty if not using button 4)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: crestron
+
+    button_5_entity:
+      name: Button 5 Event Entity
+      description: Select button 5 event entity (leave empty if not using button 5)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: crestron
+
+    button_6_entity:
+      name: Button 6 Event Entity
+      description: Select button 6 event entity (leave empty if not using button 6)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: crestron
 
     # ========== Button 1 Actions ==========
     button_1_press:
@@ -161,22 +211,32 @@ blueprint:
 mode: parallel
 max: 10
 
-variables:
-  dimmer_device: !input dimmer_device
-  # Auto-discover all button event entities from the selected device
-  button_events: "{{ device_entities(dimmer_device) | select('match', '^event\\..*_button_[1-6]$') | list }}"
-
 trigger:
-  # Trigger on ANY button event from the selected dimmer device
-  - platform: event
-    event_type: crestron_button
-    event_data:
-      device_name: "{{ device_attr(dimmer_device, 'name') }}"
+  # Trigger on event_type attribute changes for each configured button
+  - platform: state
+    entity_id: !input button_1_entity
+    attribute: event_type
+  - platform: state
+    entity_id: !input button_2_entity
+    attribute: event_type
+  - platform: state
+    entity_id: !input button_3_entity
+    attribute: event_type
+  - platform: state
+    entity_id: !input button_4_entity
+    attribute: event_type
+  - platform: state
+    entity_id: !input button_5_entity
+    attribute: event_type
+  - platform: state
+    entity_id: !input button_6_entity
+    attribute: event_type
 
 action:
   - variables:
-      event_type: "{{ trigger.event.data.action }}"
-      button_num: "{{ trigger.event.data.button | int }}"
+      # Extract event data from the entity attributes
+      event_type: "{{ trigger.to_state.attributes.event_type }}"
+      button_num: "{{ trigger.to_state.attributes.button | int }}"
 
   - choose:
       # ========== Button 1 Actions ==========
