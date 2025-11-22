@@ -263,6 +263,8 @@ class MenuHandler:
                 return await self.flow.async_step_select_dimmer_to_edit()
             elif next_step == "remove_dimmers":
                 return await self.flow.async_step_remove_dimmers()
+            elif next_step == "led_bindings":
+                return await self.flow.async_step_led_binding_menu()
             elif next_step == "back":
                 return await self.flow.async_step_init()
 
@@ -279,6 +281,7 @@ class MenuHandler:
                             {"label": "Add Dimmer/Keypad", "value": "add_dimmer"},
                             {"label": f"Edit Dimmer/Keypad ({total_dimmers} available)", "value": "edit_dimmers"},
                             {"label": f"Remove Dimmer/Keypad ({total_dimmers} available)", "value": "remove_dimmers"},
+                            {"label": f"Configure LED Bindings ({total_dimmers} available)", "value": "led_bindings"},
                             {"label": "← Back to Main Menu", "value": "back"},
                         ],
                         mode=selector.SelectSelectorMode.LIST,

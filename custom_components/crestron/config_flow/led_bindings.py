@@ -1,0 +1,162 @@
+"""LED Binding configuration handler."""
+import logging
+from typing import Any
+
+import voluptuous as vol
+
+from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
+
+from ..const import (
+    DOMAIN,
+    CONF_DIMMERS,
+    CONF_LED_BINDINGS,
+    BINDABLE_DOMAINS,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class LEDBindingHandler:
+    """Handler for LED binding configuration."""
+
+    def __init__(self, options_flow):
+        """Initialize the LED binding handler."""
+        self.flow = options_flow
+
+    async def async_step_led_binding_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Show LED binding management menu."""
+        dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, [])
+
+        if not dimmers:
+            return self.flow.async_abort(reason="no_dimmers_configured")
+
+        if user_input is not None:
+            dimmer_name = user_input.get("dimmer_to_configure")
+
+            # Store selected dimmer for next step
+            self.flow._selected_dimmer = dimmer_name
+            return await self.async_step_configure_dimmer_leds()
+
+        # Build dimmer selection
+        dimmer_options = [
+            {
+                "label": f"{d.get('name')} ({d.get('button_count')} buttons)",
+                "value": d.get("name")
+            }
+            for d in dimmers
+        ]
+
+        schema = vol.Schema({
+            vol.Required("dimmer_to_configure"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=dimmer_options,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        })
+
+        return self.flow.async_show_form(
+            step_id="led_binding_menu",
+            data_schema=schema,
+        )
+
+    async def async_step_configure_dimmer_leds(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure LED bindings for selected dimmer."""
+        dimmer_name = self.flow._selected_dimmer
+
+        # Find dimmer config
+        dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, [])
+        dimmer = next((d for d in dimmers if d.get("name") == dimmer_name), None)
+
+        if not dimmer:
+            return self.flow.async_abort(reason="dimmer_not_found")
+
+        button_count = dimmer.get("button_count", 2)
+
+        if user_input is not None:
+            # Save bindings
+            bindings = {}
+
+            for btn_num in range(1, button_count + 1):
+                entity_id = user_input.get(f"button_{btn_num}_entity")
+                invert = user_input.get(f"button_{btn_num}_invert", False)
+
+                if entity_id:
+                    bindings[str(btn_num)] = {
+                        "entity_id": entity_id,
+                        "invert": invert,
+                    }
+                else:
+                    bindings[str(btn_num)] = None
+
+            # Save to config entry options
+            current_options = dict(self.flow.config_entry.options)
+            led_bindings = current_options.get(CONF_LED_BINDINGS, {})
+            led_bindings[dimmer_name] = bindings
+            current_options[CONF_LED_BINDINGS] = led_bindings
+
+            self.flow.hass.config_entries.async_update_entry(
+                self.flow.config_entry,
+                options=current_options
+            )
+
+            _LOGGER.info(
+                "Updated LED bindings for dimmer '%s': %d buttons configured",
+                dimmer_name,
+                sum(1 for b in bindings.values() if b is not None)
+            )
+
+            # Reload LED binding manager
+            await self._reload_led_binding_manager()
+
+            # Clear temp state
+            del self.flow._selected_dimmer
+
+            return self.flow.async_create_entry(title="", data={})
+
+        # Build dynamic form
+        schema_fields = {}
+
+        # Get existing bindings
+        existing_bindings = self.flow.config_entry.options.get(CONF_LED_BINDINGS, {}).get(dimmer_name, {})
+
+        for btn_num in range(1, button_count + 1):
+            existing = existing_bindings.get(str(btn_num), {})
+
+            # Entity selector (domain-filtered)
+            schema_fields[vol.Optional(f"button_{btn_num}_entity", default=existing.get("entity_id"))] = (
+                selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=list(BINDABLE_DOMAINS.keys())
+                    )
+                )
+            )
+
+            # Invert checkbox
+            schema_fields[vol.Optional(f"button_{btn_num}_invert", default=existing.get("invert", False))] = (
+                selector.BooleanSelector()
+            )
+
+        schema = vol.Schema(schema_fields)
+
+        return self.flow.async_show_form(
+            step_id="configure_dimmer_leds",
+            data_schema=schema,
+            description_placeholders={
+                "dimmer_name": dimmer_name,
+                "button_count": str(button_count),
+            },
+        )
+
+    async def _reload_led_binding_manager(self) -> None:
+        """Reload the LED binding manager."""
+        entry_data = self.flow.hass.data[DOMAIN].get(self.flow.config_entry.entry_id)
+
+        if entry_data and "led_binding_manager" in entry_data:
+            led_manager = entry_data["led_binding_manager"]
+            await led_manager.async_reload()

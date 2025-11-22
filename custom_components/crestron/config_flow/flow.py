@@ -140,9 +140,11 @@ class OptionsFlowHandler(BaseOptionsFlow):
         from .menus import MenuHandler
         from .joins import JoinSyncHandler
         from .dimmers import DimmerHandler
+        from .led_bindings import LEDBindingHandler
         self._menu_handler = MenuHandler(self)
         self._join_handler = JoinSyncHandler(self)
         self._dimmer_handler = DimmerHandler(self)
+        self._led_binding_handler = LEDBindingHandler(self)
 
         # Import entity handlers here to avoid circular imports
         from .entities import (
@@ -341,3 +343,17 @@ class OptionsFlowHandler(BaseOptionsFlow):
     ) -> FlowResult:
         """Remove selected dimmers."""
         return await self._dimmer_handler.async_step_remove_dimmers(user_input)
+
+    # ========== LED Binding Configuration Methods (v1.22.0+) ==========
+
+    async def async_step_led_binding_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Show LED binding management menu."""
+        return await self._led_binding_handler.async_step_led_binding_menu(user_input)
+
+    async def async_step_configure_dimmer_leds(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure LED bindings for selected dimmer."""
+        return await self._led_binding_handler.async_step_configure_dimmer_leds(user_input)

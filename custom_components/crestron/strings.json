@@ -228,6 +228,45 @@
         "data": {
           "dimmers_to_remove": "Dimmers/Keypads to Remove"
         }
+      },
+      "led_binding_menu": {
+        "title": "Configure LED Bindings",
+        "description": "Select a dimmer/keypad to configure LED bindings. LEDs will automatically mirror the state of bound entities.",
+        "data": {
+          "dimmer_to_configure": "Dimmer/Keypad to Configure"
+        }
+      },
+      "configure_dimmer_leds": {
+        "title": "Configure LED Bindings: {dimmer_name}",
+        "description": "Bind each button LED to an entity. The LED will automatically update when the entity state changes. Leave blank for no binding.",
+        "data": {
+          "button_1_entity": "Button 1 LED → Entity",
+          "button_1_invert": "Button 1 Invert",
+          "button_2_entity": "Button 2 LED → Entity",
+          "button_2_invert": "Button 2 Invert",
+          "button_3_entity": "Button 3 LED → Entity",
+          "button_3_invert": "Button 3 Invert",
+          "button_4_entity": "Button 4 LED → Entity",
+          "button_4_invert": "Button 4 Invert",
+          "button_5_entity": "Button 5 LED → Entity",
+          "button_5_invert": "Button 5 Invert",
+          "button_6_entity": "Button 6 LED → Entity",
+          "button_6_invert": "Button 6 Invert"
+        },
+        "data_description": {
+          "button_1_entity": "Entity to bind to Button 1 LED (blank for no binding)",
+          "button_1_invert": "LED on when entity is off (reverse logic)",
+          "button_2_entity": "Entity to bind to Button 2 LED (blank for no binding)",
+          "button_2_invert": "LED on when entity is off (reverse logic)",
+          "button_3_entity": "Entity to bind to Button 3 LED (blank for no binding)",
+          "button_3_invert": "LED on when entity is off (reverse logic)",
+          "button_4_entity": "Entity to bind to Button 4 LED (blank for no binding)",
+          "button_4_invert": "LED on when entity is off (reverse logic)",
+          "button_5_entity": "Entity to bind to Button 5 LED (blank for no binding)",
+          "button_5_invert": "LED on when entity is off (reverse logic)",
+          "button_6_entity": "Entity to bind to Button 6 LED (blank for no binding)",
+          "button_6_invert": "LED on when entity is off (reverse logic)"
+        }
       }
     },
     "error": {
@@ -238,6 +277,10 @@
       "name_required": "Name is required.",
       "entity_already_exists": "An entity with this name already exists. Choose a different name.",
       "unknown": "An unexpected error occurred. Check the logs for details."
+    },
+    "abort": {
+      "no_dimmers_configured": "No dimmers/keypads configured. Please add a dimmer/keypad first.",
+      "dimmer_not_found": "Selected dimmer not found. It may have been removed."
     }
   }
 }

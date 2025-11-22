@@ -55,6 +55,10 @@ CONF_CLIMATES = "climates"
 CONF_DIMMERS = "dimmers"
 CONF_MEDIA_PLAYERS = "media_players"
 
+# LED Binding configuration (v1.22.0+)
+CONF_LED_BINDINGS = "led_bindings"  # Stored in config_entry.options
+CONF_INVERT = "invert"
+
 # Climate additional constants
 CONF_MODE_HEAT_COOL_JOIN = "mode_heat_cool_join"
 CONF_FAN_MODE_AUTO_JOIN = "fan_mode_auto_join"

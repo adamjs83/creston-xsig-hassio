@@ -27,6 +27,7 @@ from homeassistant.const import (
 )
 
 from .crestron import CrestronXsig
+from .led_binding_manager import LEDBindingManager
 from .const import (
     CONF_PORT,
     HUB,
@@ -329,6 +330,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         'hub_wrapper': hub_wrapper,  # Store wrapper for cleanup
     }
 
+    # Initialize LED binding manager (v1.22.0+)
+    led_manager = LEDBindingManager(hass, hub_wrapper.hub, entry)
+    await led_manager.async_setup()
+
+    # Store LED binding manager in entry data
+    hass.data[DOMAIN][entry.entry_id]["led_binding_manager"] = led_manager
+
     # If no YAML hub, this config entry hub will serve YAML platform entities
     if not yaml_hub_exists:
         # Mark that this hub is from a config entry, not YAML
@@ -390,6 +398,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         is_dual_config = yaml_hub_exists and entry_data
 
         if entry_data:
+            # Cleanup LED binding manager (v1.22.0+)
+            if "led_binding_manager" in entry_data:
+                led_manager = entry_data["led_binding_manager"]
+                await led_manager.async_unload()
+                _LOGGER.debug("LED binding manager unloaded")
+
             # In dual config mode: preserve YAML hub
             # NOT in dual config mode: preserve config entry hub (don't stop/restart)
             # The hub should only be stopped on full integration removal, not reload
