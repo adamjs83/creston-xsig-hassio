@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.5] - 2025-01-22
+
+### Fixed
+- **LED Bindings Finally Persist!** - Found and fixed the ACTUAL root cause via agent analysis
+  - Root cause: In OptionsFlow, `async_create_entry(data={})` sets options to empty dict
+  - Was saving to entry.options then immediately overwriting with async_create_entry(data={})
+  - Solution: Move LED bindings from entry.options to entry.data (consistent with other handlers)
+  - Now bindings persist across: reopening config, integration reload, HA restart
+  - Agent ran deep analysis 3x to identify the Home Assistant options flow pattern issue
+
+### Changed
+- LED bindings now stored in `config_entry.data[CONF_LED_BINDINGS]` (not options)
+- Consistent with covers, lights, switches, sensors, climate, media players, dimmers
+
 ## [1.22.4] - 2025-01-22
 
 ### Fixed
