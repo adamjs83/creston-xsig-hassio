@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.4] - 2025-01-22
+
+### Fixed
+- **LED Bindings Not Saved to Storage** - Fixed the critical root cause preventing any persistence
+  - Root cause: Config flow updated a stale config_entry that HA didn't persist
+  - Solution: Always get fresh entry from registry before saving and loading bindings
+  - Now bindings are actually written to storage and survive restarts
+  - Symptoms fixed:
+    - Bindings appeared to work but selections were gone when reopening config
+    - Bindings lost after integration reload
+    - Bindings lost after HA restart
+
 ## [1.22.3] - 2025-01-22
 
 ### Fixed
