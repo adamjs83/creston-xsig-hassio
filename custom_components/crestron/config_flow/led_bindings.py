@@ -129,13 +129,25 @@ class LEDBindingHandler:
             existing = existing_bindings.get(str(btn_num), {})
 
             # Entity selector (domain-filtered)
-            schema_fields[vol.Optional(f"button_{btn_num}_entity", default=existing.get("entity_id"))] = (
-                selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=list(BINDABLE_DOMAINS.keys())
+            # Only set default if there's an actual entity_id (avoid "Entity None" error)
+            existing_entity = existing.get("entity_id") if existing else None
+            if existing_entity:
+                schema_fields[vol.Optional(f"button_{btn_num}_entity", default=existing_entity)] = (
+                    selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=list(BINDABLE_DOMAINS.keys())
+                        )
                     )
                 )
-            )
+            else:
+                # No default - field starts blank and can be left blank
+                schema_fields[vol.Optional(f"button_{btn_num}_entity")] = (
+                    selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=list(BINDABLE_DOMAINS.keys())
+                        )
+                    )
+                )
 
             # Invert checkbox
             schema_fields[vol.Optional(f"button_{btn_num}_invert", default=existing.get("invert", False))] = (
