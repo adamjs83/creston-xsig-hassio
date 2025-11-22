@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.3] - 2025-01-22
+
+### Fixed
+- **LED Bindings Lost After Integration Reload** - Fixed the actual root cause
+  - Root cause: LED binding manager stored stale config_entry in __init__ and reused it during reload
+  - Solution: Store entry_id and always get fresh entry from registry in _load_bindings()
+  - Now bindings persist correctly when you reload the integration via UI
+  - User workflow now works: Configure bindings → they work → reload integration → they STILL work
+
 ## [1.22.2] - 2025-01-22
 
 ### Fixed
