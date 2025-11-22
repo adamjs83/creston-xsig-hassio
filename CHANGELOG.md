@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.1] - 2025-01-21
+
+### Fixed
+- **LED Binding Validation Error** - Fixed "Entity None is neither a valid entity ID" error when leaving button LED bindings blank
+  - Root cause: EntitySelector with `default=None` caused validation error
+  - Solution: Only set default value when there's an actual existing entity_id
+  - Now properly allows optional/unbound buttons as designed
+
 ## [1.22.0] - 2025-01-21
 
 ### Added
