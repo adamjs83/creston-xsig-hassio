@@ -94,21 +94,21 @@ class LEDBindingHandler:
                 else:
                     bindings[str(btn_num)] = None
 
-            # Save to config entry options
+            # Save to config entry data (consistent with other entity handlers)
             # Get fresh entry to ensure we're updating the latest version
             fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
             if not fresh_entry:
                 _LOGGER.error("Config entry not found, cannot save LED bindings")
                 return self.flow.async_abort(reason="entry_not_found")
 
-            current_options = dict(fresh_entry.options)
-            led_bindings = current_options.get(CONF_LED_BINDINGS, {})
+            new_data = dict(fresh_entry.data)
+            led_bindings = new_data.get(CONF_LED_BINDINGS, {})
             led_bindings[dimmer_name] = bindings
-            current_options[CONF_LED_BINDINGS] = led_bindings
+            new_data[CONF_LED_BINDINGS] = led_bindings
 
             self.flow.hass.config_entries.async_update_entry(
                 fresh_entry,
-                options=current_options
+                data=new_data
             )
 
             _LOGGER.info(
@@ -128,11 +128,11 @@ class LEDBindingHandler:
         # Build dynamic form
         schema_fields = {}
 
-        # Get existing bindings from fresh entry
+        # Get existing bindings from fresh entry data (not options)
         fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
         existing_bindings = {}
         if fresh_entry:
-            existing_bindings = fresh_entry.options.get(CONF_LED_BINDINGS, {}).get(dimmer_name, {})
+            existing_bindings = fresh_entry.data.get(CONF_LED_BINDINGS, {}).get(dimmer_name, {})
 
         for btn_num in range(1, button_count + 1):
             existing = existing_bindings.get(str(btn_num), {})

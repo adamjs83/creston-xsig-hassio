@@ -37,14 +37,14 @@ class LEDBindingManager:
         _LOGGER.info("LED binding manager initialized with %d bindings", len(self._bindings))
 
     def _load_bindings(self) -> None:
-        """Load LED bindings from config entry options."""
-        # Always get fresh entry to ensure we have latest options
+        """Load LED bindings from config entry data."""
+        # Always get fresh entry to ensure we have latest data
         entry = self.hass.config_entries.async_get_entry(self._entry_id)
         if not entry:
             _LOGGER.warning("Config entry not found during binding load")
             return
 
-        led_bindings = entry.options.get(CONF_LED_BINDINGS, {})
+        led_bindings = entry.data.get(CONF_LED_BINDINGS, {})
         dimmers = entry.data.get(CONF_DIMMERS, [])
 
         self._bindings = {}
