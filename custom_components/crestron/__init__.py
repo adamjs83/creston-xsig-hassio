@@ -331,7 +331,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
 
     # Initialize LED binding manager (v1.22.0+)
-    led_manager = LEDBindingManager(hass, hub_wrapper.hub, entry)
+    # Get fresh entry from registry to ensure we have latest options
+    fresh_entry = hass.config_entries.async_get_entry(entry.entry_id)
+    led_manager = LEDBindingManager(hass, hub_wrapper.hub, fresh_entry or entry)
     await led_manager.async_setup()
 
     # Store LED binding manager in entry data
