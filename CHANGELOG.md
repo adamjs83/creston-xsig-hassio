@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.2] - 2025-01-22
+
+### Fixed
+- **LED Bindings Lost After Reload** - Fixed bindings disappearing after integration reload
+  - Root cause: Stale config entry object during reload didn't have updated options
+  - Solution: Get fresh entry from config entries registry before initializing LED binding manager
+  - Bindings now persist correctly across integration reloads
+  - No more "LED binding manager initialized with 0 bindings" after reload
+
 ## [1.22.1] - 2025-01-21
 
 ### Fixed
