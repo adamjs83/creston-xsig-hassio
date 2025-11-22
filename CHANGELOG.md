@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0] - 2025-01-22
+
+### Added
+- **Event Bus Integration for Button Presses** - Buttons now fire `crestron_button` events
+  - Event type: `crestron_button`
+  - Event data: `device_name`, `button` (1-6), `action` (press/double_press/hold)
+  - Works with standard Home Assistant event triggers
+  - Compatible with Node-RED and other automation tools
+  - EventEntity state updates still work (backward compatible)
+
+### Changed
+- Button events now fire on both EventEntity (entity state) AND event bus
+- Enables simpler automation creation without blueprints
+- Event data structure consistent across all button events
+
+### Example Automation
+```yaml
+trigger:
+  - platform: event
+    event_type: crestron_button
+    event_data:
+      device_name: "Living Room Dimmer"
+      button: 1
+      action: press
+action:
+  - service: light.toggle
+    target:
+      entity_id: light.living_room
+```
+
 ## [1.22.7] - 2025-01-22
 
 ### Fixed

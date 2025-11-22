@@ -180,14 +180,18 @@ class CrestronButtonEvent(EventEntity):
     def _handle_press(self, value: str) -> None:
         """Handle press join trigger."""
         if value == "1":  # Digital high = button pressed
-            self._trigger_event(
-                "press",
-                {
-                    "device_name": self._dimmer_name,
-                    "button": self._button_num,
-                    "action": "press",
-                },
-            )
+            event_data = {
+                "device_name": self._dimmer_name,
+                "button": self._button_num,
+                "action": "press",
+            }
+
+            # Fire EventEntity event (updates entity state)
+            self._trigger_event("press", event_data)
+
+            # Fire event on the bus for automations
+            self.hass.bus.async_fire("crestron_button", event_data)
+
             _LOGGER.debug(
                 "%s button %d: press event", self._dimmer_name, self._button_num
             )
@@ -196,14 +200,18 @@ class CrestronButtonEvent(EventEntity):
     def _handle_double_press(self, value: str) -> None:
         """Handle double press join trigger."""
         if value == "1":
-            self._trigger_event(
-                "double_press",
-                {
-                    "device_name": self._dimmer_name,
-                    "button": self._button_num,
-                    "action": "double_press",
-                },
-            )
+            event_data = {
+                "device_name": self._dimmer_name,
+                "button": self._button_num,
+                "action": "double_press",
+            }
+
+            # Fire EventEntity event (updates entity state)
+            self._trigger_event("double_press", event_data)
+
+            # Fire event on the bus for automations
+            self.hass.bus.async_fire("crestron_button", event_data)
+
             _LOGGER.debug(
                 "%s button %d: double press event", self._dimmer_name, self._button_num
             )
@@ -212,14 +220,18 @@ class CrestronButtonEvent(EventEntity):
     def _handle_hold(self, value: str) -> None:
         """Handle hold join trigger."""
         if value == "1":
-            self._trigger_event(
-                "hold",
-                {
-                    "device_name": self._dimmer_name,
-                    "button": self._button_num,
-                    "action": "hold",
-                },
-            )
+            event_data = {
+                "device_name": self._dimmer_name,
+                "button": self._button_num,
+                "action": "hold",
+            }
+
+            # Fire EventEntity event (updates entity state)
+            self._trigger_event("hold", event_data)
+
+            # Fire event on the bus for automations
+            self.hass.bus.async_fire("crestron_button", event_data)
+
             _LOGGER.debug(
                 "%s button %d: hold event", self._dimmer_name, self._button_num
             )
