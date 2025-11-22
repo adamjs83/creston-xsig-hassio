@@ -26,6 +26,7 @@ class LEDBindingManager:
         self.hass = hass
         self._hub = hub
         self._config_entry = config_entry
+        self._entry_id = config_entry.entry_id  # Store entry ID for fresh lookups
         self._bindings: dict[str, dict[str, Any]] = {}
         self._listeners: dict[str, Callable] = {}
 
@@ -37,8 +38,14 @@ class LEDBindingManager:
 
     def _load_bindings(self) -> None:
         """Load LED bindings from config entry options."""
-        led_bindings = self._config_entry.options.get(CONF_LED_BINDINGS, {})
-        dimmers = self._config_entry.data.get(CONF_DIMMERS, [])
+        # Always get fresh entry to ensure we have latest options
+        entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            _LOGGER.warning("Config entry not found during binding load")
+            return
+
+        led_bindings = entry.options.get(CONF_LED_BINDINGS, {})
+        dimmers = entry.data.get(CONF_DIMMERS, [])
 
         self._bindings = {}
 
