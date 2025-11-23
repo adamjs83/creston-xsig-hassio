@@ -524,6 +524,8 @@ In your Crestron SIMPL Windows program:
    - Configure the IP address of your Home Assistant server
    - Set the port number (default: 16384) - **must match your HA configuration**
 
+   ![TCP/IP Client Symbol](docs/images/TCP_Client-Symbol.png)
+
 2. **Add an Ethernet Intersystem Communication (XSIG) symbol**
    - This symbol translates between TCP and join signals
    - Wire the TCP Client's **Connect_F** to XSIG's **Connect_F**
@@ -533,6 +535,15 @@ In your Crestron SIMPL Windows program:
 3. **Connect XSIG signals to your logic**
    - Map digital, analog, and serial signals as needed
    - Connect joins to your devices, keypads, sensors, etc.
+
+   **Digital signals example:**
+   ![XSIG Digital Joins](docs/images/Xsig_Digitals.png)
+
+   **Analog signals example:**
+   ![XSIG Analog Joins](docs/images/xsig_analog.png)
+
+   **Dimmer/Keypad button example:**
+   ![Dimmer Remote Buttons](docs/images/Dimmer_Remote_buttons_symbol.png)
 
 4. **Compile and load the program**
 
