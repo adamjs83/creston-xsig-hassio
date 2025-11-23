@@ -517,12 +517,26 @@ binary_sensor:
 
 ### XSIG Setup
 
-1. Add **Ethernet Intersystem Communication (XSIG)** symbol to your program
-2. Configure XSIG properties:
-   - Set port number (must match HA configuration)
-   - Map digital, analog, and serial signals
-3. Connect XSIG signals to your logic
-4. Compile and load the program
+In your Crestron SIMPL Windows program:
+
+1. **Add a TCP/IP Client symbol** to your program
+   - This handles the network connection to Home Assistant
+   - Configure the IP address of your Home Assistant server
+   - Set the port number (default: 16384) - **must match your HA configuration**
+
+2. **Add an Ethernet Intersystem Communication (XSIG) symbol**
+   - This symbol translates between TCP and join signals
+   - Wire the TCP Client's **Connect_F** to XSIG's **Connect_F**
+   - Wire the TCP Client's **Tx$** (transmit) to XSIG's **From_Client$**
+   - Wire the XSIG's **To_Client$** to TCP Client's **Rx$** (receive)
+
+3. **Connect XSIG signals to your logic**
+   - Map digital, analog, and serial signals as needed
+   - Connect joins to your devices, keypads, sensors, etc.
+
+4. **Compile and load the program**
+
+**Important:** The port number is configured on the **TCP/IP Client symbol**, not the XSIG symbol. This port must match the port configured in your Home Assistant Crestron integration.
 
 ### Join Types
 
