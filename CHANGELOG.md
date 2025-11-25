@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.3] - 2025-01-24
+
+### Changed
+- **Template Sync Performance** - O(1) lookup for template-to-join mapping
+  - Added `_template_to_join` reverse lookup dictionary
+  - `template_change_callback` now uses dict lookup instead of iterating through all templates
+  - Improves performance when Home Assistant state changes trigger Crestron updates
+  - With 100 templates: reduced from 100 comparisons to 1 lookup per state change
+
 ## [1.24.2] - 2025-01-24
 
 ### Added

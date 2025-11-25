@@ -543,6 +543,10 @@ class CrestronHub:
             self.tracker = async_track_template_result(
                 self.hass, track_templates, self.template_change_callback
             )
+            # Build reverse lookup for O(1) template-to-join mapping
+            self._template_to_join = {template: join for join, template in self.to_hub.items()}
+        else:
+            self._template_to_join = {}
         if CONF_FROM_HUB in config:
             self.from_hub = config[CONF_FROM_HUB]
             self.hub.register_callback(self.join_change_callback)
@@ -590,40 +594,44 @@ class CrestronHub:
     @callback
     def template_change_callback(self, event, updates):
         """ Set join from value_template (to_hub)"""
-        # track_template_result = updates.pop()
         for track_template_result in updates:
             update_result = track_template_result.result
             update_template = track_template_result.template
-            if update_result != "None":
-                for join, template in self.to_hub.items():
-                    if template == update_template:
-                        _LOGGER.debug(
-                            f"processing template_change_callback for join {join} with result {update_result}"
-                        )
-                        # Digital Join
-                        if join[:1] == "d":
-                            value = None
-                            if update_result == STATE_ON or update_result == "True":
-                                value = True
-                            elif update_result == STATE_OFF or update_result == "False":
-                                value = False
-                            if value is not None:
-                                _LOGGER.debug(
-                                    f"template_change_callback setting digital join {int(join[1:])} to {value}"
-                                )
-                                self.hub.set_digital(int(join[1:]), value)
-                        # Analog Join
-                        if join[:1] == "a":
-                            _LOGGER.debug(
-                                f"template_change_callback setting analog join {int(join[1:])} to {int(update_result)}"
-                            )
-                            self.hub.set_analog(int(join[1:]), int(update_result))
-                        # Serial Join
-                        if join[:1] == "s":
-                            _LOGGER.debug(
-                                f"template_change_callback setting serial join {int(join[1:])} to {str(update_result)}"
-                            )
-                            self.hub.set_serial(int(join[1:]), str(update_result))
+            if update_result == "None":
+                continue
+
+            # O(1) lookup instead of O(n) loop
+            join = self._template_to_join.get(update_template)
+            if not join:
+                continue
+
+            _LOGGER.debug(
+                f"processing template_change_callback for join {join} with result {update_result}"
+            )
+            # Digital Join
+            if join[:1] == "d":
+                value = None
+                if update_result == STATE_ON or update_result == "True":
+                    value = True
+                elif update_result == STATE_OFF or update_result == "False":
+                    value = False
+                if value is not None:
+                    _LOGGER.debug(
+                        f"template_change_callback setting digital join {int(join[1:])} to {value}"
+                    )
+                    self.hub.set_digital(int(join[1:]), value)
+            # Analog Join
+            elif join[:1] == "a":
+                _LOGGER.debug(
+                    f"template_change_callback setting analog join {int(join[1:])} to {int(update_result)}"
+                )
+                self.hub.set_analog(int(join[1:]), int(update_result))
+            # Serial Join
+            elif join[:1] == "s":
+                _LOGGER.debug(
+                    f"template_change_callback setting serial join {int(join[1:])} to {str(update_result)}"
+                )
+                self.hub.set_serial(int(join[1:]), str(update_result))
 
     async def sync_joins_to_hub(self):
         """Sync join values from HA to Crestron (only valid values)."""
