@@ -179,6 +179,26 @@ class CrestronXsig:
         else:
             _LOGGER.debug("Could not send analog. No connection to hub")
 
+    async def async_set_analog(self, join, value):
+        """ Send Analog Join to Crestron XSIG symbol and ensure it's transmitted """
+        if self._writer:
+            try:
+                data = struct.pack(
+                    ">BBBB",
+                    0b11000000 | (value >> 10 & 0b00110000) | (join - 1) >> 7,
+                    (join - 1) & 0b01111111,
+                    value >> 7 & 0b01111111,
+                    value & 0b01111111,
+                )
+                self._writer.write(data)
+                await self._writer.drain()  # Ensure data is actually sent
+            except Exception as err:
+                _LOGGER.warning(f"Failed to send analog join {join}: {err}")
+                self._writer = None  # Mark connection as dead
+                self._available = False
+        else:
+            _LOGGER.debug("Could not send analog. No connection to hub")
+
     def set_digital(self, join, value):
         """ Send Digital Join to Crestron XSIG symbol """
         if self._writer:

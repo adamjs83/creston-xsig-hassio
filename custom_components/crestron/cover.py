@@ -261,13 +261,13 @@ class CrestronShade(CoverEntity, RestoreEntity):
         return self._restored_is_closed
 
     async def async_set_cover_position(self, **kwargs):
-        self._hub.set_analog(self._pos_join, int(kwargs["position"]) * 655)
+        await self._hub.async_set_analog(self._pos_join, int(kwargs["position"]) * 655)
 
     async def async_open_cover(self, **kwargs):
-        self._hub.set_analog(self._pos_join, 0xFFFF)
+        await self._hub.async_set_analog(self._pos_join, 0xFFFF)
 
     async def async_close_cover(self, **kwargs):
-        self._hub.set_analog(self._pos_join, 0)
+        await self._hub.async_set_analog(self._pos_join, 0)
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover and clear direction state.
@@ -295,7 +295,7 @@ class CrestronShade(CoverEntity, RestoreEntity):
         current_pos = self.current_cover_position
         if current_pos is not None:
             # Set to current position (convert percentage back to analog value)
-            self._hub.set_analog(self._pos_join, int(current_pos * 655.35))
+            await self._hub.async_set_analog(self._pos_join, int(current_pos * 655.35))
         else:
             # If we don't have a position, use mid-point (50%)
-            self._hub.set_analog(self._pos_join, 32767)
+            await self._hub.async_set_analog(self._pos_join, 32767)

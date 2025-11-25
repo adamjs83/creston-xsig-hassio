@@ -652,7 +652,7 @@ class CrestronHub:
                 _LOGGER.debug(
                     f"sync_joins_to_hub setting analog join {int(join[1:])} to {int(result)}"
                 )
-                self.hub.set_analog(int(join[1:]), int(result))
+                await self.hub.async_set_analog(int(join[1:]), int(result))
             # Serial Join
             elif join[:1] == "s":
                 _LOGGER.debug(

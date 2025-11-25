@@ -301,12 +301,12 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         self._hub.set_digital(self._mute_join, mute)
 
     async def async_set_volume_level(self, volume):
-        self._hub.set_analog(self._volume_join, int(volume * 65535))
+        await self._hub.async_set_analog(self._volume_join, int(volume * 65535))
 
     async def async_select_source(self, source):
         for input_num, name in self._sources.items():
             if name == source:
-                self._hub.set_analog(self._source_number_join, input_num)
+                await self._hub.async_set_analog(self._source_number_join, input_num)
 
     async def async_turn_off(self):
         """Turn off the media player by setting source to 0."""
@@ -314,7 +314,7 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
             self._hub.set_digital(self._power_off_join, True)
         else:
             # Fallback: set source to 0
-            self._hub.set_analog(self._source_number_join, 0)
+            await self._hub.async_set_analog(self._source_number_join, 0)
 
     async def async_turn_on(self):
         """Turn on the media player."""

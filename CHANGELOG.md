@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.2] - 2025-01-24
+
+### Added
+- **`async_set_analog` Method** - New async method for sending analog joins with proper flow control
+  - Awaits `drain()` to ensure data is transmitted before returning
+  - Prevents potential buffer issues during rapid analog value updates
+  - Consistent with existing `async_set_digital` pattern
+
+### Changed
+- Updated all platform files to use `async_set_analog` instead of sync `set_analog`:
+  - `light.py` - brightness control
+  - `cover.py` - position control
+  - `climate.py` - temperature setpoints and floor warming mode
+  - `media_player.py` - volume and source selection
+  - `__init__.py` - template sync to hub
+
 ## [1.24.1] - 2025-01-24
 
 ### Fixed

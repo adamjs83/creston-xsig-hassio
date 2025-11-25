@@ -257,10 +257,10 @@ class CrestronLight(LightEntity, RestoreEntity):
             # Fix: properly scale from HA brightness (0-255) to Crestron (0-65535)
             brightness = kwargs["brightness"]
             crestron_value = int(brightness * 65535 / 255)
-            self._hub.set_analog(self._brightness_join, crestron_value)
+            await self._hub.async_set_analog(self._brightness_join, crestron_value)
         else:
-            self._hub.set_analog(self._brightness_join, 65535)
+            await self._hub.async_set_analog(self._brightness_join, 65535)
 
     async def async_turn_off(self, **kwargs):
         """Turn off the light."""
-        self._hub.set_analog(self._brightness_join, 0)
+        await self._hub.async_set_analog(self._brightness_join, 0)

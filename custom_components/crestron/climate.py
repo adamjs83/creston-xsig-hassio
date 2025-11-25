@@ -508,8 +508,8 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
 
     async def async_set_temperature(self, **kwargs):
         """Set target temperatures."""
-        self._hub.set_analog(self._heat_sp_join, int(round(kwargs["target_temp_low"] * 10)))
-        self._hub.set_analog(self._cool_sp_join, int(round(kwargs["target_temp_high"] * 10)))
+        await self._hub.async_set_analog(self._heat_sp_join, int(round(kwargs["target_temp_low"] * 10)))
+        await self._hub.async_set_analog(self._cool_sp_join, int(round(kwargs["target_temp_high"] * 10)))
 
 # ----------------------------
 # Floor-Warming Thermostat
@@ -680,17 +680,17 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     async def async_set_hvac_mode(self, hvac_mode):
         # analog: 1 = Off, 2 = Heat
         if hvac_mode == HVACMode.HEAT:
-            self._hub.set_analog(self._mode_join, 2)
+            await self._hub.async_set_analog(self._mode_join, 2)
         elif hvac_mode == HVACMode.OFF:
-            self._hub.set_analog(self._mode_join, 1)
+            await self._hub.async_set_analog(self._mode_join, 1)
 
     async def async_turn_on(self):
-        self._hub.set_analog(self._mode_join, 2)
+        await self._hub.async_set_analog(self._mode_join, 2)
 
     async def async_turn_off(self):
-        self._hub.set_analog(self._mode_join, 1)
+        await self._hub.async_set_analog(self._mode_join, 1)
 
     async def async_set_temperature(self, **kwargs):
         # Expect "temperature" in kwargs; write tenths
         if "temperature" in kwargs:
-            self._hub.set_analog(self._sp_join, int(round(kwargs["temperature"] * 10)))
+            await self._hub.async_set_analog(self._sp_join, int(round(kwargs["temperature"] * 10)))
