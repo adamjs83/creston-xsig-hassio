@@ -48,8 +48,9 @@ async def validate_port(hass: HomeAssistant, port: int) -> dict[str, Any]:
         if hasattr(yaml_hub, 'port') and yaml_hub.port == port:
             yaml_using_port = True
             _LOGGER.info(
-                f"Port {port} is in use by YAML configuration. "
-                "Config entry will be created but YAML will take precedence."
+                "Port %d is in use by YAML configuration. "
+                "Config entry will be created but YAML will take precedence.",
+                port
             )
 
     # Only check port availability if NOT used by our YAML config
@@ -60,7 +61,7 @@ async def validate_port(hass: HomeAssistant, port: int) -> dict[str, Any]:
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 sock.bind(("0.0.0.0", port))
         except OSError as err:
-            _LOGGER.error(f"Port {port} is already in use by external service: {err}")
+            _LOGGER.error("Port %d is already in use by external service: %s", port, err)
             raise PortInUse(f"Port {port} is already in use") from err
 
     return {"title": f"Crestron XSIG (Port {port})"}

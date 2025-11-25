@@ -322,7 +322,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
                     # Validate it's a valid HVACMode
                     self._restored_hvac_mode = HVACMode(last_state.state)
                 except ValueError:
-                    _LOGGER.warning(f"Invalid HVAC mode in restored state: {last_state.state}")
+                    _LOGGER.warning("Invalid HVAC mode in restored state: %s", last_state.state)
                     self._restored_hvac_mode = None
 
             self._restored_fan_mode = last_state.attributes.get('fan_mode')
@@ -330,8 +330,9 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
             self._restored_temp_high = last_state.attributes.get('target_temp_high')
             self._restored_current_temp = last_state.attributes.get('current_temperature')
             _LOGGER.debug(
-                f"Restored {self.name}: mode={self._restored_hvac_mode}, "
-                f"fan={self._restored_fan_mode}, temps={self._restored_temp_low}/{self._restored_temp_high}"
+                "Restored %s: mode=%s, fan=%s, temps=%s/%s",
+                self.name, self._restored_hvac_mode, self._restored_fan_mode,
+                self._restored_temp_low, self._restored_temp_high
             )
 
     async def async_will_remove_from_hass(self):
@@ -557,14 +558,15 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
                     # Validate it's a valid HVACMode
                     self._restored_hvac_mode = HVACMode(last_state.state)
                 except ValueError:
-                    _LOGGER.warning(f"Invalid HVAC mode in restored state: {last_state.state}")
+                    _LOGGER.warning("Invalid HVAC mode in restored state: %s", last_state.state)
                     self._restored_hvac_mode = None
 
             self._restored_target_temp = last_state.attributes.get('temperature')
             self._restored_current_temp = last_state.attributes.get('current_temperature')
             _LOGGER.debug(
-                f"Restored {self.name}: mode={self._restored_hvac_mode}, "
-                f"target={self._restored_target_temp}, current={self._restored_current_temp}"
+                "Restored %s: mode=%s, target=%s, current=%s",
+                self.name, self._restored_hvac_mode, self._restored_target_temp,
+                self._restored_current_temp
             )
 
     async def async_will_remove_from_hass(self):

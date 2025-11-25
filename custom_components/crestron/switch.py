@@ -157,13 +157,13 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
         if (last_state := await self.async_get_last_state()) is not None:
             self._restored_is_on = last_state.state == STATE_ON
             _LOGGER.debug(
-                f"Restored {self.name}: is_on={self._restored_is_on}"
+                "Restored %s: is_on=%s", self.name, self._restored_is_on
             )
 
         # Request current state from Crestron if connected
         if self._hub.is_available():
             self._hub.request_update()
-            _LOGGER.debug(f"Requested update for {self.name}")
+            _LOGGER.debug("Requested update for %s", self.name)
 
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)

@@ -151,14 +151,14 @@ class CrestronShade(CoverEntity, RestoreEntity):
             self._restored_position = last_state.attributes.get('current_position')
             self._restored_is_closed = last_state.state == 'closed'
             _LOGGER.debug(
-                f"Restored {self.name}: position={self._restored_position}, "
-                f"closed={self._restored_is_closed}"
+                "Restored %s: position=%s, closed=%s",
+                self.name, self._restored_position, self._restored_is_closed
             )
 
         # Request current state from Crestron if connected
         if self._hub.is_available():
             self._hub.request_update()
-            _LOGGER.debug(f"Requested update for {self.name}")
+            _LOGGER.debug("Requested update for %s", self.name)
 
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)

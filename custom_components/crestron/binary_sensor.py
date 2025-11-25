@@ -58,7 +58,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         is_on_join_str = bs_config.get(CONF_IS_ON_JOIN)
 
         if not is_on_join_str or is_on_join_str[0] != 'd':
-            _LOGGER.warning(f"Invalid is_on_join format: {is_on_join_str}")
+            _LOGGER.warning("Invalid is_on_join format: %s", is_on_join_str)
             continue
 
         # Build parsed config with integer join
@@ -73,7 +73,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     if entities:
         async_add_entities(entities)
-        _LOGGER.info(f"Added {len(entities)} binary sensor(s) from UI config")
+        _LOGGER.info("Added %d binary sensor(s) from UI config", len(entities))
 
     return True
 
@@ -98,13 +98,13 @@ class CrestronBinarySensor(BinarySensorEntity, RestoreEntity):
         if (last_state := await self.async_get_last_state()) is not None:
             self._restored_is_on = last_state.state == STATE_ON
             _LOGGER.debug(
-                f"Restored {self.name}: is_on={self._restored_is_on}"
+                "Restored %s: is_on=%s", self.name, self._restored_is_on
             )
 
         # Request current state from Crestron if connected
         if self._hub.is_available():
             self._hub.request_update()
-            _LOGGER.debug(f"Requested update for {self.name}")
+            _LOGGER.debug("Requested update for %s", self.name)
 
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)

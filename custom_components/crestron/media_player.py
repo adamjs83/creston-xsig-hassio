@@ -107,7 +107,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     if entities:
         async_add_entities(entities)
-        _LOGGER.info(f"Set up {len(entities)} UI media player(s)")
+        _LOGGER.info("Set up %d UI media player(s)", len(entities))
 
     return True
 

@@ -109,7 +109,7 @@ class CrestronSensor(SensorEntity, RestoreEntity):
                 try:
                     self._restored_value = float(last_state.state)
                     _LOGGER.debug(
-                        f"Restored {self.name}: value={self._restored_value}"
+                        "Restored %s: value=%s", self.name, self._restored_value
                     )
                 except (ValueError, TypeError):
                     pass
@@ -117,7 +117,7 @@ class CrestronSensor(SensorEntity, RestoreEntity):
         # Request current state from Crestron if connected
         if self._hub.is_available():
             self._hub.request_update()
-            _LOGGER.debug(f"Requested update for {self.name}")
+            _LOGGER.debug("Requested update for %s", self.name)
 
     async def async_will_remove_from_hass(self):
         self._hub.remove_callback(self.process_callback)

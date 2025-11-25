@@ -27,7 +27,7 @@ class CrestronXsig:
         server = await asyncio.start_server(self.handle_connection, "0.0.0.0", port)
         self._server = server
         addr = server.sockets[0].getsockname()
-        _LOGGER.info(f"Listening on {addr}:{port}")
+        _LOGGER.info("Listening on %s:%s", addr, port)
         # Use create_task to properly run the server in the background
         asyncio.create_task(server.serve_forever())
 
@@ -56,7 +56,7 @@ class CrestronXsig:
         """ Parse packets from Crestron XSIG symbol """
         self._writer = writer
         peer = writer.get_extra_info("peername")
-        _LOGGER.info(f"Control system connection from {peer}")
+        _LOGGER.info("Control system connection from %s", peer)
         _LOGGER.debug("Sending update request")
         writer.write(b"\xfd")
         self._available = True
@@ -122,7 +122,7 @@ class CrestronXsig:
                         for callback in self._callbacks:
                             await callback(f"s{join}", string)
                     else:
-                        _LOGGER.debug(f"Unknown Packet: {data.hex()}")
+                        _LOGGER.debug("Unknown Packet: %s", data.hex())
             else:
                 _LOGGER.info("Control system disconnected")
                 connected = False
@@ -173,7 +173,7 @@ class CrestronXsig:
                 # Removed excessive debug logging
                 # _LOGGER.debug(f"Sending Analog: {join}, {value}")
             except Exception as err:
-                _LOGGER.warning(f"Failed to send analog join {join}: {err}")
+                _LOGGER.warning("Failed to send analog join %s: %s", join, err)
                 self._writer = None  # Mark connection as dead
                 self._available = False
         else:
@@ -193,7 +193,7 @@ class CrestronXsig:
                 self._writer.write(data)
                 await self._writer.drain()  # Ensure data is actually sent
             except Exception as err:
-                _LOGGER.warning(f"Failed to send analog join {join}: {err}")
+                _LOGGER.warning("Failed to send analog join %s: %s", join, err)
                 self._writer = None  # Mark connection as dead
                 self._available = False
         else:
@@ -212,7 +212,7 @@ class CrestronXsig:
                 # Removed excessive debug logging
                 # _LOGGER.debug(f"Sending Digital: {join}, {value}")
             except Exception as err:
-                _LOGGER.warning(f"Failed to send digital join {join}: {err}")
+                _LOGGER.warning("Failed to send digital join %s: %s", join, err)
                 self._writer = None  # Mark connection as dead
                 self._available = False
         else:
@@ -232,7 +232,7 @@ class CrestronXsig:
                 # Removed excessive debug logging
                 # _LOGGER.debug(f"Sending Digital: {join}, {value}")
             except Exception as err:
-                _LOGGER.warning(f"Failed to send digital join {join}: {err}")
+                _LOGGER.warning("Failed to send digital join %s: %s", join, err)
                 self._writer = None  # Mark connection as dead
                 self._available = False
         else:
@@ -241,7 +241,7 @@ class CrestronXsig:
     def set_serial(self, join, string):
         """ Send String Join to Crestron XSIG symbol """
         if len(string) > 252:
-            _LOGGER.warning(f"Could not send serial. String too long ({len(string)}>252)")
+            _LOGGER.warning("Could not send serial. String too long (%d>252)", len(string))
             return
         elif self._writer:
             try:
@@ -254,7 +254,7 @@ class CrestronXsig:
                 # Removed excessive debug logging
                 # _LOGGER.debug(f"Sending Serial: {join}, {string}")
             except Exception as err:
-                _LOGGER.warning(f"Failed to send serial join {join}: {err}")
+                _LOGGER.warning("Failed to send serial join %s: %s", join, err)
                 self._writer = None  # Mark connection as dead
                 self._available = False
         else:
@@ -267,7 +267,7 @@ class CrestronXsig:
                 self._writer.write(b"\xfd")
                 _LOGGER.debug("Requested update from Crestron")
             except Exception as err:
-                _LOGGER.warning(f"Failed to request update: {err}")
+                _LOGGER.warning("Failed to request update: %s", err)
                 self._writer = None
                 self._available = False
         else:

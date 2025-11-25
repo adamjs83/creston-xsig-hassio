@@ -67,7 +67,7 @@ class EntityConfigHelper:
         entity_id = entity_reg.async_get_entity_id(platform, DOMAIN, unique_id)
         if entity_id:
             entity_reg.async_remove(entity_id)
-            _LOGGER.debug(f"Removed {platform} entity {entity_id} from registry")
+            _LOGGER.debug("Removed %s entity %s from registry", platform, entity_id)
 
     def check_duplicate_name(
         self,

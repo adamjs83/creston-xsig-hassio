@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.4] - 2025-01-24
+
+### Changed
+- **Logging Performance** - Converted f-string logging to %-style formatting
+  - Defers string interpolation until message is actually logged
+  - Minor performance improvement when debug logging is disabled
+  - Updated 27 log statements across 10 files
+
 ## [1.24.3] - 2025-01-24
 
 ### Changed
