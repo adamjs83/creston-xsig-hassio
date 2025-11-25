@@ -103,7 +103,8 @@ async def async_setup_entry(
     for dimmer in dimmers:
         dimmer_name: str = dimmer.get(CONF_NAME, "Unknown")
         base_join: str | None = dimmer.get(CONF_BASE_JOIN)
-        manual_joins: dict[int, dict[str, str]] | None = dimmer.get("manual_joins")
+        # Note: JSON serialization converts int keys to strings
+        manual_joins: dict[str, dict[str, str]] | None = dimmer.get("manual_joins")
         button_count: int = dimmer.get(CONF_BUTTON_COUNT, 2)
 
         mode: str = "manual" if manual_joins else "auto-sequential"
@@ -118,9 +119,10 @@ async def async_setup_entry(
         # Uses the press join for OUTPUT (bidirectional join usage)
         for button_num in range(1, button_count + 1):
             # Get press join for this button (manual or auto-sequential)
-            if manual_joins and button_num in manual_joins:
+            btn_key: str = str(button_num)
+            if manual_joins and btn_key in manual_joins:
                 # Manual mode: use explicitly configured press join
-                press_join_str: str = manual_joins[button_num]["press"]
+                press_join_str: str = manual_joins[btn_key]["press"]
                 press_join: int = int(press_join_str[1:])
             else:
                 # Auto-sequential mode: calculate from base join

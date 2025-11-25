@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0] - 2025-11-25
+
+### Fixed
+- **Manual Join Lookup for Dimmers** - Fixed LED switches and button events not using manual join configuration
+  - JSON serialization converts dict keys from integers to strings
+  - Manual joins lookup now uses string keys (`str(button_num)`)
+  - Affected files: switch.py, event.py, config_flow/dimmers.py
+  - LED feedback switches now correctly use configured manual joins instead of auto-sequential calculation
+
 ## [1.24.9] - 2025-01-25
 
 ### Changed

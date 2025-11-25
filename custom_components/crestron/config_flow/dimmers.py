@@ -991,7 +991,8 @@ class DimmerHandler:
         dimmer_name: str = dimmer.get(CONF_NAME)
         button_count: int = dimmer.get(CONF_BUTTON_COUNT, 2)
         base_join: str | None = dimmer.get(CONF_BASE_JOIN)
-        manual_joins: dict[int, dict[str, str]] | None = dimmer.get("manual_joins")
+        # Note: JSON serialization converts int keys to strings
+        manual_joins: dict[str, dict[str, str]] | None = dimmer.get("manual_joins")
 
         _LOGGER.debug("Cleaning up dimmer '%s' with %d buttons", dimmer_name, button_count)
 
@@ -1012,8 +1013,9 @@ class DimmerHandler:
 
             # Remove LED switch entity (one per button)
             # Calculate the press join for this button
-            if manual_joins and button_num in manual_joins:
-                press_join_str: str = manual_joins[button_num]["press"]
+            btn_key: str = str(button_num)
+            if manual_joins and btn_key in manual_joins:
+                press_join_str: str = manual_joins[btn_key]["press"]
                 press_join: int = int(press_join_str[1:])
             else:
                 # Auto-sequential mode
