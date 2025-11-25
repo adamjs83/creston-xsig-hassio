@@ -338,7 +338,34 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         self._hub.remove_callback(self.process_callback)
 
     async def process_callback(self, cbtype, value):
-        self.async_write_ha_state()
+        # Only update if this is one of our joins or connection state changed
+        if cbtype == "available":
+            self.async_write_ha_state()
+            return
+
+        # Build set of relevant joins for standard thermostat
+        relevant_joins = {
+            f"a{self._heat_sp_join}",
+            f"a{self._cool_sp_join}",
+            f"a{self._reg_temp_join}",
+            f"d{self._mode_heat_join}",
+            f"d{self._mode_cool_join}",
+            f"d{self._mode_auto_join}",
+            f"d{self._mode_off_join}",
+            f"d{self._fan_on_join}",
+            f"d{self._fan_auto_join}",
+            f"d{self._h1_join}",
+            f"d{self._c1_join}",
+            f"d{self._fa_join}",
+        }
+        # Add optional joins if configured
+        if self._h2_join:
+            relevant_joins.add(f"d{self._h2_join}")
+        if self._c2_join:
+            relevant_joins.add(f"d{self._c2_join}")
+
+        if cbtype in relevant_joins:
+            self.async_write_ha_state()
 
     @property
     def available(self):
@@ -544,8 +571,22 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
         self._hub.remove_callback(self.process_callback)
 
     async def process_callback(self, cbtype, value):
-        # Any join change -> refresh entity
-        self.async_write_ha_state()
+        # Only update if this is one of our joins or connection state changed
+        if cbtype == "available":
+            self.async_write_ha_state()
+            return
+
+        # Build set of relevant joins for floor warming thermostat (all analog)
+        relevant_joins = {
+            f"a{self._mode_join}",
+            f"a{self._mode_fb_join}",
+            f"a{self._sp_join}",
+            f"a{self._sp_fb_join}",
+            f"a{self._temp_join}",
+        }
+
+        if cbtype in relevant_joins:
+            self.async_write_ha_state()
 
     # ----- standard props -----
 

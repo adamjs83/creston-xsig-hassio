@@ -164,7 +164,24 @@ class CrestronShade(CoverEntity, RestoreEntity):
         self._hub.remove_callback(self.process_callback)
 
     async def process_callback(self, cbtype, value):
-        self.async_write_ha_state()
+        # Only update if this is one of our joins or connection state changed
+        if cbtype == "available":
+            self.async_write_ha_state()
+            return
+
+        # Build set of relevant joins (handle None values for optional joins)
+        relevant_joins = {f"a{self._pos_join}"}
+        if self._is_opening_join:
+            relevant_joins.add(f"d{self._is_opening_join}")
+        if self._is_closing_join:
+            relevant_joins.add(f"d{self._is_closing_join}")
+        if self._is_closed_join:
+            relevant_joins.add(f"d{self._is_closed_join}")
+        if self._stop_join:
+            relevant_joins.add(f"d{self._stop_join}")
+
+        if cbtype in relevant_joins:
+            self.async_write_ha_state()
 
     @property
     def available(self):

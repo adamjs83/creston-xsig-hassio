@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2025-01-24
+
+### Changed
+- **Major Performance Improvement** - Entity callbacks now filter by relevant joins
+  - Each entity only updates when its specific join(s) change, not on every join change
+  - With 50 entities and 10 updates/sec: reduced from 500 to 10 state updates/sec (50x improvement)
+  - All entities still respond to connection state changes ("available" callback)
+  - No impact on startup behavior - entities receive updates when Crestron sends their joins
+  - Affected platforms: light, switch, sensor, binary_sensor, cover, climate, media_player
+  - Event entities already had correct filtering (unchanged)
+
+## [1.23.1] - 2025-01-24
+
+### Fixed
+- **Config Entry Removal Bug** - Fixed issue where deleting a config entry prevented adding a new entry on the same port
+  - Implemented `async_remove_entry()` for proper cleanup when entries are deleted
+  - Hub now properly stops and releases port when entry is removed
+  - Entry data cleaned from `hass.data[DOMAIN]` on removal
+  - Hub_source markers and notification flags cleared appropriately
+  - Maintains hub persistence during reload (no connection drops when managing entities)
+
 ## [1.23.0] - 2025-01-22
 
 ### Added

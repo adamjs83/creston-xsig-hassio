@@ -438,6 +438,68 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle removal of a config entry.
+
+    This is called when the entry is DELETED, not just reloaded.
+    Perform full cleanup of all resources.
+
+    Args:
+        hass: Home Assistant instance
+        entry: Config entry being removed
+    """
+    _LOGGER.info("Removing Crestron config entry for port %s", entry.data[CONF_PORT])
+
+    # Get entry data
+    entry_data = hass.data[DOMAIN].get(entry.entry_id)
+
+    if entry_data:
+        # Stop hub if it exists and is running
+        if 'hub_wrapper' in entry_data:
+            hub_wrapper = entry_data['hub_wrapper']
+            try:
+                # Create a fake event for the stop method
+                from homeassistant.core import Event
+                stop_event = Event('homeassistant_stop')
+                await hub_wrapper.stop(stop_event)
+                _LOGGER.info("Hub stopped for port %s", entry_data.get('port'))
+            except Exception as err:
+                _LOGGER.warning("Error stopping hub during removal: %s", err)
+
+        # Remove entry data from hass.data
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+        _LOGGER.debug("Removed entry data for %s", entry.entry_id)
+
+        # Check if this was the only config entry hub
+        # If so, clear the hub_source marker
+        hub_source = hass.data[DOMAIN].get('hub_source')
+        if hub_source == 'config_entry':
+            # Check if there are other config entries
+            remaining_entries = [
+                e for e in hass.config_entries.async_entries(DOMAIN)
+                if e.entry_id != entry.entry_id
+            ]
+            if not remaining_entries:
+                # No more config entries, clear the hub_source marker
+                hass.data[DOMAIN].pop('hub_source', None)
+                # Also clear the HUB key if it was set by this entry
+                hass.data[DOMAIN].pop(HUB, None)
+                _LOGGER.debug("Cleared hub_source and HUB markers (no more config entries)")
+
+        # Clear notification flags for this port
+        notification_shown_key = f"dual_notification_shown_{entry.data[CONF_PORT]}"
+        hass.data[DOMAIN].pop(notification_shown_key, None)
+
+    # Dismiss any notifications for this port
+    await hass.services.async_call(
+        "persistent_notification",
+        "dismiss",
+        {"notification_id": f"crestron_dual_config_{entry.data[CONF_PORT]}"}
+    )
+
+    _LOGGER.info("Crestron config entry removal complete for port %s", entry.data[CONF_PORT])
+
+
 class CrestronHub:
     ''' Wrapper for the CrestronXsig library '''
     def __init__(self, hass, config, set_hub_key=True):

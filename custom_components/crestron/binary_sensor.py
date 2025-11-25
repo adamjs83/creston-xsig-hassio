@@ -110,7 +110,9 @@ class CrestronBinarySensor(BinarySensorEntity, RestoreEntity):
         self._hub.remove_callback(self.process_callback)
 
     async def process_callback(self, cbtype, value):
-        self.async_write_ha_state()
+        # Only update if this is our join or connection state changed
+        if cbtype == "available" or cbtype == f"d{self._join}":
+            self.async_write_ha_state()
 
     @property
     def available(self):

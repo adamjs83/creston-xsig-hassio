@@ -196,7 +196,26 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         self._hub.remove_callback(self.process_callback)
 
     async def process_callback(self, cbtype, value):
-        self.async_write_ha_state()
+        # Only update if this is one of our joins or connection state changed
+        if cbtype == "available":
+            self.async_write_ha_state()
+            return
+
+        # Build set of relevant joins (handle None values for optional joins)
+        relevant_joins = set()
+        if self._source_number_join:
+            relevant_joins.add(f"a{self._source_number_join}")
+        if self._mute_join:
+            relevant_joins.add(f"d{self._mute_join}")
+        if self._volume_join:
+            relevant_joins.add(f"a{self._volume_join}")
+        if self._power_on_join:
+            relevant_joins.add(f"d{self._power_on_join}")
+        if self._power_off_join:
+            relevant_joins.add(f"d{self._power_off_join}")
+
+        if cbtype in relevant_joins:
+            self.async_write_ha_state()
 
     @property
     def available(self):
