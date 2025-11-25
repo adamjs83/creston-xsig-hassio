@@ -26,7 +26,6 @@ from .const import (
     CONF_BASE_JOIN,
     CONF_BUTTON_COUNT,
 )
-from .hub import CrestronHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,7 +45,7 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the Crestron switch platform from YAML configuration."""
-    hub: CrestronHub = hass.data[DOMAIN][HUB]
+    hub: Any = hass.data[DOMAIN][HUB]
     entity = [CrestronSwitch(hub, config)]
     async_add_entities(entity)
 
@@ -67,7 +66,7 @@ async def async_setup_entry(
     if hub_data:
         # Hub data is stored as dict with HUB key
         if isinstance(hub_data, dict):
-            hub: CrestronHub | None = hub_data.get(HUB)
+            hub: Any | None = hub_data.get(HUB)
         else:
             hub = hub_data  # Fallback for direct hub reference
     else:
@@ -159,7 +158,7 @@ async def async_setup_entry(
 class CrestronSwitch(SwitchEntity, RestoreEntity):
     """Representation of a Crestron switch."""
 
-    _hub: CrestronHub
+    _hub: Any
     _from_ui: bool
     _is_led: bool
     _dimmer_name: str | None
@@ -170,7 +169,7 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
 
     def __init__(
         self,
-        hub: CrestronHub,
+        hub: Any,
         config: dict[str, Any],
         from_ui: bool = False,
         is_led: bool = False,

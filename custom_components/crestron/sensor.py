@@ -17,7 +17,6 @@ from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASU
 import homeassistant.helpers.config_validation as cv
 
 from .const import HUB, DOMAIN, VERSION, CONF_VALUE_JOIN, CONF_DIVISOR, CONF_SENSORS
-from .hub import CrestronHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up Crestron sensors from YAML configuration."""
-    hub: CrestronHub = hass.data[DOMAIN][HUB]
+    hub: Any = hass.data[DOMAIN][HUB]
     entity = [CrestronSensor(hub, config)]
     async_add_entities(entity)
 
@@ -66,7 +65,7 @@ async def async_setup_entry(
         return False
 
     # Get hub from wrapper
-    hub: CrestronHub = hub_wrapper.hub
+    hub: Any = hub_wrapper.hub
 
     # Load sensors from config entry (UI-configured)
     sensors_config: list[dict[str, Any]] = entry.data.get(CONF_SENSORS, [])
@@ -106,7 +105,7 @@ async def async_setup_entry(
 class CrestronSensor(SensorEntity, RestoreEntity):
     """Crestron sensor entity."""
 
-    _hub: CrestronHub
+    _hub: Any
     _name: str
     _join: int
     _device_class: str | None
@@ -115,7 +114,7 @@ class CrestronSensor(SensorEntity, RestoreEntity):
     _from_ui: bool
     _restored_value: float | None
 
-    def __init__(self, hub: CrestronHub, config: dict[str, Any], from_ui: bool = False) -> None:
+    def __init__(self, hub: Any, config: dict[str, Any], from_ui: bool = False) -> None:
         """Initialize the Crestron sensor."""
         self._hub = hub
         self._name = config.get(CONF_NAME)
