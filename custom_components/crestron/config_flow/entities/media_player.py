@@ -1,6 +1,6 @@
 """Media player entity configuration handler for Crestron XSIG integration."""
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import voluptuous as vol
 
@@ -22,46 +22,60 @@ from ...const import (
 )
 from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from ..base import BaseOptionsFlow
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class MediaPlayerEntityHandler:
     """Handler for media player entity configuration."""
 
-    def __init__(self, flow):
-        """Initialize the media player entity handler."""
-        self.flow = flow
+    def __init__(self, flow: "BaseOptionsFlow") -> None:
+        """Initialize the media player entity handler.
+
+        Args:
+            flow: The options flow instance
+        """
+        self.flow: BaseOptionsFlow = flow
 
     async def async_step_add_media_player(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Add or edit a media player entity."""
+        """Add or edit a media player entity.
+
+        Args:
+            user_input: User-provided configuration data
+
+        Returns:
+            FlowResult for next step or form display
+        """
         errors: dict[str, str] = {}
-        is_editing = self.flow._editing_join is not None
+        is_editing: bool = self.flow._editing_join is not None
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
-                device_class = user_input.get(CONF_DEVICE_CLASS, "speaker")
-                source_num_join = user_input.get(CONF_SOURCE_NUM_JOIN)
-                sources_text = user_input.get(CONF_SOURCES, "")
+                name: str | None = user_input.get(CONF_NAME)
+                device_class: str = user_input.get(CONF_DEVICE_CLASS, "speaker")
+                source_num_join: str | None = user_input.get(CONF_SOURCE_NUM_JOIN)
+                sources_text: str = user_input.get(CONF_SOURCES, "")
 
                 # Optional joins
-                power_on_join = user_input.get(CONF_POWER_ON_JOIN, "")
-                mute_join = user_input.get(CONF_MUTE_JOIN, "")
-                volume_join = user_input.get(CONF_VOLUME_JOIN, "")
-                play_join = user_input.get(CONF_PLAY_JOIN, "")
-                pause_join = user_input.get(CONF_PAUSE_JOIN, "")
-                stop_join = user_input.get(CONF_STOP_JOIN, "")
-                next_join = user_input.get(CONF_NEXT_JOIN, "")
-                previous_join = user_input.get(CONF_PREVIOUS_JOIN, "")
+                power_on_join: str = user_input.get(CONF_POWER_ON_JOIN, "")
+                mute_join: str = user_input.get(CONF_MUTE_JOIN, "")
+                volume_join: str = user_input.get(CONF_VOLUME_JOIN, "")
+                play_join: str = user_input.get(CONF_PLAY_JOIN, "")
+                pause_join: str = user_input.get(CONF_PAUSE_JOIN, "")
+                stop_join: str = user_input.get(CONF_STOP_JOIN, "")
+                next_join: str = user_input.get(CONF_NEXT_JOIN, "")
+                previous_join: str = user_input.get(CONF_PREVIOUS_JOIN, "")
 
                 # Validate source_num_join (required, analog)
                 if not source_num_join or not (source_num_join[0] == 'a' and source_num_join[1:].isdigit()):
                     errors[CONF_SOURCE_NUM_JOIN] = "invalid_join_format"
 
                 # Parse and validate sources (required, min 1 source)
-                sources_dict = {}
+                sources_dict: dict[int, str] = {}
                 if sources_text.strip():
                     for line in sources_text.strip().split('\n'):
                         line = line.strip()
@@ -71,9 +85,11 @@ class MediaPlayerEntityHandler:
                             errors[CONF_SOURCES] = "invalid_source_format"
                             break
                         try:
+                            num_str: str
+                            name_str: str
                             num_str, name_str = line.split(':', 1)
-                            source_num = int(num_str.strip())
-                            source_name = name_str.strip()
+                            source_num: int = int(num_str.strip())
+                            source_name: str = name_str.strip()
                             if source_num < 1 or source_num > 99:
                                 errors[CONF_SOURCES] = "source_number_out_of_range"
                                 break
@@ -86,7 +102,7 @@ class MediaPlayerEntityHandler:
                     errors[CONF_SOURCES] = "no_sources_configured"
 
                 # Validate optional joins
-                optional_joins = [
+                optional_joins: list[tuple[str, str, str]] = [
                     (CONF_POWER_ON_JOIN, power_on_join, 'd'),
                     (CONF_MUTE_JOIN, mute_join, 'd'),
                     (CONF_VOLUME_JOIN, volume_join, 'a'),
@@ -97,19 +113,22 @@ class MediaPlayerEntityHandler:
                     (CONF_PREVIOUS_JOIN, previous_join, 'd'),
                 ]
 
+                join_field: str
+                join_value: str
+                join_type: str
                 for join_field, join_value, join_type in optional_joins:
                     if join_value and not (join_value[0] == join_type and join_value[1:].isdigit()):
                         errors[join_field] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_media_players = self.flow.config_entry.data.get(CONF_MEDIA_PLAYERS, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_media_players: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_MEDIA_PLAYERS, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(mp.get(CONF_NAME) == name for mp in current_media_players):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new media player entry
-                    new_media_player = {
+                    new_media_player: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_DEVICE_CLASS: device_class,
                         CONF_SOURCE_NUM_JOIN: source_num_join,
@@ -134,6 +153,7 @@ class MediaPlayerEntityHandler:
                     if previous_join:
                         new_media_player[CONF_PREVIOUS_JOIN] = previous_join
 
+                    updated_media_players: list[dict[str, Any]]
                     if is_editing:
                         # Replace existing media player
                         updated_media_players = [
@@ -147,7 +167,7 @@ class MediaPlayerEntityHandler:
                         _LOGGER.info("Added media player %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_MEDIA_PLAYERS] = updated_media_players
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -166,17 +186,17 @@ class MediaPlayerEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, Any] = {}
         if is_editing:
             # Convert sources dict to text format
-            sources_dict = self.flow._editing_join.get(CONF_SOURCES, {})
-            sources_text = '\n'.join(f"{num}: {name}" for num, name in sorted(sources_dict.items()))
+            sources_dict_edit: dict[int, str] = self.flow._editing_join.get(CONF_SOURCES, {})
+            sources_text_edit: str = '\n'.join(f"{num}: {name}" for num, name in sorted(sources_dict_edit.items()))
 
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
                 CONF_DEVICE_CLASS: self.flow._editing_join.get(CONF_DEVICE_CLASS, "speaker"),
                 CONF_SOURCE_NUM_JOIN: self.flow._editing_join.get(CONF_SOURCE_NUM_JOIN, ""),
-                CONF_SOURCES: sources_text,
+                CONF_SOURCES: sources_text_edit,
                 CONF_POWER_ON_JOIN: self.flow._editing_join.get(CONF_POWER_ON_JOIN, ""),
                 CONF_MUTE_JOIN: self.flow._editing_join.get(CONF_MUTE_JOIN, ""),
                 CONF_VOLUME_JOIN: self.flow._editing_join.get(CONF_VOLUME_JOIN, ""),
@@ -188,7 +208,7 @@ class MediaPlayerEntityHandler:
             }
 
         # Show form
-        add_media_player_schema = vol.Schema(
+        add_media_player_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(

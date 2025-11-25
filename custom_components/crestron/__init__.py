@@ -2,16 +2,18 @@
 
 import asyncio
 import logging
+from typing import Any
+from collections.abc import Callable
 
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
-from homeassistant.core import HomeAssistant, callback, Context
+from homeassistant.core import HomeAssistant, callback, Context, Event
 from homeassistant.helpers import discovery, device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.event import TrackTemplate, async_track_template_result
+from homeassistant.helpers.event import TrackTemplate, async_track_template_result, TrackTemplateResult
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.script import Script
 from homeassistant.const import (
@@ -94,7 +96,7 @@ PLATFORMS = [
 ]
 
 
-async def async_setup(hass, config):
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up a the crestron component."""
 
     if config.get(DOMAIN) is not None:
@@ -502,14 +504,15 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 class CrestronHub:
     ''' Wrapper for the CrestronXsig library '''
-    def __init__(self, hass, config, set_hub_key=True):
-        self.hass = hass
-        self.hub = CrestronXsig()
-        self.port = config.get(CONF_PORT)
-        self.context = Context()
-        self.to_hub = {}
-        self.tracker = None  # Initialize tracker to None
-        self.from_hub = None  # Initialize from_hub to None
+    def __init__(self, hass: HomeAssistant, config: dict[str, Any], set_hub_key: bool = True) -> None:
+        self.hass: HomeAssistant = hass
+        self.hub: CrestronXsig = CrestronXsig()
+        self.port: int | None = config.get(CONF_PORT)
+        self.context: Context = Context()
+        self.to_hub: dict[str, Template] = {}
+        self.tracker: Callable[[], None] | None = None  # Initialize tracker to None
+        self.from_hub: list[dict[str, Any]] | None = None  # Initialize from_hub to None
+        self._template_to_join: dict[Template, str] = {}
 
         # Only set the HUB key if requested (YAML sets it, config entry doesn't)
         # This prevents config entry from overwriting YAML's hub
@@ -546,16 +549,14 @@ class CrestronHub:
             )
             # Build reverse lookup for O(1) template-to-join mapping
             self._template_to_join = {template: join for join, template in self.to_hub.items()}
-        else:
-            self._template_to_join = {}
         if CONF_FROM_HUB in config:
             self.from_hub = config[CONF_FROM_HUB]
             self.hub.register_callback(self.join_change_callback)
 
-    async def start(self):
+    async def start(self) -> None:
         await self.hub.listen(self.port)
 
-    async def stop(self, event):
+    async def stop(self, event: Event) -> None:
         """Remove callback(s) and template trackers."""
         # Only remove from_hub callback if it was registered
         if self.from_hub is not None:
@@ -567,7 +568,7 @@ class CrestronHub:
 
         await self.hub.stop()
 
-    async def join_change_callback(self, cbtype, value):
+    async def join_change_callback(self, cbtype: str, value: str) -> None:
         """ Call service for tracked join change (from_hub)"""
         for join in self.from_hub:
             if cbtype == join[CONF_JOIN]:
@@ -593,7 +594,7 @@ class CrestronHub:
                         )
 
     @callback
-    def template_change_callback(self, event, updates):
+    def template_change_callback(self, event: Event | None, updates: list[TrackTemplateResult]) -> None:
         """ Set join from value_template (to_hub)"""
         for track_template_result in updates:
             update_result = track_template_result.result
@@ -634,7 +635,7 @@ class CrestronHub:
                 )
                 self.hub.set_serial(int(join[1:]), str(update_result))
 
-    async def sync_joins_to_hub(self):
+    async def sync_joins_to_hub(self) -> None:
         """Sync join values from HA to Crestron (only valid values)."""
         _LOGGER.debug("Syncing joins to control system")
         for join, template in self.to_hub.items():

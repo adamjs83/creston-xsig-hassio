@@ -6,11 +6,13 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class BaseOptionsFlow(config_entries.OptionsFlow):
     """Base class for options flow handlers."""
+
+    _editing_join: int | None
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow.
@@ -40,7 +42,10 @@ class BaseOptionsFlow(config_entries.OptionsFlow):
 class EntityConfigHelper:
     """Helper class for entity configuration operations."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: config_entries.ConfigEntry):
+    hass: HomeAssistant
+    config_entry: config_entries.ConfigEntry
+
+    def __init__(self, hass: HomeAssistant, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize entity config helper.
 
         Args:

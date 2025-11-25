@@ -1,12 +1,20 @@
 """Platform for Crestron Switch integration."""
 
+from __future__ import annotations
+
+from typing import Any
+
 import voluptuous as vol
 import logging
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_NAME, CONF_DEVICE_CLASS
 from .const import (
     HUB,
@@ -18,6 +26,7 @@ from .const import (
     CONF_BASE_JOIN,
     CONF_BUTTON_COUNT,
 )
+from .hub import CrestronHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,25 +39,35 @@ PLATFORM_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    hub = hass.data[DOMAIN][HUB]
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
+) -> None:
+    """Set up the Crestron switch platform from YAML configuration."""
+    hub: CrestronHub = hass.data[DOMAIN][HUB]
     entity = [CrestronSwitch(hub, config)]
     async_add_entities(entity)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> bool:
     """Set up Crestron switches from a config entry.
 
     v1.12.0+: Entities can be configured via UI (stored in entry.data[CONF_SWITCHES])
     YAML platform setup (above) still works for backward compatibility.
     """
     # Get the hub - try entry-specific first, fall back to HUB key
-    hub_data = hass.data[DOMAIN].get(entry.entry_id)
+    hub_data: Any = hass.data[DOMAIN].get(entry.entry_id)
 
     if hub_data:
         # Hub data is stored as dict with HUB key
         if isinstance(hub_data, dict):
-            hub = hub_data.get(HUB)
+            hub: CrestronHub | None = hub_data.get(HUB)
         else:
             hub = hub_data  # Fallback for direct hub reference
     else:
@@ -60,19 +79,19 @@ async def async_setup_entry(hass, entry, async_add_entities):
         return False
 
     # Get switch configurations from config entry
-    switch_configs = entry.data.get(CONF_SWITCHES, [])
+    switch_configs: list[dict[str, Any]] = entry.data.get(CONF_SWITCHES, [])
 
     # Parse join strings to integers and create entities
-    entities = []
+    entities: list[CrestronSwitch] = []
     for switch_config in switch_configs:
         # Parse joins from string format ("d30") to integers
-        parsed_config = {
+        parsed_config: dict[str, Any] = {
             CONF_NAME: switch_config.get(CONF_NAME),
             CONF_DEVICE_CLASS: switch_config.get(CONF_DEVICE_CLASS, "switch"),
         }
 
         # Parse switch join (required, digital)
-        switch_join_str = switch_config.get(CONF_SWITCH_JOIN)
+        switch_join_str: str | None = switch_config.get(CONF_SWITCH_JOIN)
         if switch_join_str and switch_join_str[0] == 'd':
             parsed_config[CONF_SWITCH_JOIN] = int(switch_join_str[1:])
         else:
@@ -90,16 +109,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
         _LOGGER.info("Added %d switch entities from config entry", len(entities))
 
     # v1.17.0+: Create LED switches from dimmer/keypad configurations
-    dimmers = entry.data.get(CONF_DIMMERS, [])
-    led_entities = []
+    dimmers: list[dict[str, Any]] = entry.data.get(CONF_DIMMERS, [])
+    led_entities: list[CrestronSwitch] = []
 
     for dimmer in dimmers:
-        dimmer_name = dimmer.get(CONF_NAME, "Unknown")
-        base_join = dimmer.get(CONF_BASE_JOIN)
-        manual_joins = dimmer.get("manual_joins")
-        button_count = dimmer.get(CONF_BUTTON_COUNT, 2)
+        dimmer_name: str = dimmer.get(CONF_NAME, "Unknown")
+        base_join: str | None = dimmer.get(CONF_BASE_JOIN)
+        manual_joins: dict[int, dict[str, str]] | None = dimmer.get("manual_joins")
+        button_count: int = dimmer.get(CONF_BUTTON_COUNT, 2)
 
-        mode = "manual" if manual_joins else "auto-sequential"
+        mode: str = "manual" if manual_joins else "auto-sequential"
         _LOGGER.debug(
             "Creating LED switch entities for dimmer '%s' (%s mode, %d buttons)",
             dimmer_name,
@@ -113,20 +132,21 @@ async def async_setup_entry(hass, entry, async_add_entities):
             # Get press join for this button (manual or auto-sequential)
             if manual_joins and button_num in manual_joins:
                 # Manual mode: use explicitly configured press join
-                press_join_str = manual_joins[button_num]["press"]
-                press_join = int(press_join_str[1:])
+                press_join_str: str = manual_joins[button_num]["press"]
+                press_join: int = int(press_join_str[1:])
             else:
                 # Auto-sequential mode: calculate from base join
-                base_offset = (button_num - 1) * 3
-                press_join = int(base_join[1:]) + base_offset
+                base_offset: int = (button_num - 1) * 3
+                press_join = int(base_join[1:])  # type: ignore[index]
+                press_join += base_offset
 
-            led_config = {
+            led_config: dict[str, Any] = {
                 CONF_NAME: f"LED {button_num}",
                 CONF_SWITCH_JOIN: press_join,
                 CONF_DEVICE_CLASS: "switch",
             }
 
-            led_entity = CrestronSwitch(hub, led_config, from_ui=True, is_led=True, dimmer_name=dimmer_name)
+            led_entity: CrestronSwitch = CrestronSwitch(hub, led_config, from_ui=True, is_led=True, dimmer_name=dimmer_name)
             led_entities.append(led_entity)
 
     if led_entities:
@@ -137,7 +157,26 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class CrestronSwitch(SwitchEntity, RestoreEntity):
-    def __init__(self, hub, config, from_ui=False, is_led=False, dimmer_name=None):
+    """Representation of a Crestron switch."""
+
+    _hub: CrestronHub
+    _from_ui: bool
+    _is_led: bool
+    _dimmer_name: str | None
+    _name: str
+    _switch_join: int
+    _device_class: str
+    _restored_is_on: bool | None
+
+    def __init__(
+        self,
+        hub: CrestronHub,
+        config: dict[str, Any],
+        from_ui: bool = False,
+        is_led: bool = False,
+        dimmer_name: str | None = None,
+    ) -> None:
+        """Initialize the Crestron switch."""
         self._hub = hub
         self._from_ui = from_ui  # Track if this is a UI-created entity
         self._is_led = is_led  # Track if this is an LED switch
@@ -149,7 +188,7 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
         # State restoration variable
         self._restored_is_on = None
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
@@ -166,24 +205,28 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
             self._hub.request_update()
             _LOGGER.debug("Requested update for %s", self.name)
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
+        """Unregister callbacks when entity is removed."""
         self._hub.remove_callback(self.process_callback)
 
-    async def process_callback(self, cbtype, value):
+    async def process_callback(self, cbtype: str, value: Any) -> None:
+        """Process callbacks from hub."""
         # Only update if this is our join or connection state changed
         if cbtype == "available" or cbtype == f"d{self._switch_join}":
             self.async_write_ha_state()
 
     @property
-    def available(self):
+    def available(self) -> bool:
+        """Return if entity is available."""
         return self._hub.is_available()
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """Return the name of the switch."""
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for this entity."""
         if self._is_led:
             return f"crestron_led_{self._dimmer_name}_d{self._switch_join}"
@@ -213,28 +256,32 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
         )
 
     @property
-    def has_entity_name(self):
+    def has_entity_name(self) -> bool:
         """Return if entity should use modern naming with device name prefix."""
         return self._is_led  # True for LED switches (part of dimmer device)
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
+        """Return if entity should be polled."""
         return False
 
     @property
-    def device_class(self):
+    def device_class(self) -> str:
+        """Return the device class."""
         return self._device_class
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool:
         """Return true if switch is on."""
         if self._hub.has_digital_value(self._switch_join):
             return self._hub.get_digital(self._switch_join)
         # Use restored state if available, otherwise default to off
         return self._restored_is_on if self._restored_is_on is not None else False
 
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the switch on."""
         self._hub.set_digital(self._switch_join, True)
 
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the switch off."""
         self._hub.set_digital(self._switch_join, False)

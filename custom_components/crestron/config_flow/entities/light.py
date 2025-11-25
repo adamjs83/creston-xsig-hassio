@@ -19,7 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 class LightEntityHandler:
     """Handler for light entity configuration."""
 
-    def __init__(self, flow):
+    flow: Any  # Type is OptionsFlowHandler from config_flow.py
+
+    def __init__(self, flow: Any) -> None:
         """Initialize the light entity handler."""
         self.flow = flow
 
@@ -32,23 +34,23 @@ class LightEntityHandler:
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
-                brightness_join = user_input.get(CONF_BRIGHTNESS_JOIN)
-                light_type = user_input.get(CONF_TYPE, "brightness")
+                name: str | None = user_input.get(CONF_NAME)
+                brightness_join: str | None = user_input.get(CONF_BRIGHTNESS_JOIN)
+                light_type: str = user_input.get(CONF_TYPE, "brightness")
 
                 # Validate brightness_join format (must be analog)
                 if not brightness_join or not (brightness_join[0] == 'a' and brightness_join[1:].isdigit()):
                     errors[CONF_BRIGHTNESS_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_lights = self.flow.config_entry.data.get(CONF_LIGHTS, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_lights: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_LIGHTS, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(l.get(CONF_NAME) == name for l in current_lights):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new light entry
-                    new_light = {
+                    new_light: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_BRIGHTNESS_JOIN: brightness_join,
                         CONF_TYPE: light_type,
@@ -56,18 +58,18 @@ class LightEntityHandler:
 
                     if is_editing:
                         # Replace existing light
-                        updated_lights = [
+                        updated_lights: list[dict[str, Any]] = [
                             new_light if l.get(CONF_NAME) == old_name else l
                             for l in current_lights
                         ]
                         _LOGGER.info("Updated light %s", name)
                     else:
                         # Append new light
-                        updated_lights = current_lights + [new_light]
+                        updated_lights: list[dict[str, Any]] = current_lights + [new_light]
                         _LOGGER.info("Added light %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_LIGHTS] = updated_lights
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -86,7 +88,7 @@ class LightEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, Any] = {}
         if is_editing:
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -95,7 +97,7 @@ class LightEntityHandler:
             }
 
         # Show form
-        add_light_schema = vol.Schema(
+        add_light_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(

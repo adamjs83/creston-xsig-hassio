@@ -1,11 +1,16 @@
 """Platform for Crestron Binary Sensor integration."""
 
+from typing import Any
 import voluptuous as vol
 import logging
 
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_NAME, CONF_DEVICE_CLASS
 import homeassistant.helpers.config_validation as cv
 
@@ -22,16 +27,26 @@ PLATFORM_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
+) -> None:
+    """Set up Crestron binary sensors from YAML configuration."""
     hub = hass.data[DOMAIN][HUB]
     entity = [CrestronBinarySensor(hub, config)]
     async_add_entities(entity)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> bool:
     """Set up Crestron binary sensors from a config entry."""
     # Get hub reference (could be from entry data or YAML)
-    hub_data = hass.data[DOMAIN].get(entry.entry_id)
+    hub_data: Any = hass.data[DOMAIN].get(entry.entry_id)
 
     if hub_data:
         if isinstance(hub_data, dict):
@@ -46,23 +61,23 @@ async def async_setup_entry(hass, entry, async_add_entities):
         return False
 
     # Get binary sensors from config entry
-    binary_sensors_config = entry.data.get(CONF_BINARY_SENSORS, [])
+    binary_sensors_config: list[dict[str, Any]] = entry.data.get(CONF_BINARY_SENSORS, [])
 
     if not binary_sensors_config:
         # No UI binary sensors configured
         return True
 
-    entities = []
+    entities: list[CrestronBinarySensor] = []
     for bs_config in binary_sensors_config:
         # Parse string join to integer
-        is_on_join_str = bs_config.get(CONF_IS_ON_JOIN)
+        is_on_join_str: str | None = bs_config.get(CONF_IS_ON_JOIN)
 
         if not is_on_join_str or is_on_join_str[0] != 'd':
             _LOGGER.warning("Invalid is_on_join format: %s", is_on_join_str)
             continue
 
         # Build parsed config with integer join
-        parsed_config = {
+        parsed_config: dict[str, Any] = {
             CONF_NAME: bs_config.get(CONF_NAME),
             CONF_IS_ON_JOIN: int(is_on_join_str[1:]),  # Parse "d100" -> 100
             CONF_DEVICE_CLASS: bs_config.get(CONF_DEVICE_CLASS),
@@ -79,17 +94,20 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class CrestronBinarySensor(BinarySensorEntity, RestoreEntity):
-    def __init__(self, hub, config, from_ui=False):
-        self._hub = hub
-        self._name = config.get(CONF_NAME)
-        self._join = config.get(CONF_IS_ON_JOIN)
-        self._device_class = config.get(CONF_DEVICE_CLASS)
-        self._from_ui = from_ui
+    """Representation of a Crestron Binary Sensor."""
+
+    def __init__(self, hub: Any, config: dict[str, Any], from_ui: bool = False) -> None:
+        """Initialize the binary sensor."""
+        self._hub: Any = hub
+        self._name: str | None = config.get(CONF_NAME)
+        self._join: int | None = config.get(CONF_IS_ON_JOIN)
+        self._device_class: str | None = config.get(CONF_DEVICE_CLASS)
+        self._from_ui: bool = from_ui
 
         # State restoration variable
-        self._restored_is_on = None
+        self._restored_is_on: bool | None = None
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
@@ -106,24 +124,28 @@ class CrestronBinarySensor(BinarySensorEntity, RestoreEntity):
             self._hub.request_update()
             _LOGGER.debug("Requested update for %s", self.name)
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
+        """Unregister callbacks when entity is removed."""
         self._hub.remove_callback(self.process_callback)
 
-    async def process_callback(self, cbtype, value):
+    async def process_callback(self, cbtype: str, value: Any) -> None:
+        """Process callbacks from the hub."""
         # Only update if this is our join or connection state changed
         if cbtype == "available" or cbtype == f"d{self._join}":
             self.async_write_ha_state()
 
     @property
-    def available(self):
+    def available(self) -> bool:
+        """Return True if entity is available."""
         return self._hub.is_available()
 
     @property
-    def name(self):
+    def name(self) -> str | None:
+        """Return the name of the binary sensor."""
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for this entity."""
         if self._from_ui:
             return f"crestron_binary_sensor_ui_d{self._join}"
@@ -141,11 +163,12 @@ class CrestronBinarySensor(BinarySensorEntity, RestoreEntity):
         )
 
     @property
-    def device_class(self):
+    def device_class(self) -> str | None:
+        """Return the device class of the binary sensor."""
         return self._device_class
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
         if self._hub.has_digital_value(self._join):
             return self._hub.get_digital(self._join)

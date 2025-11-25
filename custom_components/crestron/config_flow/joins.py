@@ -1,6 +1,6 @@
 """Join sync handler for Crestron XSIG integration."""
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
@@ -12,43 +12,57 @@ from ..const import (
     CONF_FROM_HUB,
 )
 
+if TYPE_CHECKING:
+    from .base import BaseOptionsFlow
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class JoinSyncHandler:
     """Handler for join sync (to_joins and from_joins) configuration."""
 
-    def __init__(self, flow):
-        """Initialize the join sync handler."""
-        self.flow = flow
+    def __init__(self, flow: "BaseOptionsFlow") -> None:
+        """Initialize the join sync handler.
+
+        Args:
+            flow: The options flow handler instance
+        """
+        self.flow: "BaseOptionsFlow" = flow
 
     async def async_step_add_to_join(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Add or edit a single to_join with entity picker."""
+        """Add or edit a single to_join with entity picker.
+
+        Args:
+            user_input: User input from the form, or None to show the form
+
+        Returns:
+            FlowResult for the next step
+        """
         errors: dict[str, str] = {}
-        is_editing = self.flow._editing_join is not None
+        is_editing: bool = self.flow._editing_join is not None
 
         if user_input is not None:
             try:
-                join_num = user_input.get("join")
-                entity_id = user_input.get("entity_id")
-                attribute = user_input.get("attribute", "").strip()
-                value_template = user_input.get("value_template", "").strip()
+                join_num: str | None = user_input.get("join")
+                entity_id: str | None = user_input.get("entity_id")
+                attribute: str = user_input.get("attribute", "").strip()
+                value_template: str = user_input.get("value_template", "").strip()
 
                 # Validate join format
                 if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
                     errors["join"] = "invalid_join_format"
 
                 # Check for duplicate join (exclude current join if editing)
-                current_to_joins = self.flow.config_entry.data.get(CONF_TO_HUB, [])
-                old_join_num = self.flow._editing_join.get("join") if is_editing else None
+                current_to_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_TO_HUB, [])
+                old_join_num: str | None = self.flow._editing_join.get("join") if is_editing else None
                 if join_num != old_join_num and any(j.get("join") == join_num for j in current_to_joins):
                     errors["join"] = "join_already_exists"
 
                 if not errors:
                     # Build new join entry
-                    new_join = {"join": join_num}
+                    new_join: dict[str, Any] = {"join": join_num}
 
                     if entity_id:
                         new_join["entity_id"] = entity_id
@@ -59,18 +73,18 @@ class JoinSyncHandler:
 
                     if is_editing:
                         # Replace existing join
-                        updated_to_joins = [
+                        updated_to_joins: list[dict[str, Any]] = [
                             new_join if j.get("join") == old_join_num else j
                             for j in current_to_joins
                         ]
                         _LOGGER.info("Updated to_join %s for %s", join_num, entity_id)
                     else:
                         # Append new join
-                        updated_to_joins = current_to_joins + [new_join]
+                        updated_to_joins: list[dict[str, Any]] = current_to_joins + [new_join]
                         _LOGGER.info("Added to_join %s for %s", join_num, entity_id)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_TO_HUB] = updated_to_joins
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -89,7 +103,7 @@ class JoinSyncHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, str] = {}
         if is_editing:
             default_values = {
                 "join": self.flow._editing_join.get("join", ""),
@@ -99,7 +113,7 @@ class JoinSyncHandler:
             }
 
         # Show form
-        add_to_join_schema = vol.Schema(
+        add_to_join_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("join", default=default_values.get("join", "")): selector.TextSelector(
                     selector.TextSelectorConfig(
@@ -130,54 +144,61 @@ class JoinSyncHandler:
     async def async_step_add_from_join(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Add or edit a single from_join."""
+        """Add or edit a single from_join.
+
+        Args:
+            user_input: User input from the form, or None to show the form
+
+        Returns:
+            FlowResult for the next step
+        """
         errors: dict[str, str] = {}
-        is_editing = self.flow._editing_join is not None
+        is_editing: bool = self.flow._editing_join is not None
 
         if user_input is not None:
             try:
-                join_num = user_input.get("join")
-                service = user_input.get("service")
-                target_entity = user_input.get("target_entity")
+                join_num: str | None = user_input.get("join")
+                service: str | None = user_input.get("service")
+                target_entity: str | None = user_input.get("target_entity")
 
                 # Validate join format
                 if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
                     errors["join"] = "invalid_join_format"
 
                 # Check for duplicate join (exclude current join if editing)
-                current_from_joins = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
-                old_join_num = self.flow._editing_join.get("join") if is_editing else None
+                current_from_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
+                old_join_num: str | None = self.flow._editing_join.get("join") if is_editing else None
                 if join_num != old_join_num and any(j.get("join") == join_num for j in current_from_joins):
                     errors["join"] = "join_already_exists"
 
                 if not errors:
                     # Build script action
-                    script_action = {
+                    script_action: dict[str, Any] = {
                         "service": service,
                     }
                     if target_entity:
                         script_action["target"] = {"entity_id": target_entity}
 
                     # Build new join entry
-                    new_join = {
+                    new_join: dict[str, Any] = {
                         "join": join_num,
                         "script": [script_action]
                     }
 
                     if is_editing:
                         # Replace existing join
-                        updated_from_joins = [
+                        updated_from_joins: list[dict[str, Any]] = [
                             new_join if j.get("join") == old_join_num else j
                             for j in current_from_joins
                         ]
                         _LOGGER.info("Updated from_join %s with service %s", join_num, service)
                     else:
                         # Append new join
-                        updated_from_joins = current_from_joins + [new_join]
+                        updated_from_joins: list[dict[str, Any]] = current_from_joins + [new_join]
                         _LOGGER.info("Added from_join %s with service %s", join_num, service)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_FROM_HUB] = updated_from_joins
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -196,9 +217,9 @@ class JoinSyncHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, str] = {}
         if is_editing:
-            script_action = self.flow._editing_join.get("script", [{}])[0] if self.flow._editing_join.get("script") else {}
+            script_action: dict[str, Any] = self.flow._editing_join.get("script", [{}])[0] if self.flow._editing_join.get("script") else {}
             default_values = {
                 "join": self.flow._editing_join.get("join", ""),
                 "service": script_action.get("service", ""),
@@ -206,7 +227,7 @@ class JoinSyncHandler:
             }
 
         # Show form
-        add_from_join_schema = vol.Schema(
+        add_from_join_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("join", default=default_values.get("join", "")): selector.TextSelector(
                     selector.TextSelectorConfig(
@@ -231,23 +252,30 @@ class JoinSyncHandler:
     async def async_step_remove_joins(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Remove joins by selecting from a list."""
+        """Remove joins by selecting from a list.
+
+        Args:
+            user_input: User input from the form, or None to show the form
+
+        Returns:
+            FlowResult for the next step
+        """
         errors: dict[str, str] = {}
 
         if user_input is not None:
             try:
-                joins_to_remove = user_input.get("joins_to_remove", [])
+                joins_to_remove: list[str] = user_input.get("joins_to_remove", [])
 
                 if joins_to_remove:
-                    current_to_joins = self.flow.config_entry.data.get(CONF_TO_HUB, [])
-                    current_from_joins = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
+                    current_to_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_TO_HUB, [])
+                    current_from_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
 
                     # Filter out selected joins
-                    updated_to_joins = [j for j in current_to_joins if j.get("join") not in joins_to_remove]
-                    updated_from_joins = [j for j in current_from_joins if j.get("join") not in joins_to_remove]
+                    updated_to_joins: list[dict[str, Any]] = [j for j in current_to_joins if j.get("join") not in joins_to_remove]
+                    updated_from_joins: list[dict[str, Any]] = [j for j in current_from_joins if j.get("join") not in joins_to_remove]
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_TO_HUB] = updated_to_joins
                     new_data[CONF_FROM_HUB] = updated_from_joins
 
@@ -268,19 +296,19 @@ class JoinSyncHandler:
                 errors["base"] = "unknown"
 
         # Build list of all joins for removal selection
-        current_to_joins = self.flow.config_entry.data.get(CONF_TO_HUB, [])
-        current_from_joins = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
+        current_to_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
 
-        join_options = []
+        join_options: list[dict[str, str]] = []
         for j in current_to_joins:
-            entity = j.get("entity_id", j.get("value_template", "N/A"))
+            entity: str = j.get("entity_id", j.get("value_template", "N/A"))
             join_options.append({
                 "label": f"{j.get('join')} → {entity} (to_join)",
                 "value": j.get("join")
             })
 
         for j in current_from_joins:
-            script_info = "script" if "script" in j else "N/A"
+            script_info: str = "script" if "script" in j else "N/A"
             join_options.append({
                 "label": f"{j.get('join')} → {script_info} (from_join)",
                 "value": j.get("join")
@@ -291,7 +319,7 @@ class JoinSyncHandler:
             return await self.flow.async_step_init()
 
         # Show removal form
-        remove_schema = vol.Schema(
+        remove_schema: vol.Schema = vol.Schema(
             {
                 vol.Optional("joins_to_remove"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -312,14 +340,21 @@ class JoinSyncHandler:
     async def async_step_select_join_to_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Select which join to edit."""
+        """Select which join to edit.
+
+        Args:
+            user_input: User input from the form, or None to show the form
+
+        Returns:
+            FlowResult for the next step
+        """
         if user_input is not None:
-            selected_join = user_input.get("join_to_edit")
+            selected_join: str | None = user_input.get("join_to_edit")
 
             if selected_join:
                 # Find the join in our data
-                current_to_joins = self.flow.config_entry.data.get(CONF_TO_HUB, [])
-                current_from_joins = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
+                current_to_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_TO_HUB, [])
+                current_from_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
 
                 # Check if it's a to_join or from_join
                 for join in current_to_joins:
@@ -336,19 +371,19 @@ class JoinSyncHandler:
             return await self.flow.async_step_init()
 
         # Build list of all joins for editing
-        current_to_joins = self.flow.config_entry.data.get(CONF_TO_HUB, [])
-        current_from_joins = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
+        current_to_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
 
-        join_options = []
+        join_options: list[dict[str, str]] = []
         for j in current_to_joins:
-            entity = j.get("entity_id", j.get("value_template", "N/A"))
+            entity: str = j.get("entity_id", j.get("value_template", "N/A"))
             join_options.append({
                 "label": f"{j.get('join')} → {entity} (to_join)",
                 "value": j.get("join")
             })
 
         for j in current_from_joins:
-            script_info = "script" if "script" in j else "N/A"
+            script_info: str = "script" if "script" in j else "N/A"
             join_options.append({
                 "label": f"{j.get('join')} → {script_info} (from_join)",
                 "value": j.get("join")
@@ -359,7 +394,7 @@ class JoinSyncHandler:
             return await self.flow.async_step_init()
 
         # Show selection form
-        select_schema = vol.Schema(
+        select_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("join_to_edit"): selector.SelectSelector(
                     selector.SelectSelectorConfig(

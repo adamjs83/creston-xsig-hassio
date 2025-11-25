@@ -1,9 +1,15 @@
 """Platform for Crestron Thermostat integration (standard & floor-warming)."""
 
+from typing import Any
+
 import voluptuous as vol
 import logging
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
@@ -14,10 +20,11 @@ from homeassistant.components.climate.const import (
     FAN_ON,
     FAN_AUTO,
 )
-from homeassistant.const import CONF_NAME, CONF_TYPE
+from homeassistant.const import CONF_NAME, CONF_TYPE, UnitOfTemperature
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from . import CrestronHub
 from .const import (
     HUB,
     DOMAIN,
@@ -106,59 +113,68 @@ PLATFORM_SCHEMA = vol.Any(STANDARD_CLIMATE_SCHEMA, FLOOR_WARMING_SCHEMA)
 # Setup
 # ----------------------------
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    hub = hass.data[DOMAIN][HUB]
-    unit = hass.config.units.temperature_unit
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
+) -> None:
+    hub: CrestronHub = hass.data[DOMAIN][HUB]
+    unit: str = hass.config.units.temperature_unit
 
-    dev_type = config.get(CONF_TYPE, "standard")
+    dev_type: str = config.get(CONF_TYPE, "standard")
     if dev_type == "floor_warming":
-        entity = [CrestronFloorWarmingThermostat(hub, config, unit)]
+        entity: list[CrestronFloorWarmingThermostat] = [CrestronFloorWarmingThermostat(hub, config, unit)]
     else:
-        entity = [CrestronThermostat(hub, config, unit)]
+        entity: list[CrestronThermostat] = [CrestronThermostat(hub, config, unit)]
 
     async_add_entities(entity)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> bool:
     """Set up Crestron climate devices from a config entry.
 
     Supports UI-configured climate entities (v1.13.0+).
     YAML platform setup (above) handles YAML-configured entities.
     """
     # Get hub from entry data
-    entry_data = hass.data[DOMAIN].get(entry.entry_id)
+    entry_data: dict[str, Any] | None = hass.data[DOMAIN].get(entry.entry_id)
     if not entry_data:
         _LOGGER.warning("No entry data found for climate setup")
         return False
 
-    hub_wrapper = entry_data.get('hub_wrapper')
+    hub_wrapper: Any = entry_data.get('hub_wrapper')
     if not hub_wrapper:
         _LOGGER.warning("No hub_wrapper found for climate setup")
         return False
 
     # Get hub from wrapper
-    hub = hub_wrapper.hub
-    unit = hass.config.units.temperature_unit
+    hub: CrestronHub = hub_wrapper.hub
+    unit: str = hass.config.units.temperature_unit
 
     # Load climates from config entry (UI-configured)
     # v1.13.0: floor_warming type
     # v1.14.0: standard type
-    climates_config = entry.data.get(CONF_CLIMATES, [])
+    climates_config: list[dict[str, Any]] = entry.data.get(CONF_CLIMATES, [])
 
     if climates_config:
-        entities = []
+        entities: list[CrestronThermostat | CrestronFloorWarmingThermostat] = []
         for climate_cfg in climates_config:
-            dev_type = climate_cfg.get(CONF_TYPE, "standard")
+            dev_type: str = climate_cfg.get(CONF_TYPE, "standard")
 
             if dev_type == "floor_warming":
                 # Parse floor warming joins (all analog)
-                config = {
+                config: dict[str, Any] = {
                     CONF_NAME: climate_cfg.get(CONF_NAME),
                     CONF_TYPE: "floor_warming",
                 }
 
                 # Parse analog join strings
-                all_joins_valid = True
+                all_joins_valid: bool = True
                 for join_key in [CONF_FLOOR_MODE_JOIN, CONF_FLOOR_MODE_FB_JOIN,
                                 CONF_FLOOR_SP_JOIN, CONF_FLOOR_SP_FB_JOIN, CONF_FLOOR_TEMP_JOIN]:
                     join_str = climate_cfg.get(join_key, "")
@@ -262,7 +278,43 @@ async def async_setup_entry(hass, entry, async_add_entities):
 # ----------------------------
 
 class CrestronThermostat(ClimateEntity, RestoreEntity):
-    def __init__(self, hub, config, unit, from_ui=False):
+    """Standard HVAC Thermostat entity."""
+
+    _hub: CrestronHub
+    _hvac_modes: list[HVACMode]
+    _fan_modes: list[str]
+    _attr_supported_features: ClimateEntityFeature
+    _should_poll: bool
+    _temperature_unit: str
+    _from_ui: bool
+    _name: str
+    _heat_sp_join: int
+    _cool_sp_join: int
+    _reg_temp_join: int
+    _mode_heat_join: int
+    _mode_cool_join: int
+    _mode_auto_join: int
+    _mode_off_join: int
+    _fan_on_join: int
+    _fan_auto_join: int
+    _h1_join: int
+    _h2_join: int
+    _c1_join: int
+    _c2_join: int
+    _fa_join: int
+    _mode_heat_cool_join: int
+    _fan_mode_auto_join: int
+    _fan_mode_on_join: int
+    _hvac_action_heat_join: int
+    _hvac_action_cool_join: int
+    _hvac_action_idle_join: int
+    _restored_hvac_mode: HVACMode | None
+    _restored_fan_mode: str | None
+    _restored_temp_low: float | None
+    _restored_temp_high: float | None
+    _restored_current_temp: float | None
+
+    def __init__(self, hub: CrestronHub, config: dict[str, Any], unit: str, from_ui: bool = False) -> None:
         self._hub = hub
         self._hvac_modes = [
             HVACMode.HEAT_COOL,
@@ -310,7 +362,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         self._restored_temp_high = None
         self._restored_current_temp = None
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
@@ -336,10 +388,10 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
                 self._restored_temp_low, self._restored_temp_high
             )
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
         self._hub.remove_callback(self.process_callback)
 
-    async def process_callback(self, cbtype, value):
+    async def process_callback(self, cbtype: str, value: Any) -> None:
         # Only update if this is one of our joins or connection state changed
         if cbtype == "available":
             self.async_write_ha_state()
@@ -370,15 +422,15 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
             self.async_write_ha_state()
 
     @property
-    def available(self):
+    def available(self) -> bool:
         return self._hub.is_available()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for this entity."""
         # Use heat setpoint join as primary identifier
         if self._from_ui:
@@ -397,48 +449,48 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         )
 
     @property
-    def hvac_modes(self):
+    def hvac_modes(self) -> list[HVACMode]:
         return self._hvac_modes
 
     @property
-    def fan_modes(self):
+    def fan_modes(self) -> list[str]:
         return self._fan_modes
 
     @property
-    def supported_features(self):
+    def supported_features(self) -> ClimateEntityFeature:
         return self._attr_supported_features
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
         return self._should_poll
 
     @property
-    def temperature_unit(self):
+    def temperature_unit(self) -> str:
         return self._temperature_unit
 
     @property
-    def current_temperature(self):
+    def current_temperature(self) -> float | None:
         """Return the current temperature."""
         if self._hub.has_analog_value(self._reg_temp_join):
             return self._hub.get_analog(self._reg_temp_join) / 10
         return self._restored_current_temp
 
     @property
-    def target_temperature_high(self):
+    def target_temperature_high(self) -> float | None:
         """Return the high target temperature."""
         if self._hub.has_analog_value(self._cool_sp_join):
             return self._hub.get_analog(self._cool_sp_join) / 10
         return self._restored_temp_high
 
     @property
-    def target_temperature_low(self):
+    def target_temperature_low(self) -> float | None:
         """Return the low target temperature."""
         if self._hub.has_analog_value(self._heat_sp_join):
             return self._hub.get_analog(self._heat_sp_join) / 10
         return self._restored_temp_low
 
     @property
-    def hvac_mode(self):
+    def hvac_mode(self) -> HVACMode | None:
         """Return the current HVAC mode."""
         # Use real values from Crestron if available
         if self._hub.has_digital_value(self._mode_auto_join):
@@ -457,7 +509,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         return self._restored_hvac_mode
 
     @property
-    def fan_mode(self):
+    def fan_mode(self) -> str | None:
         """Return the current fan mode."""
         # Use real values from Crestron if available
         if self._hub.has_digital_value(self._fan_auto_join):
@@ -470,7 +522,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         return self._restored_fan_mode
 
     @property
-    def hvac_action(self):
+    def hvac_action(self) -> HVACAction:
         if self._hub.get_digital(self._h1_join) or self._hub.get_digital(self._h2_join):
             return HVACAction.HEATING
         elif self._hub.get_digital(self._c1_join) or self._hub.get_digital(self._c2_join):
@@ -478,7 +530,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         else:
             return HVACAction.IDLE
 
-    async def async_set_hvac_mode(self, hvac_mode):
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         if hvac_mode == HVACMode.HEAT_COOL:
             self._hub.set_digital(self._mode_cool_join, False)
             self._hub.set_digital(self._mode_off_join, False)
@@ -500,7 +552,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
             self._hub.set_digital(self._mode_heat_join, False)
             self._hub.set_digital(self._mode_off_join, True)
 
-    async def async_set_fan_mode(self, fan_mode):
+    async def async_set_fan_mode(self, fan_mode: str) -> None:
         if fan_mode == FAN_AUTO:
             self._hub.set_digital(self._fan_on_join, False)
             self._hub.set_digital(self._fan_auto_join, True)
@@ -508,7 +560,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
             self._hub.set_digital(self._fan_auto_join, False)
             self._hub.set_digital(self._fan_on_join, True)
 
-    async def async_set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set target temperatures."""
         await self._hub.async_set_analog(self._heat_sp_join, int(round(kwargs["target_temp_low"] * 10)))
         await self._hub.async_set_analog(self._cool_sp_join, int(round(kwargs["target_temp_high"] * 10)))
@@ -520,7 +572,23 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
 class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     """Floor-warming-only thermostat: Off/Heat modes, single setpoint, floor temp readback."""
 
-    def __init__(self, hub, config, unit, from_ui=False):
+    _hub: CrestronHub
+    _temperature_unit: str
+    _should_poll: bool
+    _from_ui: bool
+    _name: str
+    _mode_join: int
+    _mode_fb_join: int
+    _sp_join: int
+    _sp_fb_join: int
+    _temp_join: int
+    _hvac_modes: list[HVACMode]
+    _attr_supported_features: ClimateEntityFeature
+    _restored_hvac_mode: HVACMode | None
+    _restored_target_temp: float | None
+    _restored_current_temp: float | None
+
+    def __init__(self, hub: CrestronHub, config: dict[str, Any], unit: str, from_ui: bool = False) -> None:
         self._hub = hub
         self._temperature_unit = unit
         self._should_poll = False
@@ -546,7 +614,7 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
         self._restored_target_temp = None
         self._restored_current_temp = None
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
@@ -570,10 +638,10 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
                 self._restored_current_temp
             )
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
         self._hub.remove_callback(self.process_callback)
 
-    async def process_callback(self, cbtype, value):
+    async def process_callback(self, cbtype: str, value: Any) -> None:
         # Only update if this is one of our joins or connection state changed
         if cbtype == "available":
             self.async_write_ha_state()
@@ -594,15 +662,15 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     # ----- standard props -----
 
     @property
-    def available(self):
+    def available(self) -> bool:
         return self._hub.is_available()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for this entity."""
         # Use setpoint join as primary identifier
         if self._from_ui:
@@ -621,32 +689,32 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
         )
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
         return self._should_poll
 
     @property
-    def temperature_unit(self):
+    def temperature_unit(self) -> str:
         return self._temperature_unit
 
     @property
-    def hvac_modes(self):
+    def hvac_modes(self) -> list[HVACMode]:
         return self._hvac_modes
 
     @property
-    def supported_features(self):
+    def supported_features(self) -> ClimateEntityFeature:
         return self._attr_supported_features
 
     # ----- temperatures -----
 
     @property
-    def current_temperature(self):
+    def current_temperature(self) -> float | None:
         """Return the current floor temperature."""
         if self._hub.has_analog_value(self._temp_join):
             return self._hub.get_analog(self._temp_join) / 10
         return self._restored_current_temp
 
     @property
-    def target_temperature(self):
+    def target_temperature(self) -> float | None:
         """Return the target temperature."""
         if self._hub.has_analog_value(self._sp_fb_join):
             return self._hub.get_analog(self._sp_fb_join) / 10
@@ -655,7 +723,7 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     # ----- modes & action -----
 
     @property
-    def hvac_mode(self):
+    def hvac_mode(self) -> HVACMode | None:
         """Return the current HVAC mode."""
         if self._hub.has_analog_value(self._mode_fb_join):
             mode_val = self._hub.get_analog(self._mode_fb_join)
@@ -666,7 +734,7 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
         return self._restored_hvac_mode
 
     @property
-    def hvac_action(self):
+    def hvac_action(self) -> HVACAction:
         # No explicit heating-action join; infer:
         # If in HEAT and floor temp is below setpoint (by small hysteresis), assume HEATING else IDLE
         if self.hvac_mode == HVACMode.HEAT:
@@ -680,20 +748,20 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
 
     # ----- setters -----
 
-    async def async_set_hvac_mode(self, hvac_mode):
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         # analog: 1 = Off, 2 = Heat
         if hvac_mode == HVACMode.HEAT:
             await self._hub.async_set_analog(self._mode_join, 2)
         elif hvac_mode == HVACMode.OFF:
             await self._hub.async_set_analog(self._mode_join, 1)
 
-    async def async_turn_on(self):
+    async def async_turn_on(self) -> None:
         await self._hub.async_set_analog(self._mode_join, 2)
 
-    async def async_turn_off(self):
+    async def async_turn_off(self) -> None:
         await self._hub.async_set_analog(self._mode_join, 1)
 
-    async def async_set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs: Any) -> None:
         # Expect "temperature" in kwargs; write tenths
         if "temperature" in kwargs:
             await self._hub.async_set_analog(self._sp_join, int(round(kwargs["temperature"] * 10)))

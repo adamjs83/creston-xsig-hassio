@@ -1,11 +1,16 @@
 """Menu navigation handlers for Crestron XSIG config flow."""
+from __future__ import annotations
+
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+
+if TYPE_CHECKING:
+    from ..config_flow import OptionsFlowHandler
 
 from ..const import (
     CONF_COVERS,
@@ -26,13 +31,13 @@ _LOGGER = logging.getLogger(__name__)
 class MenuHandler:
     """Handles menu navigation for options flow."""
 
-    def __init__(self, options_flow):
+    def __init__(self, options_flow: OptionsFlowHandler) -> None:
         """Initialize menu handler.
 
         Args:
             options_flow: The OptionsFlowHandler instance
         """
-        self.flow = options_flow
+        self.flow: OptionsFlowHandler = options_flow
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None

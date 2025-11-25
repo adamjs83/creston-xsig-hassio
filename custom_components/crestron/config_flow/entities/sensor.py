@@ -20,7 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 class SensorEntityHandler:
     """Handler for sensor entity configuration."""
 
-    def __init__(self, flow):
+    flow: Any  # Type is OptionsFlowHandler from config_flow.py
+
+    def __init__(self, flow: Any) -> None:
         """Initialize the sensor entity handler."""
         self.flow = flow
 
@@ -33,25 +35,25 @@ class SensorEntityHandler:
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
-                value_join = user_input.get(CONF_VALUE_JOIN)
-                device_class = user_input.get(CONF_DEVICE_CLASS)
-                unit_of_measurement = user_input.get(CONF_UNIT_OF_MEASUREMENT)
-                divisor = user_input.get(CONF_DIVISOR, 1)
+                name: str | None = user_input.get(CONF_NAME)
+                value_join: str | None = user_input.get(CONF_VALUE_JOIN)
+                device_class: str | None = user_input.get(CONF_DEVICE_CLASS)
+                unit_of_measurement: str | None = user_input.get(CONF_UNIT_OF_MEASUREMENT)
+                divisor: int = user_input.get(CONF_DIVISOR, 1)
 
                 # Validate value_join format (must be analog)
                 if not value_join or not (value_join[0] == 'a' and value_join[1:].isdigit()):
                     errors[CONF_VALUE_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_sensors = self.flow.config_entry.data.get(CONF_SENSORS, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_sensors: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_SENSORS, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(s.get(CONF_NAME) == name for s in current_sensors):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new sensor entry
-                    new_sensor = {
+                    new_sensor: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_VALUE_JOIN: value_join,
                         CONF_DEVICE_CLASS: device_class,
@@ -61,18 +63,18 @@ class SensorEntityHandler:
 
                     if is_editing:
                         # Replace existing sensor
-                        updated_sensors = [
+                        updated_sensors: list[dict[str, Any]] = [
                             new_sensor if s.get(CONF_NAME) == old_name else s
                             for s in current_sensors
                         ]
                         _LOGGER.info("Updated sensor %s", name)
                     else:
                         # Append new sensor
-                        updated_sensors = current_sensors + [new_sensor]
+                        updated_sensors: list[dict[str, Any]] = current_sensors + [new_sensor]
                         _LOGGER.info("Added sensor %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_SENSORS] = updated_sensors
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -91,7 +93,7 @@ class SensorEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, Any] = {}
         if is_editing:
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -102,7 +104,7 @@ class SensorEntityHandler:
             }
 
         # Show form
-        add_sensor_schema = vol.Schema(
+        add_sensor_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(

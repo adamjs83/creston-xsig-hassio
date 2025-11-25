@@ -5,6 +5,7 @@ from typing import Any
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.typing import ConfigType
 
 from ..const import (
     DOMAIN,
@@ -16,14 +17,14 @@ from ..const import (
 from .validators import validate_port, PortInUse, InvalidPort, STEP_USER_DATA_SCHEMA
 from .base import BaseOptionsFlow
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Crestron XSIG."""
 
-    VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
+    VERSION: int = 1
+    CONNECTION_CLASS: str = config_entries.CONN_CLASS_LOCAL_PUSH
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -61,7 +62,7 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_import(self, import_data: dict[str, Any]) -> FlowResult:
+    async def async_step_import(self, import_data: ConfigType) -> FlowResult:
         """Import YAML configuration.
 
         This flow is triggered automatically when YAML configuration is detected
@@ -78,11 +79,11 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             import_data.get(CONF_PORT)
         )
 
-        port = import_data[CONF_PORT]
+        port: int = import_data[CONF_PORT]
 
         # Validate port (but allow if YAML is using it - that's the import case!)
         try:
-            info = await validate_port(self.hass, port)
+            info: dict[str, str] = await validate_port(self.hass, port)
         except (PortInUse, InvalidPort) as err:
             _LOGGER.warning("YAML import validation note: %s", err)
             # For import, create entry anyway - YAML is using the port
@@ -95,7 +96,7 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Store FULL config including to_joins and from_joins
         # This preserves all hub-level configuration
-        entry_data = {CONF_PORT: port}
+        entry_data: dict[str, Any] = {CONF_PORT: port}
 
         # Preserve to_joins if exists
         if CONF_TO_HUB in import_data:
@@ -123,13 +124,29 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
         """Get the options flow for this handler."""
         return OptionsFlowHandler(config_entry)
 
 
 class OptionsFlowHandler(BaseOptionsFlow):
     """Handle options flow for Crestron XSIG integration."""
+
+    _editing_join: int | None
+    _menu_handler: Any
+    _join_handler: Any
+    _dimmer_handler: Any
+    _led_binding_handler: Any
+    _entity_manager: Any
+    _binary_sensor_handler: Any
+    _climate_handler: Any
+    _cover_handler: Any
+    _light_handler: Any
+    _media_player_handler: Any
+    _sensor_handler: Any
+    _switch_handler: Any
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
@@ -321,7 +338,7 @@ class OptionsFlowHandler(BaseOptionsFlow):
         return await self._dimmer_handler.async_step_add_dimmer_lighting(user_input)
 
     async def async_step_add_dimmer_button(
-        self, user_input: dict[str, Any] | None = None, button_num: int = 1
+        self, user_input: dict[str, Any] | None = None, button_num: int | None = None
     ) -> FlowResult:
         """Configure a single button (dynamic, handles buttons 1-6)."""
         return await self._dimmer_handler.async_step_add_dimmer_button(user_input, button_num)

@@ -1,6 +1,6 @@
 """Climate entity configuration handler for Crestron XSIG integration."""
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import voluptuous as vol
 
@@ -39,30 +39,44 @@ from ...const import (
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from ..base import BaseOptionsFlow
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class ClimateEntityHandler:
     """Handler for climate entity configuration."""
 
-    def __init__(self, flow):
-        """Initialize the climate entity handler."""
-        self.flow = flow
+    def __init__(self, flow: "BaseOptionsFlow") -> None:
+        """Initialize the climate entity handler.
+
+        Args:
+            flow: The options flow instance
+        """
+        self.flow: BaseOptionsFlow = flow
 
 
     async def async_step_select_climate_type(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Select climate type (floor_warming or standard)."""
+        """Select climate type (floor_warming or standard).
+
+        Args:
+            user_input: User input data from the form, if submitted
+
+        Returns:
+            FlowResult for next step or form display
+        """
         if user_input is not None:
-            climate_type = user_input.get("climate_type")
+            climate_type: str | None = user_input.get("climate_type")
             if climate_type == "floor_warming":
                 return await self.flow.async_step_add_climate()
             elif climate_type == "standard":
                 return await self.flow.async_step_add_climate_standard()
 
         # Show type selection form
-        type_schema = vol.Schema(
+        type_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("climate_type"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -83,21 +97,28 @@ class ClimateEntityHandler:
     async def async_step_add_climate(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Add or edit a climate entity (floor warming only)."""
+        """Add or edit a climate entity (floor warming only).
+
+        Args:
+            user_input: User input data from the form, if submitted
+
+        Returns:
+            FlowResult for next step or form display
+        """
         errors: dict[str, str] = {}
-        is_editing = self.flow._editing_join is not None
+        is_editing: bool = self.flow._editing_join is not None
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
-                floor_mode_join = user_input.get(CONF_FLOOR_MODE_JOIN)
-                floor_mode_fb_join = user_input.get(CONF_FLOOR_MODE_FB_JOIN)
-                floor_sp_join = user_input.get(CONF_FLOOR_SP_JOIN)
-                floor_sp_fb_join = user_input.get(CONF_FLOOR_SP_FB_JOIN)
-                floor_temp_join = user_input.get(CONF_FLOOR_TEMP_JOIN)
+                name: str | None = user_input.get(CONF_NAME)
+                floor_mode_join: str | None = user_input.get(CONF_FLOOR_MODE_JOIN)
+                floor_mode_fb_join: str | None = user_input.get(CONF_FLOOR_MODE_FB_JOIN)
+                floor_sp_join: str | None = user_input.get(CONF_FLOOR_SP_JOIN)
+                floor_sp_fb_join: str | None = user_input.get(CONF_FLOOR_SP_FB_JOIN)
+                floor_temp_join: str | None = user_input.get(CONF_FLOOR_TEMP_JOIN)
 
                 # Validate all joins are analog format
-                joins_to_validate = [
+                joins_to_validate: list[tuple[str, str | None]] = [
                     (CONF_FLOOR_MODE_JOIN, floor_mode_join),
                     (CONF_FLOOR_MODE_FB_JOIN, floor_mode_fb_join),
                     (CONF_FLOOR_SP_JOIN, floor_sp_join),
@@ -110,14 +131,14 @@ class ClimateEntityHandler:
                         errors[join_field] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_climates = self.flow.config_entry.data.get(CONF_CLIMATES, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_climates: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_CLIMATES, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(c.get(CONF_NAME) == name for c in current_climates):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new climate entry (floor_warming type only)
-                    new_climate = {
+                    new_climate: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_TYPE: "floor_warming",
                         CONF_FLOOR_MODE_JOIN: floor_mode_join,
@@ -129,18 +150,18 @@ class ClimateEntityHandler:
 
                     if is_editing:
                         # Replace existing climate
-                        updated_climates = [
+                        updated_climates: list[dict[str, Any]] = [
                             new_climate if c.get(CONF_NAME) == old_name else c
                             for c in current_climates
                         ]
                         _LOGGER.info("Updated climate %s", name)
                     else:
                         # Append new climate
-                        updated_climates = current_climates + [new_climate]
+                        updated_climates: list[dict[str, Any]] = current_climates + [new_climate]
                         _LOGGER.info("Added climate %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_CLIMATES] = updated_climates
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -159,7 +180,7 @@ class ClimateEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, str] = {}
         if is_editing:
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -171,7 +192,7 @@ class ClimateEntityHandler:
             }
 
         # Show form
-        add_climate_schema = vol.Schema(
+        add_climate_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(
@@ -215,16 +236,23 @@ class ClimateEntityHandler:
     async def async_step_add_climate_standard(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Add or edit a standard HVAC climate entity."""
+        """Add or edit a standard HVAC climate entity.
+
+        Args:
+            user_input: User input data from the form, if submitted
+
+        Returns:
+            FlowResult for next step or form display
+        """
         errors: dict[str, str] = {}
-        is_editing = self.flow._editing_join is not None
+        is_editing: bool = self.flow._editing_join is not None
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
+                name: str | None = user_input.get(CONF_NAME)
 
                 # Validate analog joins (3 required)
-                analog_joins = {
+                analog_joins: dict[str, str | None] = {
                     CONF_HEAT_SP_JOIN: user_input.get(CONF_HEAT_SP_JOIN),
                     CONF_COOL_SP_JOIN: user_input.get(CONF_COOL_SP_JOIN),
                     CONF_REG_TEMP_JOIN: user_input.get(CONF_REG_TEMP_JOIN),
@@ -235,7 +263,7 @@ class ClimateEntityHandler:
                         errors[join_field] = "invalid_join_format"
 
                 # Validate digital joins (15 required)
-                digital_joins = {
+                digital_joins: dict[str, str | None] = {
                     CONF_MODE_HEAT_JOIN: user_input.get(CONF_MODE_HEAT_JOIN),
                     CONF_MODE_COOL_JOIN: user_input.get(CONF_MODE_COOL_JOIN),
                     CONF_MODE_AUTO_JOIN: user_input.get(CONF_MODE_AUTO_JOIN),
@@ -258,8 +286,8 @@ class ClimateEntityHandler:
                         errors[join_field] = "invalid_join_format"
 
                 # Validate optional digital joins (2 optional)
-                h2_join = user_input.get(CONF_H2_JOIN, "")
-                c2_join = user_input.get(CONF_C2_JOIN, "")
+                h2_join: str = user_input.get(CONF_H2_JOIN, "")
+                c2_join: str = user_input.get(CONF_C2_JOIN, "")
 
                 if h2_join and not (h2_join[0] == 'd' and h2_join[1:].isdigit()):
                     errors[CONF_H2_JOIN] = "invalid_join_format"
@@ -267,14 +295,14 @@ class ClimateEntityHandler:
                     errors[CONF_C2_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_climates = self.flow.config_entry.data.get(CONF_CLIMATES, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_climates: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_CLIMATES, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(c.get(CONF_NAME) == name for c in current_climates):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new climate entry (standard type)
-                    new_climate = {
+                    new_climate: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_TYPE: "standard",
                         CONF_HEAT_SP_JOIN: user_input.get(CONF_HEAT_SP_JOIN),
@@ -305,18 +333,18 @@ class ClimateEntityHandler:
 
                     if is_editing:
                         # Replace existing climate
-                        updated_climates = [
+                        updated_climates: list[dict[str, Any]] = [
                             new_climate if c.get(CONF_NAME) == old_name else c
                             for c in current_climates
                         ]
                         _LOGGER.info("Updated standard climate %s", name)
                     else:
                         # Append new climate
-                        updated_climates = current_climates + [new_climate]
+                        updated_climates: list[dict[str, Any]] = current_climates + [new_climate]
                         _LOGGER.info("Added standard climate %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_CLIMATES] = updated_climates
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -335,7 +363,7 @@ class ClimateEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, str] = {}
         if is_editing:
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -362,7 +390,7 @@ class ClimateEntityHandler:
             }
 
         # Show form - organized by section
-        add_climate_standard_schema = vol.Schema(
+        add_climate_standard_schema: vol.Schema = vol.Schema(
             {
                 # Name
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(

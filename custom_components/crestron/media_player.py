@@ -1,9 +1,15 @@
 """Platform for Crestron Media Player integration."""
 
+from typing import Any
+
 import voluptuous as vol
 import logging
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
@@ -52,25 +58,34 @@ PLATFORM_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
+) -> None:
     hub = hass.data[DOMAIN][HUB]
     entity = [CrestronRoom(hub, config)]
     async_add_entities(entity)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> bool:
     """Set up Crestron media players from a config entry (v1.19.0+)."""
     hub = hass.data[DOMAIN].get(HUB) or hass.data[DOMAIN].get(entry.entry_id, {}).get(HUB)
     if not hub:
         _LOGGER.error("Hub not found for media player setup")
         return False
 
-    media_players = entry.data.get(CONF_MEDIA_PLAYERS, [])
+    media_players: list[dict[str, Any]] = entry.data.get(CONF_MEDIA_PLAYERS, [])
     if not media_players:
         _LOGGER.debug("No UI media players configured")
         return True
 
-    entities = []
+    entities: list[CrestronRoom] = []
     for mp_config in media_players:
         # Parse join numbers (convert "a1" to 1, "d1" to 1, etc.)
         parsed_config = dict(mp_config)
@@ -114,39 +129,39 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class CrestronRoom(MediaPlayerEntity, RestoreEntity):
-    def __init__(self, hub, config, from_ui=False):
-        self._hub = hub
-        self._name = config.get(CONF_NAME, "Unnamed Device")
-        self._device_class = config.get(CONF_DEVICE_CLASS, "speaker")
-        self._from_ui = from_ui
+    def __init__(self, hub: Any, config: dict[str, Any], from_ui: bool = False) -> None:
+        self._hub: Any = hub
+        self._name: str = config.get(CONF_NAME, "Unnamed Device")
+        self._device_class: str = config.get(CONF_DEVICE_CLASS, "speaker")
+        self._from_ui: bool = from_ui
 
         # Join configuration
-        self._source_number_join = config.get(CONF_SOURCE_NUM_JOIN)
-        self._sources = config.get(CONF_SOURCES, {})
-        self._mute_join = config.get(CONF_MUTE_JOIN)
-        self._volume_join = config.get(CONF_VOLUME_JOIN)
-        self._power_on_join = config.get(CONF_POWER_ON_JOIN)
-        self._power_off_join = config.get(CONF_POWER_OFF_JOIN)
-        self._play_join = config.get(CONF_PLAY_JOIN)
-        self._pause_join = config.get(CONF_PAUSE_JOIN)
-        self._stop_join = config.get(CONF_STOP_JOIN)
-        self._next_join = config.get(CONF_NEXT_JOIN)
-        self._previous_join = config.get(CONF_PREVIOUS_JOIN)
-        self._repeat_join = config.get(CONF_REPEAT_JOIN)
-        self._shuffle_join = config.get(CONF_SHUFFLE_JOIN)
+        self._source_number_join: int | None = config.get(CONF_SOURCE_NUM_JOIN)
+        self._sources: dict[int, str] = config.get(CONF_SOURCES, {})
+        self._mute_join: int | None = config.get(CONF_MUTE_JOIN)
+        self._volume_join: int | None = config.get(CONF_VOLUME_JOIN)
+        self._power_on_join: int | None = config.get(CONF_POWER_ON_JOIN)
+        self._power_off_join: int | None = config.get(CONF_POWER_OFF_JOIN)
+        self._play_join: int | None = config.get(CONF_PLAY_JOIN)
+        self._pause_join: int | None = config.get(CONF_PAUSE_JOIN)
+        self._stop_join: int | None = config.get(CONF_STOP_JOIN)
+        self._next_join: int | None = config.get(CONF_NEXT_JOIN)
+        self._previous_join: int | None = config.get(CONF_PREVIOUS_JOIN)
+        self._repeat_join: int | None = config.get(CONF_REPEAT_JOIN)
+        self._shuffle_join: int | None = config.get(CONF_SHUFFLE_JOIN)
 
         # Calculate supported features based on available joins
-        self._attr_supported_features = self._calculate_supported_features()
+        self._attr_supported_features: MediaPlayerEntityFeature = self._calculate_supported_features()
 
         # State restoration variables
-        self._restored_state = None
-        self._restored_source = None
-        self._restored_volume = None
-        self._restored_is_muted = None
+        self._restored_state: str | None = None
+        self._restored_source: str | None = None
+        self._restored_volume: float | None = None
+        self._restored_is_muted: bool | None = None
 
-    def _calculate_supported_features(self):
+    def _calculate_supported_features(self) -> MediaPlayerEntityFeature:
         """Calculate supported features based on configured joins."""
-        features = 0
+        features: int = 0
 
         # Source selection (required)
         if self._source_number_join and self._sources:
@@ -177,7 +192,7 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
 
         return features
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
@@ -193,10 +208,10 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
                 f"source={self._restored_source}, volume={self._restored_volume}"
             )
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
         self._hub.remove_callback(self.process_callback)
 
-    async def process_callback(self, cbtype, value):
+    async def process_callback(self, cbtype: str, value: Any) -> None:
         # Only update if this is one of our joins or connection state changed
         if cbtype == "available":
             self.async_write_ha_state()
@@ -219,15 +234,15 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
             self.async_write_ha_state()
 
     @property
-    def available(self):
+    def available(self) -> bool:
         return self._hub.is_available()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for this entity."""
         if self._from_ui:
             return f"crestron_media_player_ui_a{self._source_number_join}"
@@ -245,37 +260,37 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         )
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
         return False
 
     @property
-    def device_class(self):
+    def device_class(self) -> str:
         return self._device_class
 
     @property
-    def supported_features(self):
+    def supported_features(self) -> MediaPlayerEntityFeature:
         return self._attr_supported_features
 
     @property
-    def source_list(self):
+    def source_list(self) -> list[str]:
         if self._sources is None:
             return []
         return list(self._sources.values())
 
     @property
-    def source(self):
+    def source(self) -> str | None:
         """Return the current input source."""
         if not self._source_number_join or not self._sources:
             return None
         if self._hub.has_analog_value(self._source_number_join):
-            source_num = self._hub.get_analog(self._source_number_join)
+            source_num: int = self._hub.get_analog(self._source_number_join)
             if source_num == 0 or source_num not in self._sources:
                 return None
             return self._sources[source_num]
         return self._restored_source
 
     @property
-    def state(self):
+    def state(self) -> str | None:
         """Return the state of the media player."""
         if self._hub.has_analog_value(self._source_number_join):
             if self._hub.get_analog(self._source_number_join) == 0:
@@ -285,31 +300,31 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         return self._restored_state
 
     @property
-    def is_volume_muted(self):
+    def is_volume_muted(self) -> bool | None:
         """Return if volume is muted."""
         if self._hub.has_digital_value(self._mute_join):
             return self._hub.get_digital(self._mute_join)
         return self._restored_is_muted
 
     @property
-    def volume_level(self):
+    def volume_level(self) -> float | None:
         """Return the volume level (0-1)."""
         if self._hub.has_analog_value(self._volume_join):
             return self._hub.get_analog(self._volume_join) / 65535
         return self._restored_volume
 
-    async def async_mute_volume(self, mute):
+    async def async_mute_volume(self, mute: bool) -> None:
         self._hub.set_digital(self._mute_join, mute)
 
-    async def async_set_volume_level(self, volume):
+    async def async_set_volume_level(self, volume: float) -> None:
         await self._hub.async_set_analog(self._volume_join, int(volume * 65535))
 
-    async def async_select_source(self, source):
+    async def async_select_source(self, source: str) -> None:
         for input_num, name in self._sources.items():
             if name == source:
                 await self._hub.async_set_analog(self._source_number_join, input_num)
 
-    async def async_turn_off(self):
+    async def async_turn_off(self) -> None:
         """Turn off the media player by setting source to 0."""
         if self._power_off_join:
             self._hub.set_digital(self._power_off_join, True)
@@ -317,32 +332,32 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
             # Fallback: set source to 0
             await self._hub.async_set_analog(self._source_number_join, 0)
 
-    async def async_turn_on(self):
+    async def async_turn_on(self) -> None:
         """Turn on the media player."""
         if self._power_on_join:
             self._hub.set_digital(self._power_on_join, True)
 
-    async def async_media_play(self):
+    async def async_media_play(self) -> None:
         """Send play command."""
         if self._play_join:
             self._hub.set_digital(self._play_join, True)
 
-    async def async_media_pause(self):
+    async def async_media_pause(self) -> None:
         """Send pause command."""
         if self._pause_join:
             self._hub.set_digital(self._pause_join, True)
 
-    async def async_media_stop(self):
+    async def async_media_stop(self) -> None:
         """Send stop command."""
         if self._stop_join:
             self._hub.set_digital(self._stop_join, True)
 
-    async def async_media_next_track(self):
+    async def async_media_next_track(self) -> None:
         """Send next track command."""
         if self._next_join:
             self._hub.set_digital(self._next_join, True)
 
-    async def async_media_previous_track(self):
+    async def async_media_previous_track(self) -> None:
         """Send previous track command."""
         if self._previous_join:
             self._hub.set_digital(self._previous_join, True)

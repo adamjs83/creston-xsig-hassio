@@ -19,7 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 class BinarySensorEntityHandler:
     """Handler for binary sensor entity configuration."""
 
-    def __init__(self, flow):
+    flow: Any  # Type is OptionsFlowHandler from config_flow.py
+
+    def __init__(self, flow: Any) -> None:
         """Initialize the binary sensor entity handler."""
         self.flow = flow
 
@@ -32,23 +34,23 @@ class BinarySensorEntityHandler:
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
-                is_on_join = user_input.get(CONF_IS_ON_JOIN)
-                device_class = user_input.get(CONF_DEVICE_CLASS)
+                name: str | None = user_input.get(CONF_NAME)
+                is_on_join: str | None = user_input.get(CONF_IS_ON_JOIN)
+                device_class: str | None = user_input.get(CONF_DEVICE_CLASS)
 
                 # Validate is_on_join format (must be digital)
                 if not is_on_join or not (is_on_join[0] == 'd' and is_on_join[1:].isdigit()):
                     errors[CONF_IS_ON_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_binary_sensors = self.flow.config_entry.data.get(CONF_BINARY_SENSORS, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_binary_sensors: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_BINARY_SENSORS, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(bs.get(CONF_NAME) == name for bs in current_binary_sensors):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new binary sensor entry
-                    new_binary_sensor = {
+                    new_binary_sensor: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_IS_ON_JOIN: is_on_join,
                         CONF_DEVICE_CLASS: device_class,
@@ -56,18 +58,18 @@ class BinarySensorEntityHandler:
 
                     if is_editing:
                         # Replace existing binary sensor
-                        updated_binary_sensors = [
+                        updated_binary_sensors: list[dict[str, Any]] = [
                             new_binary_sensor if bs.get(CONF_NAME) == old_name else bs
                             for bs in current_binary_sensors
                         ]
                         _LOGGER.info("Updated binary sensor %s", name)
                     else:
                         # Append new binary sensor
-                        updated_binary_sensors = current_binary_sensors + [new_binary_sensor]
+                        updated_binary_sensors: list[dict[str, Any]] = current_binary_sensors + [new_binary_sensor]
                         _LOGGER.info("Added binary sensor %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_BINARY_SENSORS] = updated_binary_sensors
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -86,7 +88,7 @@ class BinarySensorEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, Any] = {}
         if is_editing:
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -95,7 +97,7 @@ class BinarySensorEntityHandler:
             }
 
         # Show form
-        add_binary_sensor_schema = vol.Schema(
+        add_binary_sensor_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(

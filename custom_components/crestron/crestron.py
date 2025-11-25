@@ -1,27 +1,29 @@
 import asyncio
 import struct
 import logging
+from typing import Callable, Any
+from collections.abc import Coroutine
 
 _LOGGER = logging.getLogger(__name__)
 
 class CrestronXsig:
-    def __init__(self):
+    def __init__(self) -> None:
         """ Initialize CrestronXsig object """
-        self._digital = {}
-        self._analog = {}
-        self._serial = {}
+        self._digital: dict[int, bool] = {}
+        self._analog: dict[int, int] = {}
+        self._serial: dict[int, str] = {}
         # Track which joins have received data from Crestron
-        self._digital_received = set()
-        self._analog_received = set()
-        self._serial_received = set()
-        self._writer = None
-        self._callbacks = set()
-        self._server = None
-        self._available = False
-        self._sync_all_joins_callback = None
-        self.port = None
+        self._digital_received: set[int] = set()
+        self._analog_received: set[int] = set()
+        self._serial_received: set[int] = set()
+        self._writer: asyncio.StreamWriter | None = None
+        self._callbacks: set[Callable[[str, str], Coroutine[Any, Any, None]]] = set()
+        self._server: asyncio.Server | None = None
+        self._available: bool = False
+        self._sync_all_joins_callback: Callable[[], Coroutine[Any, Any, None]] | None = None
+        self.port: int | None = None
 
-    async def listen(self, port):
+    async def listen(self, port: int) -> None:
         """ Start TCP XSIG server listening on configured port """
         self.port = port
         server = await asyncio.start_server(self.handle_connection, "0.0.0.0", port)
@@ -31,7 +33,7 @@ class CrestronXsig:
         # Use create_task to properly run the server in the background
         asyncio.create_task(server.serve_forever())
 
-    async def stop(self):
+    async def stop(self) -> None:
         """ Stop TCP XSIG server """
         self._available = False
         for callback in self._callbacks:
@@ -39,20 +41,20 @@ class CrestronXsig:
         _LOGGER.info("Stop called. Closing connection")
         self._server.close()
 
-    def register_sync_all_joins_callback(self, callback):
+    def register_sync_all_joins_callback(self, callback: Callable[[], Coroutine[Any, Any, None]]) -> None:
         """ Allow callback to be registred for when control system requests an update to all joins """
         _LOGGER.debug("Sync-all-joins callback registered")
         self._sync_all_joins_callback = callback
 
-    def register_callback(self, callback):
+    def register_callback(self, callback: Callable[[str, str], Coroutine[Any, Any, None]]) -> None:
         """ Allow callbacks to be registered for when dict entries change """
         self._callbacks.add(callback)
 
-    def remove_callback(self, callback):
+    def remove_callback(self, callback: Callable[[str, str], Coroutine[Any, Any, None]]) -> None:
         """ Allow callbacks to be de-registered """
         self._callbacks.discard(callback)
 
-    async def handle_connection(self, reader, writer):
+    async def handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """ Parse packets from Crestron XSIG symbol """
         self._writer = writer
         peer = writer.get_extra_info("peername")
@@ -130,35 +132,35 @@ class CrestronXsig:
                 for callback in self._callbacks:
                     await callback("available", "False")
 
-    def is_available(self):
+    def is_available(self) -> bool:
         """Returns True if control system is connected"""
         return self._available
 
-    def get_analog(self, join):
+    def get_analog(self, join: int) -> int:
         """ Return analog value for join"""
         return self._analog.get(join, 0)
 
-    def get_digital(self, join):
+    def get_digital(self, join: int) -> bool:
         """ Return digital value for join"""
         return self._digital.get(join, False)
 
-    def get_serial(self, join):
+    def get_serial(self, join: int) -> str:
         """ Return serial value for join"""
         return self._serial.get(join, "")
 
-    def has_analog_value(self, join):
+    def has_analog_value(self, join: int) -> bool:
         """ Check if analog join has received valid data from Crestron """
         return join in self._analog_received
 
-    def has_digital_value(self, join):
+    def has_digital_value(self, join: int) -> bool:
         """ Check if digital join has received valid data from Crestron """
         return join in self._digital_received
 
-    def has_serial_value(self, join):
+    def has_serial_value(self, join: int) -> bool:
         """ Check if serial join has received valid data from Crestron """
         return join in self._serial_received
 
-    def set_analog(self, join, value):
+    def set_analog(self, join: int, value: int) -> None:
         """ Send Analog Join to Crestron XSIG symbol """
         if self._writer:
             try:
@@ -179,7 +181,7 @@ class CrestronXsig:
         else:
             _LOGGER.debug("Could not send analog. No connection to hub")
 
-    async def async_set_analog(self, join, value):
+    async def async_set_analog(self, join: int, value: int) -> None:
         """ Send Analog Join to Crestron XSIG symbol and ensure it's transmitted """
         if self._writer:
             try:
@@ -199,7 +201,7 @@ class CrestronXsig:
         else:
             _LOGGER.debug("Could not send analog. No connection to hub")
 
-    def set_digital(self, join, value):
+    def set_digital(self, join: int, value: int) -> None:
         """ Send Digital Join to Crestron XSIG symbol """
         if self._writer:
             try:
@@ -218,7 +220,7 @@ class CrestronXsig:
         else:
             _LOGGER.debug("Could not send digital. No connection to hub")
 
-    async def async_set_digital(self, join, value):
+    async def async_set_digital(self, join: int, value: int) -> None:
         """ Send Digital Join to Crestron XSIG symbol and ensure it's transmitted """
         if self._writer:
             try:
@@ -238,7 +240,7 @@ class CrestronXsig:
         else:
             _LOGGER.debug("Could not send digital. No connection to hub")
 
-    def set_serial(self, join, string):
+    def set_serial(self, join: int, string: str) -> None:
         """ Send String Join to Crestron XSIG symbol """
         if len(string) > 252:
             _LOGGER.warning("Could not send serial. String too long (%d>252)", len(string))
@@ -260,7 +262,7 @@ class CrestronXsig:
         else:
             _LOGGER.debug("Could not send serial. No connection to hub")
 
-    def request_update(self):
+    def request_update(self) -> None:
         """ Request Crestron to send current state of all joins """
         if self._writer:
             try:

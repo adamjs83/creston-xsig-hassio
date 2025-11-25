@@ -19,7 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 class SwitchEntityHandler:
     """Handler for switch entity configuration."""
 
-    def __init__(self, flow):
+    flow: Any  # Type is OptionsFlowHandler from config_flow.py
+
+    def __init__(self, flow: Any) -> None:
         """Initialize the switch entity handler."""
         self.flow = flow
 
@@ -32,23 +34,23 @@ class SwitchEntityHandler:
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
-                switch_join = user_input.get(CONF_SWITCH_JOIN)
-                device_class = user_input.get(CONF_DEVICE_CLASS, "switch")
+                name: str | None = user_input.get(CONF_NAME)
+                switch_join: str | None = user_input.get(CONF_SWITCH_JOIN)
+                device_class: str = user_input.get(CONF_DEVICE_CLASS, "switch")
 
                 # Validate switch_join format (must be digital)
                 if not switch_join or not (switch_join[0] == 'd' and switch_join[1:].isdigit()):
                     errors[CONF_SWITCH_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_switches = self.flow.config_entry.data.get(CONF_SWITCHES, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_switches: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_SWITCHES, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(s.get(CONF_NAME) == name for s in current_switches):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new switch entry
-                    new_switch = {
+                    new_switch: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_SWITCH_JOIN: switch_join,
                         CONF_DEVICE_CLASS: device_class,
@@ -56,18 +58,18 @@ class SwitchEntityHandler:
 
                     if is_editing:
                         # Replace existing switch
-                        updated_switches = [
+                        updated_switches: list[dict[str, Any]] = [
                             new_switch if s.get(CONF_NAME) == old_name else s
                             for s in current_switches
                         ]
                         _LOGGER.info("Updated switch %s", name)
                     else:
                         # Append new switch
-                        updated_switches = current_switches + [new_switch]
+                        updated_switches: list[dict[str, Any]] = current_switches + [new_switch]
                         _LOGGER.info("Added switch %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_SWITCHES] = updated_switches
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -86,7 +88,7 @@ class SwitchEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, Any] = {}
         if is_editing:
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -95,7 +97,7 @@ class SwitchEntityHandler:
             }
 
         # Show form
-        add_switch_schema = vol.Schema(
+        add_switch_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(

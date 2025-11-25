@@ -10,10 +10,10 @@ from homeassistant.exceptions import HomeAssistantError
 
 from ..const import CONF_PORT, DOMAIN
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # Port validation schema
-STEP_USER_DATA_SCHEMA = vol.Schema(
+STEP_USER_DATA_SCHEMA: vol.Schema = vol.Schema(
     {
         vol.Required(CONF_PORT, default=16384): vol.All(
             vol.Coerce(int), vol.Range(min=1024, max=65535)

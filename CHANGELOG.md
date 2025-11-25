@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.7] - 2025-01-25
+
+### Added
+- **Comprehensive Type Hints** - Added type hints to all 27 Python files
+  - Modern Python 3.10+ syntax (`|` for unions, `list[]` instead of `List[]`)
+  - All function parameters and return types annotated
+  - Class attributes typed for better IDE support
+  - Complex local variables typed for clarity
+  - Home Assistant types properly imported (HomeAssistant, ConfigEntry, FlowResult, etc.)
+  - Improved code maintainability and IDE autocomplete support
+
 ## [1.24.6] - 2025-01-24
 
 ### Changed

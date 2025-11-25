@@ -1,6 +1,8 @@
 """Dimmer/keypad configuration handler for Crestron XSIG integration."""
+from __future__ import annotations
+
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import voluptuous as vol
 import yaml
@@ -8,6 +10,9 @@ import yaml
 from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector, entity_registry as er, device_registry as dr
+
+if TYPE_CHECKING:
+    from ..config_flow import OptionsFlowHandler
 
 from ..const import (
     DOMAIN,
@@ -42,27 +47,27 @@ _LOGGER = logging.getLogger(__name__)
 class DimmerHandler:
     """Handler for dimmer/keypad configuration."""
 
-    def __init__(self, options_flow):
+    def __init__(self, options_flow: OptionsFlowHandler) -> None:
         """Initialize the dimmer handler.
 
         Args:
             options_flow: The OptionsFlowHandler instance
         """
-        self.flow = options_flow
+        self.flow: OptionsFlowHandler = options_flow
 
     async def async_step_add_dimmer_mode(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Select dimmer join assignment mode (auto-sequential vs manual)."""
         if user_input is not None:
-            mode = user_input.get("join_mode")
+            mode: str | None = user_input.get("join_mode")
             if mode == "auto":
                 return await self.async_step_add_dimmer_simple()
             else:  # manual
                 return await self.async_step_add_dimmer_manual()
 
         # Show mode selection
-        mode_schema = vol.Schema(
+        mode_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("join_mode", default="auto"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -95,11 +100,11 @@ class DimmerHandler:
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME, "").strip()
-                base_join_str = user_input.get(CONF_BASE_JOIN, "").strip()
-                button_count = int(user_input.get(CONF_BUTTON_COUNT, "4"))
-                has_lighting = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
-                light_brightness_join_str = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
+                name: str = user_input.get(CONF_NAME, "").strip()
+                base_join_str: str = user_input.get(CONF_BASE_JOIN, "").strip()
+                button_count: int = int(user_input.get(CONF_BUTTON_COUNT, "4"))
+                has_lighting: bool = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
+                light_brightness_join_str: str | None = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
 
                 # Validate name
                 if not name:
@@ -109,9 +114,9 @@ class DimmerHandler:
                 if not base_join_str or not (base_join_str[0] == 'd' and base_join_str[1:].isdigit()):
                     errors[CONF_BASE_JOIN] = "invalid_join_format"
                 else:
-                    base_join_num = int(base_join_str[1:])
+                    base_join_num: int = int(base_join_str[1:])
                     # Validate join range: need button_count * 3 sequential joins
-                    max_join_needed = base_join_num + (button_count * 3) - 1
+                    max_join_needed: int = base_join_num + (button_count * 3) - 1
                     if max_join_needed > 4096:
                         errors[CONF_BASE_JOIN] = "join_range_exceeded"
 
@@ -122,11 +127,11 @@ class DimmerHandler:
 
                 # Check for join conflicts
                 if not errors:
-                    joins_to_check = []
+                    joins_to_check: list[str] = []
 
                     # Add button joins (press, double, hold for each button)
                     for i in range(button_count):
-                        offset = i * 3
+                        offset: int = i * 3
                         joins_to_check.append(f"d{base_join_num + offset}")  # press
                         joins_to_check.append(f"d{base_join_num + offset + 1}")  # double
                         joins_to_check.append(f"d{base_join_num + offset + 2}")  # hold
@@ -135,13 +140,13 @@ class DimmerHandler:
                     if has_lighting and light_brightness_join_str:
                         joins_to_check.append(light_brightness_join_str)
 
-                    conflict = self._check_join_conflicts(joins_to_check)
+                    conflict: str | None = self._check_join_conflicts(joins_to_check)
                     if conflict:
                         errors["base"] = "join_conflict"
 
                 if not errors:
                     # Build dimmer config
-                    dimmer_config = {
+                    dimmer_config: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_BASE_JOIN: base_join_str,
                         CONF_BUTTON_COUNT: button_count,
@@ -152,15 +157,15 @@ class DimmerHandler:
                         dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
 
                     # Save dimmer - get fresh entry to preserve LED bindings
-                    fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+                    fresh_entry: Any = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
                     if not fresh_entry:
                         _LOGGER.error("Config entry not found, cannot save dimmer")
                         errors["base"] = "entry_not_found"
                     else:
-                        current_dimmers = fresh_entry.data.get(CONF_DIMMERS, []).copy()
+                        current_dimmers: list[dict[str, Any]] = fresh_entry.data.get(CONF_DIMMERS, []).copy()
                         current_dimmers.append(dimmer_config)
 
-                        new_data = dict(fresh_entry.data)
+                        new_data: dict[str, Any] = dict(fresh_entry.data)
                         new_data[CONF_DIMMERS] = current_dimmers
                         self.flow.hass.config_entries.async_update_entry(
                             fresh_entry, data=new_data
@@ -182,7 +187,7 @@ class DimmerHandler:
                 errors["base"] = "unknown"
 
         # Show form
-        dimmer_schema = vol.Schema(
+        dimmer_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME): selector.TextSelector(),
                 vol.Required(CONF_BASE_JOIN): selector.TextSelector(
@@ -220,27 +225,27 @@ class DimmerHandler:
 
         # Store button count in editing state for form generation
         if user_input and "button_count" in user_input and not hasattr(self.flow, "_dimmer_button_count"):
-            self.flow._dimmer_button_count = int(user_input.get("button_count", "4"))
+            self.flow._dimmer_button_count: int = int(user_input.get("button_count", "4"))
 
         if user_input is not None and hasattr(self.flow, "_dimmer_button_count"):
             try:
-                name = user_input.get(CONF_NAME, "").strip()
-                button_count = self.flow._dimmer_button_count
-                has_lighting = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
-                light_brightness_join_str = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
+                name: str = user_input.get(CONF_NAME, "").strip()
+                button_count: int = self.flow._dimmer_button_count
+                has_lighting: bool = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
+                light_brightness_join_str: str | None = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
 
                 # Validate name
                 if not name:
                     errors[CONF_NAME] = "name_required"
 
                 # Collect and validate button joins
-                button_joins = {}
-                joins_to_check = []
+                button_joins: dict[int, dict[str, str]] = {}
+                joins_to_check: list[str] = []
 
                 for btn_num in range(1, button_count + 1):
-                    press_join = user_input.get(f"button_{btn_num}_press", "").strip()
-                    double_join = user_input.get(f"button_{btn_num}_double", "").strip()
-                    hold_join = user_input.get(f"button_{btn_num}_hold", "").strip()
+                    press_join: str = user_input.get(f"button_{btn_num}_press", "").strip()
+                    double_join: str = user_input.get(f"button_{btn_num}_double", "").strip()
+                    hold_join: str = user_input.get(f"button_{btn_num}_hold", "").strip()
 
                     # Validate press join (required)
                     if not press_join or not (press_join[0] == 'd' and press_join[1:].isdigit()):
@@ -274,13 +279,13 @@ class DimmerHandler:
 
                 # Check for join conflicts
                 if not errors:
-                    conflict = self._check_join_conflicts(joins_to_check)
+                    conflict: str | None = self._check_join_conflicts(joins_to_check)
                     if conflict:
                         errors["base"] = "join_conflict"
 
                 if not errors:
                     # Build dimmer config
-                    dimmer_config = {
+                    dimmer_config: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_BUTTON_COUNT: button_count,
                         "manual_joins": button_joins,  # Store manual join mapping
@@ -291,15 +296,15 @@ class DimmerHandler:
                         dimmer_config[CONF_LIGHT_BRIGHTNESS_JOIN] = light_brightness_join_str
 
                     # Save dimmer - get fresh entry to preserve LED bindings
-                    fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+                    fresh_entry: Any = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
                     if not fresh_entry:
                         _LOGGER.error("Config entry not found, cannot save dimmer")
                         errors["base"] = "entry_not_found"
                     else:
-                        current_dimmers = fresh_entry.data.get(CONF_DIMMERS, []).copy()
+                        current_dimmers: list[dict[str, Any]] = fresh_entry.data.get(CONF_DIMMERS, []).copy()
                         current_dimmers.append(dimmer_config)
 
-                        new_data = dict(fresh_entry.data)
+                        new_data: dict[str, Any] = dict(fresh_entry.data)
                         new_data[CONF_DIMMERS] = current_dimmers
                         self.flow.hass.config_entries.async_update_entry(
                             fresh_entry, data=new_data
@@ -324,10 +329,10 @@ class DimmerHandler:
                 errors["base"] = "unknown"
 
         # Build dynamic form based on button count
-        button_count = getattr(self.flow, "_dimmer_button_count", int(user_input.get(CONF_BUTTON_COUNT, "4")) if user_input else 4)
+        button_count: int = getattr(self.flow, "_dimmer_button_count", int(user_input.get(CONF_BUTTON_COUNT, "4")) if user_input else 4)
 
         # Build schema fields
-        schema_fields = {
+        schema_fields: dict[Any, Any] = {
             vol.Required(CONF_NAME): selector.TextSelector(),
             vol.Required(CONF_BUTTON_COUNT, default=str(button_count)): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -360,7 +365,7 @@ class DimmerHandler:
             selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
         )
 
-        dimmer_schema = vol.Schema(schema_fields)
+        dimmer_schema: vol.Schema = vol.Schema(schema_fields)
 
         return self.flow.async_show_form(
             step_id="add_dimmer_manual",
@@ -377,16 +382,16 @@ class DimmerHandler:
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME, "").strip()
-                button_count = int(user_input.get(CONF_BUTTON_COUNT, "4"))  # Convert string to int
-                has_lighting_load = user_input.get("has_lighting_load", False)
+                name: str = user_input.get(CONF_NAME, "").strip()
+                button_count: int = int(user_input.get(CONF_BUTTON_COUNT, "4"))  # Convert string to int
+                has_lighting_load: bool = user_input.get("has_lighting_load", False)
 
                 # Validate name
                 if not name:
                     errors[CONF_NAME] = "name_required"
 
                 # Check for duplicate dimmer name
-                current_dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, [])
+                current_dimmers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_DIMMERS, [])
                 if any(d.get(CONF_NAME) == name for d in current_dimmers):
                     errors[CONF_NAME] = "dimmer_name_exists"
 
@@ -410,7 +415,7 @@ class DimmerHandler:
                 errors["base"] = "unknown"
 
         # Show basic info form
-        basic_schema = vol.Schema(
+        basic_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME): selector.TextSelector(),
                 vol.Required(CONF_BUTTON_COUNT, default="4"): selector.SelectSelector(
@@ -444,10 +449,10 @@ class DimmerHandler:
 
         if user_input is not None:
             try:
-                light_name = user_input.get("light_name", "").strip()
-                is_on_join = user_input.get(CONF_IS_ON_JOIN, "").strip()
-                has_brightness = user_input.get("has_brightness", False)
-                brightness_join = user_input.get(CONF_BRIGHTNESS_JOIN, "").strip()
+                light_name: str = user_input.get("light_name", "").strip()
+                is_on_join: str = user_input.get(CONF_IS_ON_JOIN, "").strip()
+                has_brightness: bool = user_input.get("has_brightness", False)
+                brightness_join: str = user_input.get(CONF_BRIGHTNESS_JOIN, "").strip()
 
                 # Validate light name
                 if not light_name:
@@ -464,17 +469,17 @@ class DimmerHandler:
 
                 # Check for join conflicts
                 if not errors:
-                    all_joins = [is_on_join]
+                    all_joins: list[str] = [is_on_join]
                     if has_brightness and brightness_join:
                         all_joins.append(brightness_join)
 
-                    conflict = self._check_join_conflicts(all_joins)
+                    conflict: str | None = self._check_join_conflicts(all_joins)
                     if conflict:
                         errors["base"] = f"join_conflict_{conflict}"
 
                 if not errors:
                     # Store lighting load config
-                    lighting_load = {
+                    lighting_load: dict[str, str] = {
                         CONF_NAME: light_name,
                         CONF_IS_ON_JOIN: is_on_join,
                     }
@@ -491,7 +496,7 @@ class DimmerHandler:
                 errors["base"] = "unknown"
 
         # Show lighting load form
-        lighting_schema = vol.Schema(
+        lighting_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("light_name"): selector.TextSelector(),
                 vol.Required(CONF_IS_ON_JOIN): selector.TextSelector(
@@ -523,33 +528,33 @@ class DimmerHandler:
         if user_input is not None:
             try:
                 # Parse button configuration
-                button_config = {"number": button_num}
+                button_config: dict[str, Any] = {"number": button_num}
 
                 # Press action
-                config_press = user_input.get("config_press", False)
-                press_join = user_input.get("press_join", "").strip()
-                press_entity = user_input.get("press_entity")
-                press_action = user_input.get("press_action")
-                press_data = user_input.get("press_service_data", "").strip()
+                config_press: bool = user_input.get("config_press", False)
+                press_join: str = user_input.get("press_join", "").strip()
+                press_entity: str | None = user_input.get("press_entity")
+                press_action: str | None = user_input.get("press_action")
+                press_data: str = user_input.get("press_service_data", "").strip()
 
                 # Double press action
-                config_double = user_input.get("config_double_press", False)
-                double_join = user_input.get("double_press_join", "").strip()
-                double_entity = user_input.get("double_press_entity")
-                double_action = user_input.get("double_press_action")
-                double_data = user_input.get("double_service_data", "").strip()
+                config_double: bool = user_input.get("config_double_press", False)
+                double_join: str = user_input.get("double_press_join", "").strip()
+                double_entity: str | None = user_input.get("double_press_entity")
+                double_action: str | None = user_input.get("double_press_action")
+                double_data: str = user_input.get("double_service_data", "").strip()
 
                 # Hold action
-                config_hold = user_input.get("config_hold", False)
-                hold_join = user_input.get("hold_join", "").strip()
-                hold_entity = user_input.get("hold_entity")
-                hold_action = user_input.get("hold_action")
-                hold_data = user_input.get("hold_service_data", "").strip()
+                config_hold: bool = user_input.get("config_hold", False)
+                hold_join: str = user_input.get("hold_join", "").strip()
+                hold_entity: str | None = user_input.get("hold_entity")
+                hold_action: str | None = user_input.get("hold_action")
+                hold_data: str = user_input.get("hold_service_data", "").strip()
 
                 # Feedback
-                config_feedback = user_input.get("config_feedback", False)
-                feedback_join = user_input.get("feedback_join", "").strip()
-                feedback_entity = user_input.get("feedback_entity")
+                config_feedback: bool = user_input.get("config_feedback", False)
+                feedback_join: str = user_input.get("feedback_join", "").strip()
+                feedback_entity: str | None = user_input.get("feedback_entity")
 
                 # Validate press
                 if config_press:
@@ -619,7 +624,7 @@ class DimmerHandler:
 
                 # Check for join conflicts
                 if not errors:
-                    button_joins = []
+                    button_joins: list[str] = []
                     if CONF_PRESS in button_config:
                         button_joins.append(button_config[CONF_PRESS]["join"])
                     if CONF_DOUBLE_PRESS in button_config:
@@ -629,7 +634,7 @@ class DimmerHandler:
                     if CONF_FEEDBACK in button_config:
                         button_joins.append(button_config[CONF_FEEDBACK]["join"])
 
-                    conflict = self._check_join_conflicts(button_joins)
+                    conflict: str | None = self._check_join_conflicts(button_joins)
                     if conflict:
                         errors["base"] = f"join_conflict"
 
@@ -638,7 +643,7 @@ class DimmerHandler:
                     self.flow._editing_join[CONF_BUTTONS].append(button_config)
 
                     # Check if we need more buttons
-                    total_buttons = self.flow._editing_join.get(CONF_BUTTON_COUNT, 0)
+                    total_buttons: int = self.flow._editing_join.get(CONF_BUTTON_COUNT, 0)
                     if button_num < total_buttons:
                         # More buttons to configure
                         return await self.async_step_add_dimmer_button(button_num=button_num + 1)
@@ -651,9 +656,9 @@ class DimmerHandler:
                 errors["base"] = "unknown"
 
         # Build dynamic form for this button
-        total_buttons = self.flow._editing_join.get(CONF_BUTTON_COUNT, 0)
+        total_buttons: int = self.flow._editing_join.get(CONF_BUTTON_COUNT, 0)
 
-        button_schema = vol.Schema(
+        button_schema: vol.Schema = vol.Schema(
             {
                 # Press action
                 vol.Optional("config_press", default=False): selector.BooleanSelector(),
@@ -737,16 +742,16 @@ class DimmerHandler:
         """Save the dimmer configuration."""
         try:
             # Get fresh entry to preserve LED bindings
-            fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+            fresh_entry: Any = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
             if not fresh_entry:
                 _LOGGER.error("Config entry not found, cannot save dimmer")
                 return self.flow.async_abort(reason="entry_not_found")
 
-            current_dimmers = fresh_entry.data.get(CONF_DIMMERS, []).copy()
+            current_dimmers: list[dict[str, Any]] = fresh_entry.data.get(CONF_DIMMERS, []).copy()
             current_dimmers.append(self.flow._editing_join)
 
             # Update config entry with fresh data
-            new_data = dict(fresh_entry.data)
+            new_data: dict[str, Any] = dict(fresh_entry.data)
             new_data[CONF_DIMMERS] = current_dimmers
             self.flow.hass.config_entries.async_update_entry(
                 fresh_entry, data=new_data
@@ -774,27 +779,27 @@ class DimmerHandler:
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Select which dimmer to edit."""
-        current_dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, [])
+        current_dimmers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_DIMMERS, [])
 
         if not current_dimmers:
             return self.flow.async_abort(reason="no_dimmers_configured")
 
         if user_input is not None:
-            dimmer_name = user_input.get("dimmer_to_edit")
+            dimmer_name: str | None = user_input.get("dimmer_to_edit")
 
             # Find the dimmer
-            dimmer = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
+            dimmer: dict[str, Any] | None = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
             if dimmer:
                 self.flow._editing_join = dimmer.copy()
                 return await self.async_step_edit_dimmer()
 
         # Build dimmer selection
-        dimmer_options = [
+        dimmer_options: list[dict[str, str]] = [
             {"label": f"{d.get(CONF_NAME)} ({d.get(CONF_BUTTON_COUNT)} buttons)", "value": d.get(CONF_NAME)}
             for d in current_dimmers
         ]
 
-        select_schema = vol.Schema(
+        select_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("dimmer_to_edit"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -815,7 +820,7 @@ class DimmerHandler:
     ) -> FlowResult:
         """Edit an existing dimmer (full reconfiguration)."""
         if user_input is not None:
-            next_step = user_input.get("action")
+            next_step: str | None = user_input.get("action")
             if next_step == "reconfigure":
                 # User chose to reconfigure
                 # Start from beginning with current config pre-filled
@@ -826,10 +831,10 @@ class DimmerHandler:
                 return await self.flow.async_step_select_dimmer_to_edit()
 
         # Show edit dimmer menu
-        dimmer_name = self.flow._editing_join.get(CONF_NAME, "")
-        button_count = self.flow._editing_join.get(CONF_BUTTON_COUNT, 0)
+        dimmer_name: str = self.flow._editing_join.get(CONF_NAME, "")
+        button_count: int = self.flow._editing_join.get(CONF_BUTTON_COUNT, 0)
 
-        menu_schema = vol.Schema(
+        menu_schema: vol.Schema = vol.Schema(
             {
                 vol.Required("action"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -857,30 +862,30 @@ class DimmerHandler:
     ) -> FlowResult:
         """Remove selected dimmers."""
         errors: dict[str, str] = {}
-        current_dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, [])
+        current_dimmers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_DIMMERS, [])
 
         if not current_dimmers:
             return self.flow.async_abort(reason="no_dimmers_configured")
 
         if user_input is not None:
             try:
-                dimmers_to_remove = user_input.get("dimmers_to_remove", [])
+                dimmers_to_remove: list[str] = user_input.get("dimmers_to_remove", [])
 
                 if dimmers_to_remove:
                     # Get fresh entry to preserve LED bindings
-                    fresh_entry = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+                    fresh_entry: Any = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
                     if not fresh_entry:
                         _LOGGER.error("Config entry not found, cannot remove dimmers")
                         errors["base"] = "entry_not_found"
                     else:
                         # Filter out removed dimmers
-                        updated_dimmers = [
+                        updated_dimmers: list[dict[str, Any]] = [
                             d for d in current_dimmers
                             if d.get(CONF_NAME) not in dimmers_to_remove
                         ]
 
                         # Update config entry with fresh data
-                        new_data = dict(fresh_entry.data)
+                        new_data: dict[str, Any] = dict(fresh_entry.data)
                         new_data[CONF_DIMMERS] = updated_dimmers
                         self.flow.hass.config_entries.async_update_entry(
                             fresh_entry, data=new_data
@@ -888,7 +893,7 @@ class DimmerHandler:
 
                         # Clean up entities generated by these dimmers
                         for dimmer_name in dimmers_to_remove:
-                            dimmer = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
+                            dimmer: dict[str, Any] | None = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
                             if dimmer:
                                 # Remove all entities and device from registry
                                 await self._cleanup_dimmer_entities(dimmer)
@@ -906,13 +911,13 @@ class DimmerHandler:
                 errors["base"] = "unknown"
 
         # Build dimmer options
-        dimmer_options = [
+        dimmer_options: list[dict[str, str]] = [
             {"label": f"{d.get(CONF_NAME)} ({d.get(CONF_BUTTON_COUNT)} buttons)", "value": d.get(CONF_NAME)}
             for d in current_dimmers
         ]
 
         # Show removal form
-        remove_schema = vol.Schema(
+        remove_schema: vol.Schema = vol.Schema(
             {
                 vol.Optional("dimmers_to_remove"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -933,14 +938,14 @@ class DimmerHandler:
     def _check_join_conflicts(self, new_joins: list[str]) -> str | None:
         """Check if any joins conflict with existing configuration."""
         # Check against all existing joins (to_joins, from_joins, entities, other dimmers)
-        current_to_joins = self.flow.config_entry.data.get(CONF_TO_HUB, [])
-        current_from_joins = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
-        current_lights = self.flow.config_entry.data.get(CONF_LIGHTS, [])
-        current_switches = self.flow.config_entry.data.get(CONF_SWITCHES, [])
-        current_covers = self.flow.config_entry.data.get(CONF_COVERS, [])
-        current_dimmers = self.flow.config_entry.data.get(CONF_DIMMERS, [])
+        current_to_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_TO_HUB, [])
+        current_from_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
+        current_lights: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_LIGHTS, [])
+        current_switches: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_SWITCHES, [])
+        current_covers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_COVERS, [])
+        current_dimmers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_DIMMERS, [])
 
-        used_joins = set()
+        used_joins: set[str] = set()
 
         # Collect all used joins
         for tj in current_to_joins:
@@ -980,20 +985,20 @@ class DimmerHandler:
 
     async def _cleanup_dimmer_entities(self, dimmer: dict[str, Any]) -> None:
         """Remove entities created by a dimmer from entity and device registry."""
-        entity_reg = er.async_get(self.flow.hass)
-        device_reg = dr.async_get(self.flow.hass)
+        entity_reg: er.EntityRegistry = er.async_get(self.flow.hass)
+        device_reg: dr.DeviceRegistry = dr.async_get(self.flow.hass)
 
-        dimmer_name = dimmer.get(CONF_NAME)
-        button_count = dimmer.get(CONF_BUTTON_COUNT, 2)
-        base_join = dimmer.get(CONF_BASE_JOIN)
-        manual_joins = dimmer.get("manual_joins")
+        dimmer_name: str = dimmer.get(CONF_NAME)
+        button_count: int = dimmer.get(CONF_BUTTON_COUNT, 2)
+        base_join: str | None = dimmer.get(CONF_BASE_JOIN)
+        manual_joins: dict[int, dict[str, str]] | None = dimmer.get("manual_joins")
 
         _LOGGER.debug("Cleaning up dimmer '%s' with %d buttons", dimmer_name, button_count)
 
         # Remove event entities (one per button)
         for button_num in range(1, button_count + 1):
-            unique_id = f"crestron_event_{dimmer_name}_button_{button_num}"
-            entity_id = entity_reg.async_get_entity_id("event", DOMAIN, unique_id)
+            unique_id: str = f"crestron_event_{dimmer_name}_button_{button_num}"
+            entity_id: str | None = entity_reg.async_get_entity_id("event", DOMAIN, unique_id)
             if entity_id:
                 _LOGGER.debug("Removing event entity: %s", entity_id)
                 entity_reg.async_remove(entity_id)
@@ -1008,33 +1013,33 @@ class DimmerHandler:
             # Remove LED switch entity (one per button)
             # Calculate the press join for this button
             if manual_joins and button_num in manual_joins:
-                press_join_str = manual_joins[button_num]["press"]
-                press_join = int(press_join_str[1:])
+                press_join_str: str = manual_joins[button_num]["press"]
+                press_join: int = int(press_join_str[1:])
             else:
                 # Auto-sequential mode
-                base_offset = (button_num - 1) * 3
-                press_join = int(base_join[1:]) + base_offset
+                base_offset: int = (button_num - 1) * 3
+                press_join: int = int(base_join[1:]) + base_offset
 
-            unique_id = f"crestron_led_{dimmer_name}_d{press_join}"
-            entity_id = entity_reg.async_get_entity_id("switch", DOMAIN, unique_id)
+            unique_id: str = f"crestron_led_{dimmer_name}_d{press_join}"
+            entity_id: str | None = entity_reg.async_get_entity_id("switch", DOMAIN, unique_id)
             if entity_id:
                 _LOGGER.debug("Removing LED switch entity: %s", entity_id)
                 entity_reg.async_remove(entity_id)
 
         # Remove lighting load entity if present
         if dimmer.get(CONF_HAS_LIGHTING_LOAD):
-            brightness_join_str = dimmer.get(CONF_LIGHT_BRIGHTNESS_JOIN)
+            brightness_join_str: str | None = dimmer.get(CONF_LIGHT_BRIGHTNESS_JOIN)
             if brightness_join_str:
-                brightness_join = int(brightness_join_str[1:])  # Remove 'a' prefix
-                unique_id = f"crestron_light_dimmer_{dimmer_name}_a{brightness_join}"
-                entity_id = entity_reg.async_get_entity_id("light", DOMAIN, unique_id)
+                brightness_join: int = int(brightness_join_str[1:])  # Remove 'a' prefix
+                unique_id: str = f"crestron_light_dimmer_{dimmer_name}_a{brightness_join}"
+                entity_id: str | None = entity_reg.async_get_entity_id("light", DOMAIN, unique_id)
                 if entity_id:
                     _LOGGER.debug("Removing dimmer light entity: %s", entity_id)
                     entity_reg.async_remove(entity_id)
 
         # Remove the device from device registry
-        device_identifier = (DOMAIN, f"dimmer_{dimmer_name}")
-        device = device_reg.async_get_device(identifiers={device_identifier})
+        device_identifier: tuple[str, str] = (DOMAIN, f"dimmer_{dimmer_name}")
+        device: dr.DeviceEntry | None = device_reg.async_get_device(identifiers={device_identifier})
         if device:
             _LOGGER.debug("Removing device: %s", dimmer_name)
             device_reg.async_remove_device(device.id)

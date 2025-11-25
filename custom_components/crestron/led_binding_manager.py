@@ -1,11 +1,12 @@
 """LED Binding Manager for Crestron Integration."""
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON, STATE_OFF
 from homeassistant.core import HomeAssistant, Event, callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_track_state_change_event, EventStateChangedData
 
 from .const import (
     DOMAIN,
@@ -21,14 +22,14 @@ _LOGGER = logging.getLogger(__name__)
 class LEDBindingManager:
     """Manages LED bindings for Crestron dimmer/keypad buttons."""
 
-    def __init__(self, hass: HomeAssistant, hub, config_entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, hub: Any, config_entry: ConfigEntry) -> None:
         """Initialize the LED binding manager."""
-        self.hass = hass
-        self._hub = hub
-        self._config_entry = config_entry
-        self._entry_id = config_entry.entry_id  # Store entry ID for fresh lookups
+        self.hass: HomeAssistant = hass
+        self._hub: Any = hub
+        self._config_entry: ConfigEntry = config_entry
+        self._entry_id: str = config_entry.entry_id  # Store entry ID for fresh lookups
         self._bindings: dict[str, dict[str, Any]] = {}
-        self._listeners: dict[str, Callable] = {}
+        self._listeners: dict[str, Callable[[], None]] = {}
 
     async def async_setup(self) -> None:
         """Set up LED bindings from config entry options."""
@@ -70,9 +71,9 @@ class LEDBindingManager:
         for led_entity_id, binding in self._bindings.items():
             await self._register_listener(led_entity_id, binding)
 
-    async def _register_listener(self, led_entity_id: str, binding: dict) -> None:
+    async def _register_listener(self, led_entity_id: str, binding: dict[str, Any]) -> None:
         """Register a state change listener for a binding."""
-        bound_entity_id = binding["entity_id"]
+        bound_entity_id: str = binding["entity_id"]
 
         # Remove old listener if exists
         if led_entity_id in self._listeners:
@@ -81,7 +82,7 @@ class LEDBindingManager:
 
         # Create and register new listener
         @callback
-        async def state_change_handler(event: Event) -> None:
+        async def state_change_handler(event: Event[EventStateChangedData]) -> None:
             await self._sync_led_state(led_entity_id, binding)
 
         self._listeners[led_entity_id] = async_track_state_change_event(
@@ -100,10 +101,10 @@ class LEDBindingManager:
         # Sync initial state
         await self._sync_led_state(led_entity_id, binding)
 
-    async def _sync_led_state(self, led_entity_id: str, binding: dict) -> None:
+    async def _sync_led_state(self, led_entity_id: str, binding: dict[str, Any]) -> None:
         """Sync LED state based on bound entity state."""
-        bound_entity_id = binding["entity_id"]
-        invert = binding.get("invert", False)
+        bound_entity_id: str = binding["entity_id"]
+        invert: bool = binding.get("invert", False)
 
         # Get bound entity state
         state = self.hass.states.get(bound_entity_id)
@@ -112,12 +113,12 @@ class LEDBindingManager:
             return
 
         # Map state to LED on/off
-        should_be_on = STATE_TO_LED.get(state.state, False)
+        should_be_on: bool = STATE_TO_LED.get(state.state, False)
         if invert:
             should_be_on = not should_be_on
 
         # Call switch service to update LED
-        service = "turn_on" if should_be_on else "turn_off"
+        service: str = "turn_on" if should_be_on else "turn_off"
 
         _LOGGER.debug(
             "LED sync: %s (%s) → %s (%s) [invert=%s]",

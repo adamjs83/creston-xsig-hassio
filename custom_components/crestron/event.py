@@ -1,6 +1,7 @@
 """Support for Crestron button press events."""
 import logging
 from typing import Any
+from collections.abc import Callable
 
 from homeassistant.components.event import (
     EventEntity,
@@ -24,7 +25,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Event types that button entities can fire
-EVENT_TYPES = ["press", "double_press", "hold"]
+EVENT_TYPES: list[str] = ["press", "double_press", "hold"]
 
 
 async def async_setup_entry(
@@ -34,7 +35,8 @@ async def async_setup_entry(
 ) -> None:
     """Set up Crestron button event entities from a config entry."""
     # Get hub for this specific config entry (supports multiple hubs)
-    hub_data = hass.data[DOMAIN].get(config_entry.entry_id)
+    hub_data: dict[str, Any] | Any = hass.data[DOMAIN].get(config_entry.entry_id)
+    hub: Any = None
     if hub_data:
         # Hub data is stored as dict with HUB key
         if isinstance(hub_data, dict):
@@ -49,19 +51,19 @@ async def async_setup_entry(
         _LOGGER.error("No Crestron hub found for event entities")
         return
 
-    dimmers = config_entry.data.get(CONF_DIMMERS, [])
+    dimmers: list[dict[str, Any]] = config_entry.data.get(CONF_DIMMERS, [])
 
     if not dimmers:
         return
 
-    entities = []
+    entities: list[CrestronButtonEvent] = []
     for dimmer in dimmers:
-        dimmer_name = dimmer.get(CONF_NAME, "Unknown")
-        base_join = dimmer.get(CONF_BASE_JOIN)
-        manual_joins = dimmer.get("manual_joins")
-        button_count = dimmer.get(CONF_BUTTON_COUNT, 2)
+        dimmer_name: str = dimmer.get(CONF_NAME, "Unknown")
+        base_join: str | None = dimmer.get(CONF_BASE_JOIN)
+        manual_joins: dict[int, dict[str, str]] | None = dimmer.get("manual_joins")
+        button_count: int = dimmer.get(CONF_BUTTON_COUNT, 2)
 
-        mode = "manual" if manual_joins else "auto-sequential"
+        mode: str = "manual" if manual_joins else "auto-sequential"
         _LOGGER.debug(
             "Creating button event entities for dimmer '%s' (%s mode, %d buttons)",
             dimmer_name,
@@ -75,20 +77,20 @@ async def async_setup_entry(
             # Get joins for this button (manual or auto-sequential)
             if manual_joins and button_num in manual_joins:
                 # Manual mode: use explicitly configured joins
-                press_join = manual_joins[button_num]["press"]
-                double_join = manual_joins[button_num]["double"]
-                hold_join = manual_joins[button_num]["hold"]
+                press_join: str = manual_joins[button_num]["press"]
+                double_join: str = manual_joins[button_num]["double"]
+                hold_join: str = manual_joins[button_num]["hold"]
             else:
                 # Auto-sequential mode: calculate from base join
                 # Button 1: d10 (press), d11 (double), d12 (hold)
                 # Button 2: d13 (press), d14 (double), d15 (hold)
-                base_offset = (button_num - 1) * 3
-                press_join_num = int(base_join[1:]) + base_offset
+                base_offset: int = (button_num - 1) * 3
+                press_join_num: int = int(base_join[1:]) + base_offset
                 press_join = f"d{press_join_num}"
                 double_join = f"d{press_join_num + 1}"
                 hold_join = f"d{press_join_num + 2}"
 
-            entity = CrestronButtonEvent(
+            entity: CrestronButtonEvent = CrestronButtonEvent(
                 hub=hub,
                 dimmer_name=dimmer_name,
                 button_num=button_num,
@@ -106,13 +108,21 @@ async def async_setup_entry(
 class CrestronButtonEvent(EventEntity):
     """Representation of a Crestron button event entity."""
 
-    _attr_event_types = EVENT_TYPES
-    _attr_device_class = EventDeviceClass.BUTTON
-    _attr_has_entity_name = True
+    _attr_event_types: list[str] = EVENT_TYPES
+    _attr_device_class: EventDeviceClass = EventDeviceClass.BUTTON
+    _attr_has_entity_name: bool = True
+
+    _hub: Any
+    _dimmer_name: str
+    _button_num: int
+    _press_join: str
+    _double_join: str
+    _hold_join: str
+    _name: str
 
     def __init__(
         self,
-        hub,
+        hub: Any,
         dimmer_name: str,
         button_num: int,
         press_join: str,
@@ -129,12 +139,12 @@ class CrestronButtonEvent(EventEntity):
         self._name = f"Button {button_num}"
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the name of the entity."""
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for the entity."""
         return f"crestron_event_{self._dimmer_name}_button_{self._button_num}"
 
@@ -151,7 +161,8 @@ class CrestronButtonEvent(EventEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks when entity is added."""
         # Register single global callback (hub doesn't support join-specific callbacks)
-        self._hub.register_callback(self.process_callback)
+        callback_func: Callable[[str, str], Any] = self.process_callback
+        self._hub.register_callback(callback_func)
 
         _LOGGER.debug(
             "Registered button %d event listeners: %s (press), %s (double), %s (hold)",
@@ -163,7 +174,8 @@ class CrestronButtonEvent(EventEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Unregister callbacks when entity is removed."""
-        self._hub.remove_callback(self.process_callback)
+        callback_func: Callable[[str, str], Any] = self.process_callback
+        self._hub.remove_callback(callback_func)
 
     async def process_callback(self, cbtype: str, value: str) -> None:
         """Process hub callback and check if it's for one of our joins."""
@@ -180,7 +192,7 @@ class CrestronButtonEvent(EventEntity):
     def _handle_press(self, value: str) -> None:
         """Handle press join trigger."""
         if value == "1":  # Digital high = button pressed
-            event_data = {
+            event_data: dict[str, str | int] = {
                 "device_name": self._dimmer_name,
                 "button": self._button_num,
                 "action": "press",
@@ -200,7 +212,7 @@ class CrestronButtonEvent(EventEntity):
     def _handle_double_press(self, value: str) -> None:
         """Handle double press join trigger."""
         if value == "1":
-            event_data = {
+            event_data: dict[str, str | int] = {
                 "device_name": self._dimmer_name,
                 "button": self._button_num,
                 "action": "double_press",
@@ -220,7 +232,7 @@ class CrestronButtonEvent(EventEntity):
     def _handle_hold(self, value: str) -> None:
         """Handle hold join trigger."""
         if value == "1":
-            event_data = {
+            event_data: dict[str, str | int] = {
                 "device_name": self._dimmer_name,
                 "button": self._button_num,
                 "action": "hold",

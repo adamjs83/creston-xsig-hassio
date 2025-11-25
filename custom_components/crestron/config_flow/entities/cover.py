@@ -1,6 +1,8 @@
 """Cover entity configuration handler for Crestron XSIG integration."""
+from __future__ import annotations
+
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
@@ -17,13 +19,18 @@ from ...const import (
 )
 from homeassistant.const import CONF_NAME, CONF_TYPE
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from ..options_flow import OptionsFlowHandler
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class CoverEntityHandler:
     """Handler for cover entity configuration."""
 
-    def __init__(self, flow):
+    flow: OptionsFlowHandler
+
+    def __init__(self, flow: OptionsFlowHandler) -> None:
         """Initialize the cover entity handler."""
         self.flow = flow
 
@@ -36,13 +43,13 @@ class CoverEntityHandler:
 
         if user_input is not None:
             try:
-                name = user_input.get(CONF_NAME)
-                pos_join = user_input.get(CONF_POS_JOIN)
-                entity_type = user_input.get(CONF_TYPE, "shade")
-                is_opening_join = user_input.get(CONF_IS_OPENING_JOIN, "").strip()
-                is_closing_join = user_input.get(CONF_IS_CLOSING_JOIN, "").strip()
-                is_closed_join = user_input.get(CONF_IS_CLOSED_JOIN, "").strip()
-                stop_join = user_input.get(CONF_STOP_JOIN, "").strip()
+                name: str | None = user_input.get(CONF_NAME)
+                pos_join: str | None = user_input.get(CONF_POS_JOIN)
+                entity_type: str = user_input.get(CONF_TYPE, "shade")
+                is_opening_join: str = user_input.get(CONF_IS_OPENING_JOIN, "").strip()
+                is_closing_join: str = user_input.get(CONF_IS_CLOSING_JOIN, "").strip()
+                is_closed_join: str = user_input.get(CONF_IS_CLOSED_JOIN, "").strip()
+                stop_join: str = user_input.get(CONF_STOP_JOIN, "").strip()
 
                 # Validate pos_join format (must be analog)
                 if not pos_join or not (pos_join[0] == 'a' and pos_join[1:].isdigit()):
@@ -59,14 +66,14 @@ class CoverEntityHandler:
                         errors[join_field] = "invalid_join_format"
 
                 # Check for duplicate entity name
-                current_covers = self.flow.config_entry.data.get(CONF_COVERS, [])
-                old_name = self.flow._editing_join.get(CONF_NAME) if is_editing else None
+                current_covers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_COVERS, [])
+                old_name: str | None = self.flow._editing_join.get(CONF_NAME) if is_editing else None
                 if name != old_name and any(c.get(CONF_NAME) == name for c in current_covers):
                     errors[CONF_NAME] = "entity_already_exists"
 
                 if not errors:
                     # Build new cover entry
-                    new_cover = {
+                    new_cover: dict[str, Any] = {
                         CONF_NAME: name,
                         CONF_POS_JOIN: pos_join,
                         CONF_TYPE: entity_type,
@@ -84,18 +91,18 @@ class CoverEntityHandler:
 
                     if is_editing:
                         # Replace existing cover
-                        updated_covers = [
+                        updated_covers: list[dict[str, Any]] = [
                             new_cover if c.get(CONF_NAME) == old_name else c
                             for c in current_covers
                         ]
                         _LOGGER.info("Updated cover %s", name)
                     else:
                         # Append new cover
-                        updated_covers = current_covers + [new_cover]
+                        updated_covers: list[dict[str, Any]] = current_covers + [new_cover]
                         _LOGGER.info("Added cover %s", name)
 
                     # Update config entry
-                    new_data = dict(self.flow.config_entry.data)
+                    new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_COVERS] = updated_covers
 
                     self.flow.hass.config_entries.async_update_entry(
@@ -114,7 +121,7 @@ class CoverEntityHandler:
                 errors["base"] = "unknown"
 
         # Pre-fill form if editing
-        default_values = {}
+        default_values: dict[str, Any] = {}
         if is_editing:
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -127,7 +134,7 @@ class CoverEntityHandler:
             }
 
         # Show form
-        add_cover_schema = vol.Schema(
+        add_cover_schema: vol.Schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default=default_values.get(CONF_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(

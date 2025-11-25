@@ -1,6 +1,7 @@
 """Support for Crestron LED binding select entities."""
 import logging
 from typing import Any
+from collections.abc import Callable
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -103,32 +104,32 @@ class CrestronLEDBinding(SelectEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        hub,
+        hub: Any,
         dimmer_name: str,
         button_num: int,
         led_entity_id: str,
     ) -> None:
         """Initialize the LED binding select entity."""
-        self.hass = hass
-        self._hub = hub
-        self._dimmer_name = dimmer_name
-        self._button_num = button_num
-        self._led_entity_id = led_entity_id
-        self._bound_entity = None
-        self._state_listener = None
-        self._name = f"LED {button_num} Binding"
+        self.hass: HomeAssistant = hass
+        self._hub: Any = hub
+        self._dimmer_name: str = dimmer_name
+        self._button_num: int = button_num
+        self._led_entity_id: str = led_entity_id
+        self._bound_entity: str | None = None
+        self._state_listener: Callable[[], None] | None = None
+        self._name: str = f"LED {button_num} Binding"
 
         # Initial options (will be updated in async_added_to_hass)
-        self._attr_options = ["none"]
-        self._attr_current_option = "none"
+        self._attr_options: list[str] = ["none"]
+        self._attr_current_option: str = "none"
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the name of the entity."""
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for the entity."""
         return f"crestron_led_binding_{self._dimmer_name}_button_{self._button_num}"
 

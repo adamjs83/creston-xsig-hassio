@@ -65,6 +65,7 @@ conversation.txt
 claude.md
 
 # Internal documentation (keep local only)
+CODE_REVIEW_STATUS.md
 ROADMAP.md
 UPDATED_ROADMAP.md
 VERSIONING.md

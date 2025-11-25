@@ -1,4 +1,6 @@
 """Platform for Crestron Light integration."""
+from typing import Any
+
 import voluptuous as vol
 import logging
 
@@ -8,9 +10,13 @@ from homeassistant.components.light import (
     LightEntityFeature,
     ColorMode,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_TYPE, STATE_ON
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from .const import (
     HUB,
     DOMAIN,
@@ -33,13 +39,23 @@ PLATFORM_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
+) -> None:
+    """Set up Crestron lights from YAML configuration."""
     hub = hass.data[DOMAIN][HUB]
     entity = [CrestronLight(hub, config)]
     async_add_entities(entity)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> bool:
     """Set up Crestron lights from a config entry.
 
     v1.11.0+: Entities can be configured via UI (stored in entry.data[CONF_LIGHTS])
@@ -136,7 +152,26 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class CrestronLight(LightEntity, RestoreEntity):
-    def __init__(self, hub, config, from_ui=False, is_dimmer_light=False, dimmer_name=None):
+    """Representation of a Crestron Light."""
+
+    _hub: Any  # CrestronHub type
+    _from_ui: bool
+    _is_dimmer_light: bool
+    _dimmer_name: str | None
+    _name: str
+    _brightness_join: int
+    _restored_state: bool | None
+    _restored_brightness: int | None
+
+    def __init__(
+        self,
+        hub: Any,
+        config: dict[str, Any],
+        from_ui: bool = False,
+        is_dimmer_light: bool = False,
+        dimmer_name: str | None = None,
+    ) -> None:
+        """Initialize the Crestron light."""
         self._hub = hub
         self._from_ui = from_ui  # Track if this is a UI-created entity
         self._is_dimmer_light = is_dimmer_light  # Track if this is a dimmer's lighting load
@@ -156,7 +191,7 @@ class CrestronLight(LightEntity, RestoreEntity):
             self._attr_supported_color_modes = {ColorMode.ONOFF}
             self._attr_color_mode = ColorMode.ONOFF
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
@@ -175,24 +210,28 @@ class CrestronLight(LightEntity, RestoreEntity):
             self._hub.request_update()
             _LOGGER.debug("Requested update for %s", self.name)
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
+        """Unregister callbacks when entity is removed."""
         self._hub.remove_callback(self.process_callback)
 
-    async def process_callback(self, cbtype, value):
+    async def process_callback(self, cbtype: str, value: Any) -> None:
+        """Process callback from hub when join value changes."""
         # Only update if this is our join or connection state changed
         if cbtype == "available" or cbtype == f"a{self._brightness_join}":
             self.async_write_ha_state()
 
     @property
-    def available(self):
+    def available(self) -> bool:
+        """Return if entity is available."""
         return self._hub.is_available()
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """Return the name of the light."""
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for this entity."""
         if self._is_dimmer_light:
             return f"crestron_light_dimmer_{self._dimmer_name}_a{self._brightness_join}"
@@ -222,16 +261,17 @@ class CrestronLight(LightEntity, RestoreEntity):
         )
 
     @property
-    def has_entity_name(self):
+    def has_entity_name(self) -> bool:
         """Return if entity should use modern naming with device name prefix."""
         return self._is_dimmer_light  # True for dimmer lights (part of dimmer device)
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
+        """Return if entity should be polled."""
         return False
 
     @property
-    def brightness(self):
+    def brightness(self) -> int | None:
         """Return the brightness of the light (0-255)."""
         if self._attr_color_mode == ColorMode.BRIGHTNESS:
             # Use real value from Crestron if available (fix: proper scaling from 0-65535 to 0-255)
@@ -242,7 +282,7 @@ class CrestronLight(LightEntity, RestoreEntity):
         return None
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool:
         """Return true if light is on."""
         if self._attr_color_mode == ColorMode.BRIGHTNESS:
             # Use real value from Crestron if available
@@ -252,7 +292,7 @@ class CrestronLight(LightEntity, RestoreEntity):
             return self._restored_state if self._restored_state is not None else False
         return False
 
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the light."""
         if "brightness" in kwargs:
             # Fix: properly scale from HA brightness (0-255) to Crestron (0-65535)
@@ -262,6 +302,6 @@ class CrestronLight(LightEntity, RestoreEntity):
         else:
             await self._hub.async_set_analog(self._brightness_join, 65535)
 
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the light."""
         await self._hub.async_set_analog(self._brightness_join, 0)

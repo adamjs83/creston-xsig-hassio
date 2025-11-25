@@ -1,12 +1,18 @@
 """Platform for Crestron Shades integration."""
 
+from typing import Any
+
 import asyncio
 import logging
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.components.cover import (
     CoverEntity,
     CoverDeviceClass,
@@ -40,13 +46,23 @@ PLATFORM_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
+) -> None:
+    """Set up Crestron covers from YAML configuration."""
     hub = hass.data[DOMAIN][HUB]
     entity = [CrestronShade(hub, config)]
     async_add_entities(entity)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> bool:
     """Set up Crestron covers from a config entry.
 
     v1.8.0+: Entities can be configured via UI (stored in entry.data[CONF_COVERS])
@@ -114,12 +130,21 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class CrestronShade(CoverEntity, RestoreEntity):
-    def __init__(self, hub, config, from_ui=False):
+    """Crestron Cover/Shade entity."""
+
+    def __init__(self, hub: Any, config: dict[str, Any], from_ui: bool = False) -> None:
+        """Initialize the Crestron shade.
+
+        Args:
+            hub: CrestronHub instance
+            config: Configuration dictionary
+            from_ui: Whether entity was created via UI (affects unique_id)
+        """
         self._hub = hub
         self._from_ui = from_ui  # Track if this is a UI-created entity
         # Initialize with default values
-        self._attr_device_class = None
-        self._attr_supported_features = 0
+        self._attr_device_class: CoverDeviceClass | None = None
+        self._attr_supported_features: CoverEntityFeature = CoverEntityFeature(0)
 
         if config.get(CONF_TYPE) == "shade":
             self._attr_device_class = CoverDeviceClass.SHADE
@@ -129,20 +154,20 @@ class CrestronShade(CoverEntity, RestoreEntity):
                 CoverEntityFeature.SET_POSITION | CoverEntityFeature.STOP
             )
             _LOGGER.debug("Setting supported_features to: %s", self._attr_supported_features)
-        self._should_poll = False
+        self._should_poll: bool = False
 
-        self._name = config.get(CONF_NAME)
-        self._is_opening_join = config.get(CONF_IS_OPENING_JOIN)
-        self._is_closing_join = config.get(CONF_IS_CLOSING_JOIN)
-        self._is_closed_join = config.get(CONF_IS_CLOSED_JOIN)
-        self._stop_join = config.get(CONF_STOP_JOIN)
-        self._pos_join = config.get(CONF_POS_JOIN)
+        self._name: str = config.get(CONF_NAME)
+        self._is_opening_join: int | None = config.get(CONF_IS_OPENING_JOIN)
+        self._is_closing_join: int | None = config.get(CONF_IS_CLOSING_JOIN)
+        self._is_closed_join: int | None = config.get(CONF_IS_CLOSED_JOIN)
+        self._stop_join: int | None = config.get(CONF_STOP_JOIN)
+        self._pos_join: int = config.get(CONF_POS_JOIN)
 
         # State restoration variables
-        self._restored_position = None
-        self._restored_is_closed = None
+        self._restored_position: float | None = None
+        self._restored_is_closed: bool | None = None
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
         self._hub.register_callback(self.process_callback)
@@ -161,10 +186,12 @@ class CrestronShade(CoverEntity, RestoreEntity):
             self._hub.request_update()
             _LOGGER.debug("Requested update for %s", self.name)
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
+        """Unregister callbacks when entity is removed."""
         self._hub.remove_callback(self.process_callback)
 
-    async def process_callback(self, cbtype, value):
+    async def process_callback(self, cbtype: str, value: Any) -> None:
+        """Process callbacks from the hub."""
         # Only update if this is one of our joins or connection state changed
         if cbtype == "available":
             self.async_write_ha_state()
@@ -185,15 +212,17 @@ class CrestronShade(CoverEntity, RestoreEntity):
             self.async_write_ha_state()
 
     @property
-    def available(self):
+    def available(self) -> bool:
+        """Return True if entity is available."""
         return self._hub.is_available()
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """Return the name of the entity."""
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return unique ID for this entity."""
         if self._from_ui:
             return f"crestron_cover_ui_a{self._pos_join}"
@@ -211,40 +240,43 @@ class CrestronShade(CoverEntity, RestoreEntity):
         )
 
     @property
-    def device_class(self):
+    def device_class(self) -> CoverDeviceClass | None:
+        """Return the device class of the cover."""
         return self._attr_device_class
 
     @property
-    def supported_features(self):
+    def supported_features(self) -> CoverEntityFeature:
+        """Return the supported features of the cover."""
         return self._attr_supported_features
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
         return self._should_poll
 
     @property
-    def current_cover_position(self):
+    def current_cover_position(self) -> float | None:
         """Return current position of cover."""
         if self._hub.has_analog_value(self._pos_join):
             return self._hub.get_analog(self._pos_join) / 655.35
         return self._restored_position
 
     @property
-    def is_opening(self):
+    def is_opening(self) -> bool | None:
         """Return if the cover is opening."""
         if self._hub.has_digital_value(self._is_opening_join):
             return self._hub.get_digital(self._is_opening_join)
         return None
 
     @property
-    def is_closing(self):
+    def is_closing(self) -> bool | None:
         """Return if the cover is closing."""
         if self._hub.has_digital_value(self._is_closing_join):
             return self._hub.get_digital(self._is_closing_join)
         return None
 
     @property
-    def is_closed(self):
+    def is_closed(self) -> bool | None:
         """Return if the cover is closed."""
         # If we have closed state feedback, use it
         if self._hub.has_digital_value(self._is_closed_join):
@@ -261,16 +293,19 @@ class CrestronShade(CoverEntity, RestoreEntity):
         # Fallback to restored state if available
         return self._restored_is_closed
 
-    async def async_set_cover_position(self, **kwargs):
+    async def async_set_cover_position(self, **kwargs: Any) -> None:
+        """Set the cover to a specific position."""
         await self._hub.async_set_analog(self._pos_join, int(kwargs["position"]) * 655)
 
-    async def async_open_cover(self, **kwargs):
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open the cover."""
         await self._hub.async_set_analog(self._pos_join, 0xFFFF)
 
-    async def async_close_cover(self, **kwargs):
+    async def async_close_cover(self, **kwargs: Any) -> None:
+        """Close the cover."""
         await self._hub.async_set_analog(self._pos_join, 0)
 
-    async def async_stop_cover(self, **kwargs):
+    async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover and clear direction state.
 
         This function does two things:
