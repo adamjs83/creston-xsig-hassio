@@ -44,6 +44,7 @@ from .const import (
     CONF_SHUFFLE_JOIN,
 )
 from homeassistant.const import CONF_DEVICE_CLASS
+from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,9 +76,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> bool:
     """Set up Crestron media players from a config entry (v1.19.0+)."""
-    hub = hass.data[DOMAIN].get(HUB) or hass.data[DOMAIN].get(entry.entry_id, {}).get(HUB)
-    if not hub:
-        _LOGGER.error("Hub not found for media player setup")
+    hub = get_hub(hass, entry)
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for media player entities")
         return False
 
     media_players: list[dict[str, Any]] = entry.data.get(CONF_MEDIA_PLAYERS, [])

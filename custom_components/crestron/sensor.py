@@ -17,6 +17,7 @@ from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASU
 import homeassistant.helpers.config_validation as cv
 
 from .const import HUB, DOMAIN, VERSION, CONF_VALUE_JOIN, CONF_DIVISOR, CONF_SENSORS
+from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,19 +54,10 @@ async def async_setup_entry(
     Supports UI-configured sensors (v1.10.0+).
     YAML platform setup (above) handles YAML-configured entities.
     """
-    # Get hub from entry data
-    entry_data: dict[str, Any] | None = hass.data[DOMAIN].get(entry.entry_id)
-    if not entry_data:
-        _LOGGER.warning("No entry data found for sensor setup")
+    hub = get_hub(hass, entry)
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for sensor entities")
         return False
-
-    hub_wrapper: Any = entry_data.get('hub_wrapper')
-    if not hub_wrapper:
-        _LOGGER.warning("No hub_wrapper found for sensor setup")
-        return False
-
-    # Get hub from wrapper
-    hub: Any = hub_wrapper.hub
 
     # Load sensors from config entry (UI-configured)
     sensors_config: list[dict[str, Any]] = entry.data.get(CONF_SENSORS, [])

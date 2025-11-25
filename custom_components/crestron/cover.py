@@ -30,6 +30,7 @@ from .const import (
     CONF_POS_JOIN,
     CONF_COVERS,
 )
+from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,19 +69,7 @@ async def async_setup_entry(
     v1.8.0+: Entities can be configured via UI (stored in entry.data[CONF_COVERS])
     YAML platform setup (above) still works for backward compatibility.
     """
-    # Get the hub - try entry-specific first, fall back to HUB key
-    hub_data = hass.data[DOMAIN].get(entry.entry_id)
-
-    if hub_data:
-        # Hub data is stored as dict with HUB key
-        if isinstance(hub_data, dict):
-            hub = hub_data.get(HUB)
-        else:
-            hub = hub_data  # Fallback for direct hub reference
-    else:
-        # Fallback to global HUB key
-        hub = hass.data[DOMAIN].get(HUB)
-
+    hub = get_hub(hass, entry)
     if hub is None:
         _LOGGER.error("No Crestron hub found for cover entities")
         return False

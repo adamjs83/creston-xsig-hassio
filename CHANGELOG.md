@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.9] - 2025-01-25
+
+### Changed
+- **Centralized Hub Access** - Created `helpers.py` with `get_hub()` function
+  - Removed 75 lines of duplicate hub access code across 9 platform files
+  - Consistent hub lookup pattern: config entry first, YAML fallback
+  - Cleaner, more maintainable code
+
 ## [1.24.8] - 2025-01-25
 
 ### Fixed

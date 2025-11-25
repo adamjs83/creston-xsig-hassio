@@ -25,6 +25,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import CrestronHub
+from .helpers import get_hub
 from .const import (
     HUB,
     DOMAIN,
@@ -141,19 +142,12 @@ async def async_setup_entry(
     Supports UI-configured climate entities (v1.13.0+).
     YAML platform setup (above) handles YAML-configured entities.
     """
-    # Get hub from entry data
-    entry_data: dict[str, Any] | None = hass.data[DOMAIN].get(entry.entry_id)
-    if not entry_data:
-        _LOGGER.warning("No entry data found for climate setup")
+    # Get hub from entry using centralized helper
+    hub = get_hub(hass, entry)
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for climate entities")
         return False
 
-    hub_wrapper: Any = entry_data.get('hub_wrapper')
-    if not hub_wrapper:
-        _LOGGER.warning("No hub_wrapper found for climate setup")
-        return False
-
-    # Get hub from wrapper
-    hub: CrestronHub = hub_wrapper.hub
     unit: str = hass.config.units.temperature_unit
 
     # Load climates from config entry (UI-configured)

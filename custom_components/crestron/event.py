@@ -21,6 +21,7 @@ from .const import (
     CONF_BUTTON_COUNT,
     ENTITY_TYPE_BUTTON_EVENT,
 )
+from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,22 +35,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Crestron button event entities from a config entry."""
-    # Get hub for this specific config entry (supports multiple hubs)
-    hub_data: dict[str, Any] | Any = hass.data[DOMAIN].get(config_entry.entry_id)
-    hub: Any = None
-    if hub_data:
-        # Hub data is stored as dict with HUB key
-        if isinstance(hub_data, dict):
-            hub = hub_data.get(HUB)
-        else:
-            hub = hub_data  # Fallback for direct hub reference
-    else:
-        # Fallback to global HUB key (for single hub setups)
-        hub = hass.data[DOMAIN].get(HUB)
-
+    hub = get_hub(hass, config_entry)
     if hub is None:
         _LOGGER.error("No Crestron hub found for event entities")
-        return
+        return False
 
     dimmers: list[dict[str, Any]] = config_entry.data.get(CONF_DIMMERS, [])
 

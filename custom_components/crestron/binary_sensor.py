@@ -15,6 +15,7 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_NAME, CONF_DEVICE_CLAS
 import homeassistant.helpers.config_validation as cv
 
 from .const import HUB, DOMAIN, VERSION, CONF_JOIN, CONF_IS_ON_JOIN, CONF_BINARY_SENSORS
+from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,19 +46,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> bool:
     """Set up Crestron binary sensors from a config entry."""
-    # Get hub reference (could be from entry data or YAML)
-    hub_data: Any = hass.data[DOMAIN].get(entry.entry_id)
-
-    if hub_data:
-        if isinstance(hub_data, dict):
-            hub = hub_data.get(HUB)
-        else:
-            hub = hub_data
-    else:
-        hub = hass.data[DOMAIN].get(HUB)
-
-    if not hub:
-        _LOGGER.error("No hub found for binary sensors")
+    hub = get_hub(hass, entry)
+    if hub is None:
+        _LOGGER.error("No Crestron hub found for binary sensor entities")
         return False
 
     # Get binary sensors from config entry
