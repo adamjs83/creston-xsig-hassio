@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.6] - 2025-01-24
+
+### Changed
+- **Centralized Version Constant** - Added `VERSION` constant to `const.py`
+  - All `sw_version` references now use the centralized constant
+  - Single source of truth for version number
+  - Updated 9 `device_info` properties across 8 files
+  - Device info now shows correct version (was showing outdated 1.6.0/1.8.0)
+
 ## [1.24.5] - 2025-01-24
 
 ### Changed

@@ -9,7 +9,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
 import homeassistant.helpers.config_validation as cv
 
-from .const import HUB, DOMAIN, CONF_VALUE_JOIN, CONF_DIVISOR, CONF_SENSORS
+from .const import HUB, DOMAIN, VERSION, CONF_VALUE_JOIN, CONF_DIVISOR, CONF_SENSORS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ class CrestronSensor(SensorEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.6.0",
+            sw_version=VERSION,
         )
 
     @property

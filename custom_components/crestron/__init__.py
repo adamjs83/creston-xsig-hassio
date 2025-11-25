@@ -31,6 +31,7 @@ from .const import (
     CONF_PORT,
     HUB,
     DOMAIN,
+    VERSION,
     CONF_JOIN,
     CONF_SCRIPT,
     CONF_TO_HUB,
@@ -264,7 +265,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 name="Crestron Control System",
                 manufacturer="Crestron Electronics",
                 model="XSIG Gateway",
-                sw_version="1.8.0",
+                sw_version=VERSION,
             )
 
             # Forward entry setup to platforms so UI entities work with YAML hub
@@ -359,7 +360,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         name="Crestron Control System",
         manufacturer="Crestron Electronics",
         model="XSIG Gateway",
-        sw_version="1.6.0",
+        sw_version=VERSION,
     )
 
     # Forward entry setup to platforms

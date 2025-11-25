@@ -14,6 +14,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import (
     HUB,
     DOMAIN,
+    VERSION,
     CONF_BRIGHTNESS_JOIN,
     CONF_LIGHTS,
     CONF_DIMMERS,
@@ -217,7 +218,7 @@ class CrestronLight(LightEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.6.0",
+            sw_version=VERSION,
         )
 
     @property

@@ -11,6 +11,7 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_NAME, CONF_DEVICE_CLAS
 from .const import (
     HUB,
     DOMAIN,
+    VERSION,
     CONF_SWITCH_JOIN,
     CONF_SWITCHES,
     CONF_DIMMERS,
@@ -208,7 +209,7 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.6.0",
+            sw_version=VERSION,
         )
 
     @property

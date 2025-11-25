@@ -21,6 +21,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import (
     HUB,
     DOMAIN,
+    VERSION,
     CONF_CLIMATES,
     # --- standard thermostat joins ---
     CONF_HEAT_SP_JOIN,
@@ -392,7 +393,7 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.6.0",
+            sw_version=VERSION,
         )
 
     @property
@@ -616,7 +617,7 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.6.0",
+            sw_version=VERSION,
         )
 
     @property

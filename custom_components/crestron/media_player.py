@@ -21,6 +21,7 @@ from homeassistant.const import (
 from .const import (
     HUB,
     DOMAIN,
+    VERSION,
     CONF_MUTE_JOIN,
     CONF_VOLUME_JOIN,
     CONF_SOURCE_NUM_JOIN,
@@ -240,7 +241,7 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.6.0",
+            sw_version=VERSION,
         )
 
     @property

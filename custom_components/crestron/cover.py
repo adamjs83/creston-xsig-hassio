@@ -16,6 +16,7 @@ from homeassistant.const import CONF_NAME, CONF_TYPE
 from .const import (
     HUB,
     DOMAIN,
+    VERSION,
     CONF_IS_OPENING_JOIN,
     CONF_IS_CLOSING_JOIN,
     CONF_IS_CLOSED_JOIN,
@@ -206,7 +207,7 @@ class CrestronShade(CoverEntity, RestoreEntity):
             name="Crestron Control System",
             manufacturer="Crestron Electronics",
             model="XSIG Gateway",
-            sw_version="1.6.0",
+            sw_version=VERSION,
         )
 
     @property

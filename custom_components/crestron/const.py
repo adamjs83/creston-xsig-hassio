@@ -1,3 +1,4 @@
+VERSION = "1.24.6"
 HUB = "hub"
 DOMAIN = "crestron"
 CONF_PORT = "port"
