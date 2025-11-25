@@ -14,7 +14,6 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.script import Script
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
     CONF_VALUE_TEMPLATE,

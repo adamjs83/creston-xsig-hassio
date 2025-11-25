@@ -39,7 +39,7 @@ CONF_POWER_ON_JOIN = "power_on_join"
 CONF_POWER_OFF_JOIN = "power_off_join"
 CONF_PLAY_JOIN = "play_join"
 CONF_PAUSE_JOIN = "pause_join"
-CONF_STOP_JOIN = "stop_join"
+# Note: CONF_STOP_JOIN defined above (line 26) - used by both covers and media players
 CONF_NEXT_JOIN = "next_join"
 CONF_PREVIOUS_JOIN = "previous_join"
 CONF_REPEAT_JOIN = "repeat_join"
