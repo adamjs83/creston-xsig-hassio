@@ -201,17 +201,20 @@ class TestCrestronXsigAsync:
     async def test_stop_with_writer(self):
         """Test stop closes writer properly."""
         xsig = CrestronXsig()
-        xsig._writer = MagicMock()
-        xsig._writer.close = MagicMock()
-        xsig._writer.wait_closed = AsyncMock()
+        mock_writer = MagicMock()
+        mock_writer.close = MagicMock()
+        mock_writer.wait_closed = AsyncMock()
+        xsig._writer = mock_writer
         xsig._server = AsyncMock()
         xsig._server.close = MagicMock()
         xsig._server.wait_closed = AsyncMock()
 
         await xsig.stop()
 
-        xsig._writer.close.assert_called_once()
-        xsig._writer.wait_closed.assert_awaited_once()
+        # Writer is set to None after close, so check the saved mock
+        mock_writer.close.assert_called_once()
+        mock_writer.wait_closed.assert_awaited_once()
+        assert xsig._writer is None  # Verify it was cleared
 
     @pytest.mark.asyncio
     async def test_async_set_analog(self):
