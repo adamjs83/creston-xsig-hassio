@@ -212,12 +212,10 @@ class CrestronXsig:
             try:
                 data = struct.pack(
                     ">BB",
-                    0b10000000 | (~value << 5 & 0b00100000) | (join - 1) >> 7,
+                    0b10000000 | (~int(value) << 5 & 0b00100000) | (join - 1) >> 7,
                     (join - 1) & 0b01111111,
                 )
                 self._writer.write(data)
-                # Removed excessive debug logging
-                # _LOGGER.debug(f"Sending Digital: {join}, {value}")
             except OSError as err:
                 _LOGGER.warning("Failed to send digital join %s: %s", join, err)
                 self._writer = None  # Mark connection as dead
@@ -231,13 +229,11 @@ class CrestronXsig:
             try:
                 data = struct.pack(
                     ">BB",
-                    0b10000000 | (~value << 5 & 0b00100000) | (join - 1) >> 7,
+                    0b10000000 | (~int(value) << 5 & 0b00100000) | (join - 1) >> 7,
                     (join - 1) & 0b01111111,
                 )
                 self._writer.write(data)
                 await self._writer.drain()  # Ensure data is actually sent
-                # Removed excessive debug logging
-                # _LOGGER.debug(f"Sending Digital: {join}, {value}")
             except OSError as err:
                 _LOGGER.warning("Failed to send digital join %s: %s", join, err)
                 self._writer = None  # Mark connection as dead
