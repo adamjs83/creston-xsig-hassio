@@ -108,6 +108,7 @@ class CrestronButtonEvent(EventEntity):
     _double_join: str
     _hold_join: str
     _name: str
+    _callback_ref: Callable[[str, str], Any] | None
 
     def __init__(
         self,
@@ -126,6 +127,9 @@ class CrestronButtonEvent(EventEntity):
         self._double_join = double_join
         self._hold_join = hold_join
         self._name = f"Button {button_num}"
+
+        # Callback reference for proper deregistration
+        self._callback_ref = None
 
     @property
     def name(self) -> str:
@@ -150,8 +154,8 @@ class CrestronButtonEvent(EventEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks when entity is added."""
         # Register single global callback (hub doesn't support join-specific callbacks)
-        callback_func: Callable[[str, str], Any] = self.process_callback
-        self._hub.register_callback(callback_func)
+        self._callback_ref = self.process_callback
+        self._hub.register_callback(self._callback_ref)
 
         _LOGGER.debug(
             "Registered button %d event listeners: %s (press), %s (double), %s (hold)",
@@ -163,8 +167,8 @@ class CrestronButtonEvent(EventEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Unregister callbacks when entity is removed."""
-        callback_func: Callable[[str, str], Any] = self.process_callback
-        self._hub.remove_callback(callback_func)
+        if self._callback_ref is not None:
+            self._hub.remove_callback(self._callback_ref)
 
     async def process_callback(self, cbtype: str, value: str) -> None:
         """Process hub callback and check if it's for one of our joins."""

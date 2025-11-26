@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.3] - 2025-11-25
+
+### Fixed
+- **Callback Deregistration Leaks** - Fixed memory leak where entity callbacks persisted after removal
+  - Bound methods create new objects each time, so `remove_callback(self.process_callback)` never matched
+  - Now stores callback reference on registration and uses same reference for removal
+  - Affects: light, switch, cover, climate (2 classes), event, binary_sensor entities
+
+- **Cover Stop Feature** - Fixed runtime errors when stop command issued without stop_join configured
+  - STOP feature now only advertised when stop_join is configured
+  - Guard added to `async_stop_cover()` method
+
+- **Template Join Conversion Safety** - Fixed crashes from invalid template values
+  - Analog joins now handle float strings like "1.0" via `int(float(value))`
+  - Invalid values logged as warnings instead of crashing connection
+
+- **XSIG Server Shutdown** - Fixed incomplete cleanup leaving sockets in limbo
+  - Now properly awaits `wait_closed()` for both server and writer
+  - Writer drained before closing
+
+- **Digital Value Parsing** - Expanded truthy/falsy value recognition
+  - Now accepts: "1", "0", "true", "false", "yes", "no" (case-insensitive)
+  - In addition to existing: STATE_ON, STATE_OFF, "True", "False"
+
+- **LED Binding Entity ID Matching** - Fixed bindings silently failing for names with special characters
+  - Now uses Home Assistant's `slugify()` helper instead of naive `.lower().replace(" ", "_")`
+  - Handles punctuation, hyphens, unicode, and other special characters correctly
+
+- **Missing Translations** - Synced translations/en.json with strings.json
+  - Added: `edit_dimmer`, `led_binding_menu`, `configure_dimmer_leds` steps
+  - Added: `abort` section for dimmer-related errors
+
 ## [1.25.2] - 2025-11-25
 
 ### Removed

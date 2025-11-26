@@ -356,10 +356,14 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         self._restored_temp_high = None
         self._restored_current_temp = None
 
+        # Callback reference for proper deregistration
+        self._callback_ref = None
+
     async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
-        self._hub.register_callback(self.process_callback)
+        self._callback_ref = self.process_callback
+        self._hub.register_callback(self._callback_ref)
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
@@ -383,7 +387,8 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
             )
 
     async def async_will_remove_from_hass(self) -> None:
-        self._hub.remove_callback(self.process_callback)
+        if self._callback_ref is not None:
+            self._hub.remove_callback(self._callback_ref)
 
     async def process_callback(self, cbtype: str, value: Any) -> None:
         # Only update if this is one of our joins or connection state changed
@@ -608,10 +613,14 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
         self._restored_target_temp = None
         self._restored_current_temp = None
 
+        # Callback reference for proper deregistration
+        self._callback_ref = None
+
     async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
-        self._hub.register_callback(self.process_callback)
+        self._callback_ref = self.process_callback
+        self._hub.register_callback(self._callback_ref)
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
@@ -633,7 +642,8 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
             )
 
     async def async_will_remove_from_hass(self) -> None:
-        self._hub.remove_callback(self.process_callback)
+        if self._callback_ref is not None:
+            self._hub.remove_callback(self._callback_ref)
 
     async def process_callback(self, cbtype: str, value: Any) -> None:
         # Only update if this is one of our joins or connection state changed

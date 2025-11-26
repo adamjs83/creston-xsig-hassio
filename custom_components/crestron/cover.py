@@ -135,14 +135,6 @@ class CrestronShade(CoverEntity, RestoreEntity):
         self._attr_device_class: CoverDeviceClass | None = None
         self._attr_supported_features: CoverEntityFeature = CoverEntityFeature(0)
 
-        if config.get(CONF_TYPE) == "shade":
-            self._attr_device_class = CoverDeviceClass.SHADE
-            _LOGGER.debug("Setting device_class to: %s", self._attr_device_class)
-            self._attr_supported_features = (
-                CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE |
-                CoverEntityFeature.SET_POSITION | CoverEntityFeature.STOP
-            )
-            _LOGGER.debug("Setting supported_features to: %s", self._attr_supported_features)
         self._should_poll: bool = False
 
         self._name: str = config.get(CONF_NAME)
@@ -152,14 +144,32 @@ class CrestronShade(CoverEntity, RestoreEntity):
         self._stop_join: int | None = config.get(CONF_STOP_JOIN)
         self._pos_join: int = config.get(CONF_POS_JOIN)
 
+        # Set device class and features based on type and configured joins
+        if config.get(CONF_TYPE) == "shade":
+            self._attr_device_class = CoverDeviceClass.SHADE
+            _LOGGER.debug("Setting device_class to: %s", self._attr_device_class)
+            # Base features for all shades
+            self._attr_supported_features = (
+                CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE |
+                CoverEntityFeature.SET_POSITION
+            )
+            # Only add STOP feature if stop_join is configured
+            if self._stop_join is not None:
+                self._attr_supported_features |= CoverEntityFeature.STOP
+            _LOGGER.debug("Setting supported_features to: %s", self._attr_supported_features)
+
         # State restoration variables
         self._restored_position: float | None = None
         self._restored_is_closed: bool | None = None
 
+        # Callback reference for proper deregistration
+        self._callback_ref = None
+
     async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
-        self._hub.register_callback(self.process_callback)
+        self._callback_ref = self.process_callback
+        self._hub.register_callback(self._callback_ref)
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
@@ -177,7 +187,8 @@ class CrestronShade(CoverEntity, RestoreEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Unregister callbacks when entity is removed."""
-        self._hub.remove_callback(self.process_callback)
+        if self._callback_ref is not None:
+            self._hub.remove_callback(self._callback_ref)
 
     async def process_callback(self, cbtype: str, value: Any) -> None:
         """Process callbacks from the hub."""
@@ -310,6 +321,11 @@ class CrestronShade(CoverEntity, RestoreEntity):
         We use the current position (or mid-point) as the neutral value so the
         cover stays at its stopped position.
         """
+        # Guard: only execute if stop_join is configured
+        if self._stop_join is None:
+            _LOGGER.warning("Stop requested but no stop_join configured for %s", self._name)
+            return
+
         # Send stop pulse
         await self._hub.async_set_digital(self._stop_join, 1)
         await asyncio.sleep(0.2)

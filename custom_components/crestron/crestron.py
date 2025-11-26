@@ -39,7 +39,22 @@ class CrestronXsig:
         for callback in self._callbacks:
             await callback("available", "False")
         _LOGGER.info("Stop called. Closing connection")
-        self._server.close()
+
+        # Close the writer if connected (drain pending data first)
+        if self._writer is not None:
+            try:
+                self._writer.close()
+                await self._writer.wait_closed()
+                _LOGGER.debug("Writer closed successfully")
+            except Exception as err:
+                _LOGGER.debug("Error closing writer: %s", err)
+            self._writer = None
+
+        # Close the server and wait for it to fully stop
+        if self._server is not None:
+            self._server.close()
+            await self._server.wait_closed()
+            _LOGGER.debug("Server closed successfully")
 
     def register_sync_all_joins_callback(self, callback: Callable[[], Coroutine[Any, Any, None]]) -> None:
         """ Allow callback to be registred for when control system requests an update to all joins """

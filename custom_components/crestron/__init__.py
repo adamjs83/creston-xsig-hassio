@@ -601,9 +601,11 @@ class CrestronHub:
             # Digital Join
             if join[:1] == "d":
                 value = None
-                if update_result == STATE_ON or update_result == "True":
+                # Expanded truthy/falsy parsing for digital joins
+                result_str = str(update_result).lower()
+                if update_result == STATE_ON or result_str in ("true", "1", "yes"):
                     value = True
-                elif update_result == STATE_OFF or update_result == "False":
+                elif update_result == STATE_OFF or result_str in ("false", "0", "no"):
                     value = False
                 if value is not None:
                     _LOGGER.debug(
@@ -612,10 +614,18 @@ class CrestronHub:
                     self.hub.set_digital(int(join[1:]), value)
             # Analog Join
             elif join[:1] == "a":
-                _LOGGER.debug(
-                    f"template_change_callback setting analog join {int(join[1:])} to {int(update_result)}"
-                )
-                self.hub.set_analog(int(join[1:]), int(update_result))
+                try:
+                    # Handle float strings like "1.0" by converting to float first
+                    analog_value = int(float(update_result))
+                    _LOGGER.debug(
+                        f"template_change_callback setting analog join {int(join[1:])} to {analog_value}"
+                    )
+                    self.hub.set_analog(int(join[1:]), analog_value)
+                except (ValueError, TypeError) as err:
+                    _LOGGER.warning(
+                        "Invalid analog value for join %s: '%s' (%s)",
+                        join, update_result, err
+                    )
             # Serial Join
             elif join[:1] == "s":
                 _LOGGER.debug(
@@ -636,9 +646,11 @@ class CrestronHub:
             # Digital Join
             if join[:1] == "d":
                 value = None
-                if result == STATE_ON or result == "True":
+                # Expanded truthy/falsy parsing for digital joins
+                result_str = str(result).lower()
+                if result == STATE_ON or result_str in ("true", "1", "yes"):
                     value = True
-                elif result == STATE_OFF or result == "False":
+                elif result == STATE_OFF or result_str in ("false", "0", "no"):
                     value = False
                 if value is not None:
                     _LOGGER.debug(
@@ -647,10 +659,18 @@ class CrestronHub:
                     self.hub.set_digital(int(join[1:]), value)
             # Analog Join
             elif join[:1] == "a":
-                _LOGGER.debug(
-                    f"sync_joins_to_hub setting analog join {int(join[1:])} to {int(result)}"
-                )
-                await self.hub.async_set_analog(int(join[1:]), int(result))
+                try:
+                    # Handle float strings like "1.0" by converting to float first
+                    analog_value = int(float(result))
+                    _LOGGER.debug(
+                        f"sync_joins_to_hub setting analog join {int(join[1:])} to {analog_value}"
+                    )
+                    await self.hub.async_set_analog(int(join[1:]), analog_value)
+                except (ValueError, TypeError) as err:
+                    _LOGGER.warning(
+                        "Invalid analog value for join %s: '%s' (%s)",
+                        join, result, err
+                    )
             # Serial Join
             elif join[:1] == "s":
                 _LOGGER.debug(

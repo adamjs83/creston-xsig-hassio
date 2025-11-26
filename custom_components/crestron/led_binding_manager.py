@@ -6,6 +6,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, Event, callback
 from homeassistant.helpers.event import async_track_state_change_event, EventStateChangedData
+from homeassistant.util import slugify
 
 from .const import (
     CONF_LED_BINDINGS,
@@ -53,8 +54,8 @@ class LEDBindingManager:
 
             for button_num_str, binding_config in dimmer_bindings.items():
                 if binding_config and "entity_id" in binding_config:
-                    # Construct LED entity ID
-                    led_entity_id = f"switch.{dimmer_name}_led_{button_num_str}".lower().replace(" ", "_")
+                    # Construct LED entity ID using HA's slugify for proper normalization
+                    led_entity_id = f"switch.{slugify(dimmer_name)}_led_{button_num_str}"
 
                     self._bindings[led_entity_id] = {
                         "entity_id": binding_config["entity_id"],
