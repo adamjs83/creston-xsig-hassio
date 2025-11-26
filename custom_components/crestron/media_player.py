@@ -21,7 +21,6 @@ from homeassistant.const import (
     CONF_NAME,
     STATE_OFF,
     STATE_ON,
-    STATE_UNKNOWN,
 )
 
 from .const import (

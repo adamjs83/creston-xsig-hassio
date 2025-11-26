@@ -1,4 +1,4 @@
-VERSION: str = "1.25.1"
+VERSION: str = "1.25.2"
 HUB: str = "hub"
 DOMAIN: str = "crestron"
 CONF_PORT: str = "port"

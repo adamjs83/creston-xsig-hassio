@@ -4,15 +4,12 @@ from collections.abc import Callable
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_ON, STATE_OFF
 from homeassistant.core import HomeAssistant, Event, callback
 from homeassistant.helpers.event import async_track_state_change_event, EventStateChangedData
 
 from .const import (
-    DOMAIN,
     CONF_LED_BINDINGS,
     CONF_DIMMERS,
-    BINDABLE_DOMAINS,
     STATE_TO_LED,
 )
 

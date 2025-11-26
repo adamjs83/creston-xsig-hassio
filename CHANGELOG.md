@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.2] - 2025-11-25
+
+### Removed
+- **Dead Code Cleanup** - Removed ~230 lines of unused code
+  - Removed deprecated LED binding class and unreachable code from select.py (218 lines)
+  - Removed 12 unused imports from __init__.py
+  - Removed unused imports from 8 platform files (light, binary_sensor, sensor, switch, media_player, climate, event, led_binding_manager)
+  - No functional changes - code cleanup only
+
 ## [1.25.1] - 2025-11-25
 
 ### Fixed

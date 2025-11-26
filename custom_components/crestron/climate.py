@@ -20,7 +20,7 @@ from homeassistant.components.climate.const import (
     FAN_ON,
     FAN_AUTO,
 )
-from homeassistant.const import CONF_NAME, CONF_TYPE, UnitOfTemperature
+from homeassistant.const import CONF_NAME, CONF_TYPE
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 

@@ -15,11 +15,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import (
     DOMAIN,
-    HUB,
     CONF_DIMMERS,
     CONF_BASE_JOIN,
     CONF_BUTTON_COUNT,
-    ENTITY_TYPE_BUTTON_EVENT,
 )
 from .helpers import get_hub
 

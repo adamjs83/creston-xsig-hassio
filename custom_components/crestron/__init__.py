@@ -38,19 +38,7 @@ from .const import (
     CONF_SCRIPT,
     CONF_TO_HUB,
     CONF_FROM_HUB,
-    CONF_DIMMERS,
-    CONF_BUTTONS,
-    CONF_PRESS,
-    CONF_DOUBLE_PRESS,
-    CONF_HOLD,
-    CONF_FEEDBACK,
-    CONF_ACTION,
-    CONF_SERVICE_DATA,
-    CONF_LIGHTING_LOAD,
-    CONF_IS_ON_JOIN,
-    CONF_BRIGHTNESS_JOIN,
 )
-#from .control_surface_sync import ControlSurfaceSync
 
 _LOGGER = logging.getLogger(__name__)
 

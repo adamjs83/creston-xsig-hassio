@@ -7,7 +7,6 @@ import logging
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.light import (
     LightEntity,
-    LightEntityFeature,
     ColorMode,
 )
 from homeassistant.config_entries import ConfigEntry
