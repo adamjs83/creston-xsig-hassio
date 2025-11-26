@@ -1,0 +1,203 @@
+[project]
+name = "crestron-xsig"
+version = "1.25.3"
+description = "Crestron XSIG Integration for Home Assistant"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Adam Smith", email = "adamjs83@users.noreply.github.com"},
+]
+keywords = ["homeassistant", "crestron", "xsig", "automation", "smart-home"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Home Automation",
+]
+
+[project.urls]
+Homepage = "https://github.com/adamjs83/creston-xsig-hassio"
+Repository = "https://github.com/adamjs83/creston-xsig-hassio"
+Issues = "https://github.com/adamjs83/creston-xsig-hassio/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+# Target Python 3.11+
+target-version = "py311"
+
+# Line length matching Home Assistant standards
+line-length = 120
+
+# Include/exclude patterns
+include = ["custom_components/**/*.py"]
+exclude = [
+    ".git",
+    ".github",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    ".ruff_cache",
+    "dist",
+    "build",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Enable rule categories
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "PIE",  # flake8-pie
+    "PT",   # flake8-pytest-style
+    "RET",  # flake8-return
+    "SIM",  # flake8-simplify
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+]
+
+# Ignore specific rules that conflict with HA patterns
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "B008",   # Do not perform function call in argument defaults (common in HA for vol.Optional)
+    "B904",   # Use raise from to specify exception cause (not always needed)
+    "ARG001", # Unused function argument (common in HA platform setup functions)
+    "ARG002", # Unused method argument (common in HA entity methods)
+    "PTH123", # open() should be replaced by Path.open() (not always applicable)
+    "SIM108", # Use ternary operator (sometimes less readable)
+    "RET504", # Unnecessary variable assignment before return (can help readability)
+    "UP007",  # Use X | Y for type annotations (not supported in Python 3.11 for all cases)
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.isort]
+# Configure isort behavior
+force-sort-within-sections = true
+known-first-party = ["custom_components.crestron"]
+combine-as-imports = true
+split-on-trailing-comma = false
+
+[tool.ruff.lint.mccabe]
+# Set maximum complexity (Home Assistant recommendation)
+max-complexity = 15
+
+[tool.ruff.lint.per-file-ignores]
+# Allow star imports in __init__.py files
+"__init__.py" = ["F401", "F403"]
+# Allow print statements in test files
+"tests/**/*.py" = ["T201"]
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Indent with spaces
+indent-style = "space"
+
+# Like Black, respect magic trailing commas
+skip-magic-trailing-comma = false
+
+# Line endings
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+# Test configuration
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Asyncio mode for async tests
+asyncio_mode = "auto"
+
+# Minimum version
+minversion = "7.0"
+
+# Show extra test summary info
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+]
+
+# Markers for organizing tests
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# Log configuration
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+[tool.coverage.run]
+# Coverage configuration (for pytest-cov)
+source = ["custom_components/crestron"]
+omit = [
+    "tests/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+# Coverage reporting
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.mypy]
+# MyPy type checking configuration (optional but recommended)
+python_version = "3.11"
+show_error_codes = true
+follow_imports = "silent"
+ignore_missing_imports = true
+strict_equality = true
+warn_incomplete_stub = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_untyped_defs = false
+no_implicit_optional = true
+warn_return_any = false
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# Relax some rules for Home Assistant specific modules
+module = "custom_components.crestron.*"
+disallow_untyped_calls = false
+disallow_untyped_defs = false
