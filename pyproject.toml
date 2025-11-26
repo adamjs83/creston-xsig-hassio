@@ -79,9 +79,13 @@ ignore = [
     "ARG001", # Unused function argument (common in HA platform setup functions)
     "ARG002", # Unused method argument (common in HA entity methods)
     "PTH123", # open() should be replaced by Path.open() (not always applicable)
+    "SIM102", # Nested if statements (often clearer in HA patterns)
+    "SIM105", # contextlib.suppress (try/except/pass is clearer for HA)
     "SIM108", # Use ternary operator (sometimes less readable)
     "RET504", # Unnecessary variable assignment before return (can help readability)
     "UP007",  # Use X | Y for type annotations (not supported in Python 3.11 for all cases)
+    "C417",   # Unnecessary map usage (list comprehension in for loop is fine)
+    "E741",   # Ambiguous variable name (l, O, I) - context makes it clear
 ]
 
 # Allow autofix for all enabled rules

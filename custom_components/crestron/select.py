@@ -3,6 +3,7 @@
 DEPRECATED (v1.20.8): LED binding is now handled via blueprint automations.
 This module only handles cleanup of orphaned entities from older versions.
 """
+
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -32,11 +33,7 @@ async def async_setup_entry(
     # Find and remove all LED binding select entities for this domain
     entities_to_remove: list[str] = []
     for entity_id, entry in entity_reg.entities.items():
-        if (
-            entry.domain == "select"
-            and entry.platform == DOMAIN
-            and "led_binding" in (entry.unique_id or "")
-        ):
+        if entry.domain == "select" and entry.platform == DOMAIN and "led_binding" in (entry.unique_id or ""):
             entities_to_remove.append(entity_id)
 
     for entity_id in entities_to_remove:

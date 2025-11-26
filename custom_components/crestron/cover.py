@@ -1,34 +1,30 @@
 """Platform for Crestron Shades integration."""
 
-from typing import Any
-
 import asyncio
 import logging
-import voluptuous as vol
+from typing import Any
 
-import homeassistant.helpers.config_validation as cv
+from homeassistant.components.cover import CoverDeviceClass, CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME, CONF_TYPE
 from homeassistant.core import HomeAssistant
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.components.cover import (
-    CoverEntity,
-    CoverDeviceClass,
-    CoverEntityFeature,
-)
-from homeassistant.const import CONF_NAME, CONF_TYPE
+import voluptuous as vol
+
 from .const import (
-    HUB,
-    DOMAIN,
-    VERSION,
-    CONF_IS_OPENING_JOIN,
-    CONF_IS_CLOSING_JOIN,
-    CONF_IS_CLOSED_JOIN,
-    CONF_STOP_JOIN,
-    CONF_POS_JOIN,
     CONF_COVERS,
+    CONF_IS_CLOSED_JOIN,
+    CONF_IS_CLOSING_JOIN,
+    CONF_IS_OPENING_JOIN,
+    CONF_POS_JOIN,
+    CONF_STOP_JOIN,
+    DOMAIN,
+    HUB,
+    VERSION,
 )
 from .helpers import get_hub
 
@@ -38,7 +34,7 @@ PLATFORM_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
         vol.Required(CONF_TYPE): cv.string,
-        vol.Required(CONF_POS_JOIN): cv.positive_int,           
+        vol.Required(CONF_POS_JOIN): cv.positive_int,
         vol.Required(CONF_IS_OPENING_JOIN): cv.positive_int,
         vol.Required(CONF_IS_CLOSING_JOIN): cv.positive_int,
         vol.Required(CONF_IS_CLOSED_JOIN): cv.positive_int,
@@ -46,6 +42,7 @@ PLATFORM_SCHEMA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -92,21 +89,16 @@ async def async_setup_entry(
 
         # Parse position join (required, analog)
         pos_join_str = cover_config.get(CONF_POS_JOIN)
-        if pos_join_str and pos_join_str[0] == 'a':
+        if pos_join_str and pos_join_str[0] == "a":
             parsed_config[CONF_POS_JOIN] = int(pos_join_str[1:])
         else:
-            _LOGGER.warning(
-                "Skipping cover %s: invalid pos_join format %s",
-                cover_config.get(CONF_NAME),
-                pos_join_str
-            )
+            _LOGGER.warning("Skipping cover %s: invalid pos_join format %s", cover_config.get(CONF_NAME), pos_join_str)
             continue
 
         # Parse optional digital joins
-        for join_key in [CONF_IS_OPENING_JOIN, CONF_IS_CLOSING_JOIN,
-                        CONF_IS_CLOSED_JOIN, CONF_STOP_JOIN]:
+        for join_key in [CONF_IS_OPENING_JOIN, CONF_IS_CLOSING_JOIN, CONF_IS_CLOSED_JOIN, CONF_STOP_JOIN]:
             join_str = cover_config.get(join_key)
-            if join_str and join_str[0] == 'd':
+            if join_str and join_str[0] == "d":
                 parsed_config[join_key] = int(join_str[1:])
 
         entities.append(CrestronShade(hub, parsed_config, from_ui=True))
@@ -150,8 +142,7 @@ class CrestronShade(CoverEntity, RestoreEntity):
             _LOGGER.debug("Setting device_class to: %s", self._attr_device_class)
             # Base features for all shades
             self._attr_supported_features = (
-                CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE |
-                CoverEntityFeature.SET_POSITION
+                CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.SET_POSITION
             )
             # Only add STOP feature if stop_join is configured
             if self._stop_join is not None:
@@ -173,11 +164,10 @@ class CrestronShade(CoverEntity, RestoreEntity):
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
-            self._restored_position = last_state.attributes.get('current_position')
-            self._restored_is_closed = last_state.state == 'closed'
+            self._restored_position = last_state.attributes.get("current_position")
+            self._restored_is_closed = last_state.state == "closed"
             _LOGGER.debug(
-                "Restored %s: position=%s, closed=%s",
-                self.name, self._restored_position, self._restored_is_closed
+                "Restored %s: position=%s, closed=%s", self.name, self._restored_position, self._restored_is_closed
             )
 
         # Request current state from Crestron if connected

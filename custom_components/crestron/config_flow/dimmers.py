@@ -1,44 +1,44 @@
 """Dimmer/keypad configuration handler for Crestron XSIG integration."""
+
 from __future__ import annotations
 
 import logging
-from typing import Any, TYPE_CHECKING
-
-import voluptuous as vol
-import yaml
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import selector, entity_registry as er, device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
+import voluptuous as vol
+import yaml
 
 if TYPE_CHECKING:
     from ..config_flow import OptionsFlowHandler
 
 from ..const import (
-    DOMAIN,
-    CONF_DIMMERS,
+    CONF_ACTION,
     CONF_BASE_JOIN,
+    CONF_BRIGHTNESS_JOIN,
     CONF_BUTTON_COUNT,
+    CONF_BUTTONS,
+    CONF_COVERS,
+    CONF_DIMMERS,
+    CONF_DOUBLE_PRESS,
+    CONF_FEEDBACK,
+    CONF_FROM_HUB,
     CONF_HAS_LIGHTING_LOAD,
+    CONF_HOLD,
+    CONF_IS_ON_JOIN,
     CONF_LIGHT_BRIGHTNESS_JOIN,
     CONF_LIGHTING_LOAD,
-    CONF_IS_ON_JOIN,
-    CONF_BRIGHTNESS_JOIN,
-    CONF_BUTTONS,
+    CONF_LIGHTS,
+    CONF_POS_JOIN,
     CONF_PRESS,
-    CONF_DOUBLE_PRESS,
-    CONF_HOLD,
-    CONF_FEEDBACK,
-    CONF_ACTION,
     CONF_SERVICE_DATA,
+    CONF_SWITCH_JOIN,
+    CONF_SWITCHES,
     # For conflict checking
     CONF_TO_HUB,
-    CONF_FROM_HUB,
-    CONF_LIGHTS,
-    CONF_SWITCHES,
-    CONF_COVERS,
-    CONF_POS_JOIN,
-    CONF_SWITCH_JOIN,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,16 +55,14 @@ class DimmerHandler:
         """
         self.flow: OptionsFlowHandler = options_flow
 
-    async def async_step_add_dimmer_mode(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_mode(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select dimmer join assignment mode (auto-sequential vs manual)."""
         if user_input is not None:
             mode: str | None = user_input.get("join_mode")
             if mode == "auto":
                 return await self.async_step_add_dimmer_simple()
-            else:  # manual
-                return await self.async_step_add_dimmer_manual()
+            # manual
+            return await self.async_step_add_dimmer_manual()
 
         # Show mode selection
         mode_schema: vol.Schema = vol.Schema(
@@ -92,9 +90,7 @@ class DimmerHandler:
             data_schema=mode_schema,
         )
 
-    async def async_step_add_dimmer_simple(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_simple(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add dimmer/keypad - auto-sequential join assignment (v1.17.0)."""
         errors: dict[str, str] = {}
 
@@ -104,14 +100,16 @@ class DimmerHandler:
                 base_join_str: str = user_input.get(CONF_BASE_JOIN, "").strip()
                 button_count: int = int(user_input.get(CONF_BUTTON_COUNT, "4"))
                 has_lighting: bool = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
-                light_brightness_join_str: str | None = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
+                light_brightness_join_str: str | None = (
+                    user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
+                )
 
                 # Validate name
                 if not name:
                     errors[CONF_NAME] = "name_required"
 
                 # Validate base join (digital format)
-                if not base_join_str or not (base_join_str[0] == 'd' and base_join_str[1:].isdigit()):
+                if not base_join_str or not (base_join_str[0] == "d" and base_join_str[1:].isdigit()):
                     errors[CONF_BASE_JOIN] = "invalid_join_format"
                 else:
                     base_join_num: int = int(base_join_str[1:])
@@ -122,7 +120,9 @@ class DimmerHandler:
 
                 # Validate lighting load brightness join if provided
                 if has_lighting:
-                    if not light_brightness_join_str or not (light_brightness_join_str[0] == 'a' and light_brightness_join_str[1:].isdigit()):
+                    if not light_brightness_join_str or not (
+                        light_brightness_join_str[0] == "a" and light_brightness_join_str[1:].isdigit()
+                    ):
                         errors[CONF_LIGHT_BRIGHTNESS_JOIN] = "invalid_join_format"
 
                 # Check for join conflicts
@@ -167,14 +167,9 @@ class DimmerHandler:
 
                         new_data: dict[str, Any] = dict(fresh_entry.data)
                         new_data[CONF_DIMMERS] = current_dimmers
-                        self.flow.hass.config_entries.async_update_entry(
-                            fresh_entry, data=new_data
-                        )
+                        self.flow.hass.config_entries.async_update_entry(fresh_entry, data=new_data)
 
-                    _LOGGER.info(
-                        "Added dimmer '%s' with %d buttons (base join: %s)",
-                        name, button_count, base_join_str
-                    )
+                    _LOGGER.info("Added dimmer '%s' with %d buttons (base join: %s)", name, button_count, base_join_str)
 
                     # Reload integration
                     await self.flow._async_reload_integration()
@@ -217,9 +212,7 @@ class DimmerHandler:
             errors=errors,
         )
 
-    async def async_step_add_dimmer_manual(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_manual(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add dimmer/keypad - manual join assignment (v1.17.1)."""
         errors: dict[str, str] = {}
 
@@ -232,7 +225,9 @@ class DimmerHandler:
                 name: str = user_input.get(CONF_NAME, "").strip()
                 button_count: int = self.flow._dimmer_button_count
                 has_lighting: bool = user_input.get(CONF_HAS_LIGHTING_LOAD, False)
-                light_brightness_join_str: str | None = user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
+                light_brightness_join_str: str | None = (
+                    user_input.get(CONF_LIGHT_BRIGHTNESS_JOIN, "").strip() if has_lighting else None
+                )
 
                 # Validate name
                 if not name:
@@ -248,14 +243,14 @@ class DimmerHandler:
                     hold_join: str = user_input.get(f"button_{btn_num}_hold", "").strip()
 
                     # Validate press join (required)
-                    if not press_join or not (press_join[0] == 'd' and press_join[1:].isdigit()):
+                    if not press_join or not (press_join[0] == "d" and press_join[1:].isdigit()):
                         errors[f"button_{btn_num}_press"] = "invalid_join_format"
                     else:
                         joins_to_check.append(press_join)
                         button_joins[btn_num] = {"press": press_join}
 
                     # Validate double join (required)
-                    if not double_join or not (double_join[0] == 'd' and double_join[1:].isdigit()):
+                    if not double_join or not (double_join[0] == "d" and double_join[1:].isdigit()):
                         errors[f"button_{btn_num}_double"] = "invalid_join_format"
                     else:
                         joins_to_check.append(double_join)
@@ -263,7 +258,7 @@ class DimmerHandler:
                             button_joins[btn_num]["double"] = double_join
 
                     # Validate hold join (required)
-                    if not hold_join or not (hold_join[0] == 'd' and hold_join[1:].isdigit()):
+                    if not hold_join or not (hold_join[0] == "d" and hold_join[1:].isdigit()):
                         errors[f"button_{btn_num}_hold"] = "invalid_join_format"
                     else:
                         joins_to_check.append(hold_join)
@@ -272,7 +267,9 @@ class DimmerHandler:
 
                 # Validate lighting load brightness join if provided
                 if has_lighting:
-                    if not light_brightness_join_str or not (light_brightness_join_str[0] == 'a' and light_brightness_join_str[1:].isdigit()):
+                    if not light_brightness_join_str or not (
+                        light_brightness_join_str[0] == "a" and light_brightness_join_str[1:].isdigit()
+                    ):
                         errors[CONF_LIGHT_BRIGHTNESS_JOIN] = "invalid_join_format"
                     else:
                         joins_to_check.append(light_brightness_join_str)
@@ -306,14 +303,9 @@ class DimmerHandler:
 
                         new_data: dict[str, Any] = dict(fresh_entry.data)
                         new_data[CONF_DIMMERS] = current_dimmers
-                        self.flow.hass.config_entries.async_update_entry(
-                            fresh_entry, data=new_data
-                        )
+                        self.flow.hass.config_entries.async_update_entry(fresh_entry, data=new_data)
 
-                    _LOGGER.info(
-                        "Added dimmer '%s' with %d buttons (manual joins)",
-                        name, button_count
-                    )
+                    _LOGGER.info("Added dimmer '%s' with %d buttons (manual joins)", name, button_count)
 
                     # Clear temp state
                     delattr(self.flow, "_dimmer_button_count")
@@ -329,7 +321,9 @@ class DimmerHandler:
                 errors["base"] = "unknown"
 
         # Build dynamic form based on button count
-        button_count: int = getattr(self.flow, "_dimmer_button_count", int(user_input.get(CONF_BUTTON_COUNT, "4")) if user_input else 4)
+        button_count: int = getattr(
+            self.flow, "_dimmer_button_count", int(user_input.get(CONF_BUTTON_COUNT, "4")) if user_input else 4
+        )
 
         # Build schema fields
         schema_fields: dict[Any, Any] = {
@@ -373,9 +367,7 @@ class DimmerHandler:
             errors=errors,
         )
 
-    async def async_step_add_dimmer_basic(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_basic(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Step 1: Basic dimmer information."""
         _LOGGER.debug("async_step_add_dimmer_basic called with user_input: %s", user_input)
         errors: dict[str, str] = {}
@@ -406,9 +398,8 @@ class DimmerHandler:
 
                     if has_lighting_load:
                         return await self.async_step_add_dimmer_lighting()
-                    else:
-                        # Skip lighting, go to button 1
-                        return await self.async_step_add_dimmer_button(button_num=1)
+                    # Skip lighting, go to button 1
+                    return await self.async_step_add_dimmer_button(button_num=1)
 
             except Exception as ex:
                 _LOGGER.exception("Unexpected error adding dimmer: %s", ex)
@@ -441,9 +432,7 @@ class DimmerHandler:
             description_placeholders={"step": "1"},
         )
 
-    async def async_step_add_dimmer_lighting(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_lighting(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Step 2: Configure lighting load (optional)."""
         errors: dict[str, str] = {}
 
@@ -459,12 +448,12 @@ class DimmerHandler:
                     errors["light_name"] = "name_required"
 
                 # Validate is_on_join format
-                if not is_on_join or not (is_on_join[0] == 'd' and is_on_join[1:].isdigit()):
+                if not is_on_join or not (is_on_join[0] == "d" and is_on_join[1:].isdigit()):
                     errors[CONF_IS_ON_JOIN] = "invalid_join_format"
 
                 # Validate brightness join if enabled
                 if has_brightness:
-                    if not brightness_join or not (brightness_join[0] == 'a' and brightness_join[1:].isdigit()):
+                    if not brightness_join or not (brightness_join[0] == "a" and brightness_join[1:].isdigit()):
                         errors[CONF_BRIGHTNESS_JOIN] = "invalid_join_format"
 
                 # Check for join conflicts
@@ -558,7 +547,7 @@ class DimmerHandler:
 
                 # Validate press
                 if config_press:
-                    if not press_join or not (press_join[0] == 'd' and press_join[1:].isdigit()):
+                    if not press_join or not (press_join[0] == "d" and press_join[1:].isdigit()):
                         errors["press_join"] = "invalid_join_format"
                     elif not press_entity or not press_action:
                         errors["press_entity"] = "entity_and_action_required"
@@ -576,7 +565,7 @@ class DimmerHandler:
 
                 # Validate double press
                 if config_double:
-                    if not double_join or not (double_join[0] == 'd' and double_join[1:].isdigit()):
+                    if not double_join or not (double_join[0] == "d" and double_join[1:].isdigit()):
                         errors["double_press_join"] = "invalid_join_format"
                     elif not double_entity or not double_action:
                         errors["double_press_entity"] = "entity_and_action_required"
@@ -594,7 +583,7 @@ class DimmerHandler:
 
                 # Validate hold
                 if config_hold:
-                    if not hold_join or not (hold_join[0] == 'd' and hold_join[1:].isdigit()):
+                    if not hold_join or not (hold_join[0] == "d" and hold_join[1:].isdigit()):
                         errors["hold_join"] = "invalid_join_format"
                     elif not hold_entity or not hold_action:
                         errors["hold_entity"] = "entity_and_action_required"
@@ -612,7 +601,7 @@ class DimmerHandler:
 
                 # Validate feedback
                 if config_feedback:
-                    if not feedback_join or not (feedback_join[0] == 'd' and feedback_join[1:].isdigit()):
+                    if not feedback_join or not (feedback_join[0] == "d" and feedback_join[1:].isdigit()):
                         errors["feedback_join"] = "invalid_join_format"
                     elif not feedback_entity:
                         errors["feedback_entity"] = "entity_required"
@@ -636,7 +625,7 @@ class DimmerHandler:
 
                     conflict: str | None = self._check_join_conflicts(button_joins)
                     if conflict:
-                        errors["base"] = f"join_conflict"
+                        errors["base"] = "join_conflict"
 
                 if not errors:
                     # Add button to dimmer config
@@ -647,9 +636,8 @@ class DimmerHandler:
                     if button_num < total_buttons:
                         # More buttons to configure
                         return await self.async_step_add_dimmer_button(button_num=button_num + 1)
-                    else:
-                        # All buttons configured, save dimmer
-                        return await self._save_dimmer()
+                    # All buttons configured, save dimmer
+                    return await self._save_dimmer()
 
             except Exception as ex:
                 _LOGGER.exception("Unexpected error configuring button %s: %s", button_num, ex)
@@ -678,7 +666,6 @@ class DimmerHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-
                 # Double press action
                 vol.Optional("config_double_press", default=False): selector.BooleanSelector(),
                 vol.Optional("double_press_join"): selector.TextSelector(
@@ -697,7 +684,6 @@ class DimmerHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-
                 # Hold action
                 vol.Optional("config_hold", default=False): selector.BooleanSelector(),
                 vol.Optional("hold_join"): selector.TextSelector(
@@ -716,7 +702,6 @@ class DimmerHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-
                 # Feedback
                 vol.Optional("config_feedback", default=False): selector.BooleanSelector(),
                 vol.Optional("feedback_join"): selector.TextSelector(
@@ -753,9 +738,7 @@ class DimmerHandler:
             # Update config entry with fresh data
             new_data: dict[str, Any] = dict(fresh_entry.data)
             new_data[CONF_DIMMERS] = current_dimmers
-            self.flow.hass.config_entries.async_update_entry(
-                fresh_entry, data=new_data
-            )
+            self.flow.hass.config_entries.async_update_entry(fresh_entry, data=new_data)
 
             _LOGGER.info(
                 "Added dimmer '%s' with %s buttons",
@@ -775,9 +758,7 @@ class DimmerHandler:
             _LOGGER.exception("Failed to save dimmer: %s", ex)
             return self.flow.async_abort(reason="save_failed")
 
-    async def async_step_select_dimmer_to_edit(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_select_dimmer_to_edit(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select which dimmer to edit."""
         current_dimmers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_DIMMERS, [])
 
@@ -815,9 +796,7 @@ class DimmerHandler:
             data_schema=select_schema,
         )
 
-    async def async_step_edit_dimmer(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_edit_dimmer(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Edit an existing dimmer (full reconfiguration)."""
         if user_input is not None:
             next_step: str | None = user_input.get("action")
@@ -825,7 +804,7 @@ class DimmerHandler:
                 # User chose to reconfigure
                 # Start from beginning with current config pre-filled
                 return await self.async_step_add_dimmer_basic()
-            elif next_step == "back":
+            if next_step == "back":
                 # Go back to dimmer selection
                 self.flow._editing_join = None
                 return await self.flow.async_step_select_dimmer_to_edit()
@@ -857,9 +836,7 @@ class DimmerHandler:
             },
         )
 
-    async def async_step_remove_dimmers(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_remove_dimmers(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Remove selected dimmers."""
         errors: dict[str, str] = {}
         current_dimmers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_DIMMERS, [])
@@ -880,20 +857,19 @@ class DimmerHandler:
                     else:
                         # Filter out removed dimmers
                         updated_dimmers: list[dict[str, Any]] = [
-                            d for d in current_dimmers
-                            if d.get(CONF_NAME) not in dimmers_to_remove
+                            d for d in current_dimmers if d.get(CONF_NAME) not in dimmers_to_remove
                         ]
 
                         # Update config entry with fresh data
                         new_data: dict[str, Any] = dict(fresh_entry.data)
                         new_data[CONF_DIMMERS] = updated_dimmers
-                        self.flow.hass.config_entries.async_update_entry(
-                            fresh_entry, data=new_data
-                        )
+                        self.flow.hass.config_entries.async_update_entry(fresh_entry, data=new_data)
 
                         # Clean up entities generated by these dimmers
                         for dimmer_name in dimmers_to_remove:
-                            dimmer: dict[str, Any] | None = next((d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None)
+                            dimmer: dict[str, Any] | None = next(
+                                (d for d in current_dimmers if d.get(CONF_NAME) == dimmer_name), None
+                            )
                             if dimmer:
                                 # Remove all entities and device from registry
                                 await self._cleanup_dimmer_entities(dimmer)

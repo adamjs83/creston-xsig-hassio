@@ -1,20 +1,20 @@
 """Platform for Crestron Binary Sensor integration."""
 
-from typing import Any
-import voluptuous as vol
 import logging
+from typing import Any
 
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.const import STATE_ON, CONF_NAME, CONF_DEVICE_CLASS
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, STATE_ON
+from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+import voluptuous as vol
 
-from .const import HUB, DOMAIN, VERSION, CONF_IS_ON_JOIN, CONF_BINARY_SENSORS
+from .const import CONF_BINARY_SENSORS, CONF_IS_ON_JOIN, DOMAIN, HUB, VERSION
 from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,11 +22,12 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORM_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
-        vol.Required(CONF_IS_ON_JOIN): cv.positive_int,           
+        vol.Required(CONF_IS_ON_JOIN): cv.positive_int,
         vol.Required(CONF_DEVICE_CLASS): cv.string,
     },
     extra=vol.ALLOW_EXTRA,
 )
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -63,7 +64,7 @@ async def async_setup_entry(
         # Parse string join to integer
         is_on_join_str: str | None = bs_config.get(CONF_IS_ON_JOIN)
 
-        if not is_on_join_str or is_on_join_str[0] != 'd':
+        if not is_on_join_str or is_on_join_str[0] != "d":
             _LOGGER.warning("Invalid is_on_join format: %s", is_on_join_str)
             continue
 
@@ -110,9 +111,7 @@ class CrestronBinarySensor(BinarySensorEntity, RestoreEntity):
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
             self._restored_is_on = last_state.state == STATE_ON
-            _LOGGER.debug(
-                "Restored %s: is_on=%s", self.name, self._restored_is_on
-            )
+            _LOGGER.debug("Restored %s: is_on=%s", self.name, self._restored_is_on)
 
         # Request current state from Crestron if connected
         if self._hub.is_available():

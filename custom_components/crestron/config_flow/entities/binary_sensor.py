@@ -1,17 +1,14 @@
 """Binary sensor entity configuration handler for Crestron XSIG integration."""
+
 import logging
 from typing import Any
 
-import voluptuous as vol
-
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+import voluptuous as vol
 
-from ...const import (
-    CONF_BINARY_SENSORS,
-    CONF_IS_ON_JOIN,
-)
-from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS
+from ...const import CONF_BINARY_SENSORS, CONF_IS_ON_JOIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +22,7 @@ class BinarySensorEntityHandler:
         """Initialize the binary sensor entity handler."""
         self.flow = flow
 
-    async def async_step_add_binary_sensor(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_binary_sensor(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a binary sensor entity."""
         errors: dict[str, str] = {}
         is_editing = self.flow._editing_join is not None
@@ -39,7 +34,7 @@ class BinarySensorEntityHandler:
                 device_class: str | None = user_input.get(CONF_DEVICE_CLASS)
 
                 # Validate is_on_join format (must be digital)
-                if not is_on_join or not (is_on_join[0] == 'd' and is_on_join[1:].isdigit()):
+                if not is_on_join or not (is_on_join[0] == "d" and is_on_join[1:].isdigit()):
                     errors[CONF_IS_ON_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
@@ -59,8 +54,7 @@ class BinarySensorEntityHandler:
                     if is_editing:
                         # Replace existing binary sensor
                         updated_binary_sensors: list[dict[str, Any]] = [
-                            new_binary_sensor if bs.get(CONF_NAME) == old_name else bs
-                            for bs in current_binary_sensors
+                            new_binary_sensor if bs.get(CONF_NAME) == old_name else bs for bs in current_binary_sensors
                         ]
                         _LOGGER.info("Updated binary sensor %s", name)
                     else:
@@ -72,9 +66,7 @@ class BinarySensorEntityHandler:
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_BINARY_SENSORS] = updated_binary_sensors
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -109,7 +101,9 @@ class BinarySensorEntityHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Required(CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "motion")): selector.SelectSelector(
+                vol.Required(
+                    CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "motion")
+                ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": "Motion", "value": "motion"},

@@ -1,17 +1,14 @@
 """Switch entity configuration handler for Crestron XSIG integration."""
+
 import logging
 from typing import Any
 
-import voluptuous as vol
-
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+import voluptuous as vol
 
-from ...const import (
-    CONF_SWITCHES,
-    CONF_SWITCH_JOIN,
-)
-from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS
+from ...const import CONF_SWITCH_JOIN, CONF_SWITCHES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +22,7 @@ class SwitchEntityHandler:
         """Initialize the switch entity handler."""
         self.flow = flow
 
-    async def async_step_add_switch(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_switch(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a switch entity."""
         errors: dict[str, str] = {}
         is_editing = self.flow._editing_join is not None
@@ -39,7 +34,7 @@ class SwitchEntityHandler:
                 device_class: str = user_input.get(CONF_DEVICE_CLASS, "switch")
 
                 # Validate switch_join format (must be digital)
-                if not switch_join or not (switch_join[0] == 'd' and switch_join[1:].isdigit()):
+                if not switch_join or not (switch_join[0] == "d" and switch_join[1:].isdigit()):
                     errors[CONF_SWITCH_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
@@ -59,8 +54,7 @@ class SwitchEntityHandler:
                     if is_editing:
                         # Replace existing switch
                         updated_switches: list[dict[str, Any]] = [
-                            new_switch if s.get(CONF_NAME) == old_name else s
-                            for s in current_switches
+                            new_switch if s.get(CONF_NAME) == old_name else s for s in current_switches
                         ]
                         _LOGGER.info("Updated switch %s", name)
                     else:
@@ -72,9 +66,7 @@ class SwitchEntityHandler:
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_SWITCHES] = updated_switches
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -109,7 +101,9 @@ class SwitchEntityHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional(CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "switch")): selector.SelectSelector(
+                vol.Optional(
+                    CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "switch")
+                ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": "Switch", "value": "switch"},

@@ -69,11 +69,11 @@ CONF_HVAC_ACTION_COOL_JOIN: str = "hvac_action_cool_join"
 CONF_HVAC_ACTION_IDLE_JOIN: str = "hvac_action_idle_join"
 
 # Floor warming thermostat constants (new)
-CONF_FLOOR_MODE_JOIN: str = "floor_mode_join"           # analog set: 1=Off, 2=Heat
-CONF_FLOOR_MODE_FB_JOIN: str = "floor_mode_fb_join"     # analog feedback: 1/2
-CONF_FLOOR_SP_JOIN: str = "floor_sp_join"               # analog setpoint (tenths)
-CONF_FLOOR_SP_FB_JOIN: str = "floor_sp_fb_join"         # analog setpoint feedback (tenths)
-CONF_FLOOR_TEMP_JOIN: str = "floor_temp_join"           # analog floor temperature (tenths)
+CONF_FLOOR_MODE_JOIN: str = "floor_mode_join"  # analog set: 1=Off, 2=Heat
+CONF_FLOOR_MODE_FB_JOIN: str = "floor_mode_fb_join"  # analog feedback: 1/2
+CONF_FLOOR_SP_JOIN: str = "floor_sp_join"  # analog setpoint (tenths)
+CONF_FLOOR_SP_FB_JOIN: str = "floor_sp_fb_join"  # analog setpoint feedback (tenths)
+CONF_FLOOR_TEMP_JOIN: str = "floor_temp_join"  # analog floor temperature (tenths)
 
 # Dimmer/Keypad constants (v1.15.0+)
 CONF_LIGHTING_LOAD: str = "lighting_load"
@@ -94,7 +94,16 @@ DOMAIN_ACTIONS: dict[str, list[str]] = {
     "scene": ["turn_on"],
     "script": ["turn_on"],
     "climate": ["turn_on", "turn_off", "set_temperature", "set_hvac_mode"],
-    "media_player": ["turn_on", "turn_off", "media_play", "media_pause", "media_play_pause", "volume_up", "volume_down", "volume_mute"],
+    "media_player": [
+        "turn_on",
+        "turn_off",
+        "media_play",
+        "media_pause",
+        "media_play_pause",
+        "volume_up",
+        "volume_down",
+        "volume_mute",
+    ],
     "fan": ["turn_on", "turn_off", "toggle", "increase_speed", "decrease_speed"],
     "lock": ["lock", "unlock"],
     "vacuum": ["start", "stop", "return_to_base"],
@@ -144,45 +153,37 @@ STATE_TO_LED: dict[str, bool] = {
     "off": False,
     "true": True,
     "false": False,
-
     # Lock states
     "locked": True,
     "unlocked": False,
     "locking": True,
     "unlocking": False,
-
     # Cover states
     "open": True,
     "closed": False,
     "opening": True,
     "closing": True,
-
     # Media player states
     "playing": True,
     "paused": False,
     "idle": False,
-
     # Climate states
     "heat": True,
     "cool": True,
     "heat_cool": True,
     "auto": True,
-
     # Vacuum states
     "cleaning": True,
     "docked": False,
     "returning": True,
-
     # Alarm states
     "armed_away": True,
     "armed_home": True,
     "armed_night": True,
     "disarmed": False,
-
     # Presence states
     "home": True,
     "not_home": False,
-
     # Sun states
     "above_horizon": True,
     "below_horizon": False,

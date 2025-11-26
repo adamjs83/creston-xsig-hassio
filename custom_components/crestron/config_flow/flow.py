@@ -1,4 +1,5 @@
 """Config flow classes for Crestron XSIG integration."""
+
 import logging
 from typing import Any
 
@@ -7,15 +8,9 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.typing import ConfigType
 
-from ..const import (
-    DOMAIN,
-    CONF_PORT,
-    CONF_TO_HUB,
-    CONF_FROM_HUB,
-)
-
-from .validators import validate_port, PortInUse, InvalidPort, STEP_USER_DATA_SCHEMA
+from ..const import CONF_FROM_HUB, CONF_PORT, CONF_TO_HUB, DOMAIN
 from .base import BaseOptionsFlow
+from .validators import STEP_USER_DATA_SCHEMA, InvalidPort, PortInUse, validate_port
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -26,9 +21,7 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION: int = 1
     CONNECTION_CLASS: str = config_entries.CONN_CLASS_LOCAL_PUSH
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the initial step (user-triggered setup)."""
         errors: dict[str, str] = {}
 
@@ -74,10 +67,7 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         Returns:
             FlowResult creating entry or aborting if already configured
         """
-        _LOGGER.info(
-            "Importing Crestron YAML configuration on port %s",
-            import_data.get(CONF_PORT)
-        )
+        _LOGGER.info("Importing Crestron YAML configuration on port %s", import_data.get(CONF_PORT))
 
         port: int = import_data[CONF_PORT]
 
@@ -101,18 +91,12 @@ class CrestronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Preserve to_joins if exists
         if CONF_TO_HUB in import_data:
             entry_data[CONF_TO_HUB] = import_data[CONF_TO_HUB]
-            _LOGGER.info(
-                "Imported %d to_joins for bidirectional communication",
-                len(import_data[CONF_TO_HUB])
-            )
+            _LOGGER.info("Imported %d to_joins for bidirectional communication", len(import_data[CONF_TO_HUB]))
 
         # Preserve from_joins if exists
         if CONF_FROM_HUB in import_data:
             entry_data[CONF_FROM_HUB] = import_data[CONF_FROM_HUB]
-            _LOGGER.info(
-                "Imported %d from_joins for Crestron→HA scripts",
-                len(import_data[CONF_FROM_HUB])
-            )
+            _LOGGER.info("Imported %d from_joins for Crestron→HA scripts", len(import_data[CONF_FROM_HUB]))
 
         _LOGGER.info("YAML import complete - creating config entry with full configuration")
 
@@ -154,10 +138,11 @@ class OptionsFlowHandler(BaseOptionsFlow):
         self._editing_join = None  # Track which join we're editing
 
         # Import handlers here to avoid circular imports
-        from .menus import MenuHandler
-        from .joins import JoinSyncHandler
         from .dimmers import DimmerHandler
+        from .joins import JoinSyncHandler
         from .led_bindings import LEDBindingHandler
+        from .menus import MenuHandler
+
         self._menu_handler = MenuHandler(self)
         self._join_handler = JoinSyncHandler(self)
         self._dimmer_handler = DimmerHandler(self)
@@ -165,15 +150,16 @@ class OptionsFlowHandler(BaseOptionsFlow):
 
         # Import entity handlers here to avoid circular imports
         from .entities import (
-            EntityManager,
             BinarySensorEntityHandler,
             ClimateEntityHandler,
             CoverEntityHandler,
+            EntityManager,
             LightEntityHandler,
             MediaPlayerEntityHandler,
             SensorEntityHandler,
             SwitchEntityHandler,
         )
+
         self._entity_manager = EntityManager(self)
         self._binary_sensor_handler = BinarySensorEntityHandler(self)
         self._climate_handler = ClimateEntityHandler(self)
@@ -183,157 +169,107 @@ class OptionsFlowHandler(BaseOptionsFlow):
         self._sensor_handler = SensorEntityHandler(self)
         self._switch_handler = SwitchEntityHandler(self)
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Main menu - choose between entity, join sync, or dimmer/keypad management."""
         return await self._menu_handler.async_step_init(user_input)
 
-    async def async_step_entity_menu(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_entity_menu(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Entity management menu."""
         return await self._menu_handler.async_step_entity_menu(user_input)
 
-    async def async_step_select_entity_type(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_select_entity_type(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select entity type to add."""
         return await self._menu_handler.async_step_select_entity_type(user_input)
 
-    async def async_step_join_menu(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_join_menu(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Join sync management menu."""
         return await self._menu_handler.async_step_join_menu(user_input)
 
-    async def async_step_dimmer_menu(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_dimmer_menu(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Dimmer/keypad management menu."""
         return await self._menu_handler.async_step_dimmer_menu(user_input)
 
-    async def async_step_add_dimmer_mode(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_mode(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select dimmer join assignment mode."""
         return await self._dimmer_handler.async_step_add_dimmer_mode(user_input)
 
-    async def async_step_add_dimmer_simple(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_simple(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add dimmer with auto-sequential join assignment."""
         return await self._dimmer_handler.async_step_add_dimmer_simple(user_input)
 
-    async def async_step_add_dimmer_manual(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_manual(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add dimmer with manual join assignment."""
         return await self._dimmer_handler.async_step_add_dimmer_manual(user_input)
 
-    async def async_step_add_to_join(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_to_join(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add to_join sync rule."""
         return await self._join_handler.async_step_add_to_join(user_input)
 
-    async def async_step_add_from_join(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_from_join(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add from_join sync rule."""
         return await self._join_handler.async_step_add_from_join(user_input)
 
-    async def async_step_remove_joins(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_remove_joins(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Remove join sync rules."""
         return await self._join_handler.async_step_remove_joins(user_input)
 
-    async def async_step_select_join_to_edit(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_select_join_to_edit(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select which join sync rule to edit."""
         return await self._join_handler.async_step_select_join_to_edit(user_input)
 
     # ========== Entity Configuration Methods (Delegated) ==========
 
-    async def async_step_add_cover(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_cover(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a cover entity."""
         return await self._cover_handler.async_step_add_cover(user_input)
 
-    async def async_step_add_binary_sensor(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_binary_sensor(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a binary sensor entity."""
         return await self._binary_sensor_handler.async_step_add_binary_sensor(user_input)
 
-    async def async_step_add_sensor(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_sensor(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a sensor entity."""
         return await self._sensor_handler.async_step_add_sensor(user_input)
 
-    async def async_step_add_light(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_light(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a light entity."""
         return await self._light_handler.async_step_add_light(user_input)
 
-    async def async_step_add_switch(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_switch(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a switch entity."""
         return await self._switch_handler.async_step_add_switch(user_input)
 
-    async def async_step_add_media_player(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_media_player(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a media player entity."""
         return await self._media_player_handler.async_step_add_media_player(user_input)
 
-    async def async_step_add_climate(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_climate(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a climate entity (floor warming)."""
         return await self._climate_handler.async_step_add_climate(user_input)
 
-    async def async_step_select_climate_type(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_select_climate_type(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select climate type (floor_warming or standard)."""
         return await self._climate_handler.async_step_select_climate_type(user_input)
 
-    async def async_step_add_climate_standard(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_climate_standard(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a climate entity (standard HVAC)."""
         return await self._climate_handler.async_step_add_climate_standard(user_input)
 
-    async def async_step_select_entity_to_edit(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_select_entity_to_edit(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select which entity to edit."""
         return await self._entity_manager.async_step_select_entity_to_edit(user_input)
 
-    async def async_step_remove_entities(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_remove_entities(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Remove entities by selecting from a list."""
         return await self._entity_manager.async_step_remove_entities(user_input)
 
     # ========== Dimmer/Keypad Configuration Methods ==========
 
-    async def async_step_add_dimmer_basic(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_basic(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Step 1: Basic dimmer information."""
         return await self._dimmer_handler.async_step_add_dimmer_basic(user_input)
 
-    async def async_step_add_dimmer_lighting(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_dimmer_lighting(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Step 2: Configure lighting load (optional)."""
         return await self._dimmer_handler.async_step_add_dimmer_lighting(user_input)
 
@@ -343,34 +279,24 @@ class OptionsFlowHandler(BaseOptionsFlow):
         """Configure a single button (dynamic, handles buttons 1-6)."""
         return await self._dimmer_handler.async_step_add_dimmer_button(user_input, button_num)
 
-    async def async_step_select_dimmer_to_edit(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_select_dimmer_to_edit(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select which dimmer to edit."""
         return await self._dimmer_handler.async_step_select_dimmer_to_edit(user_input)
 
-    async def async_step_edit_dimmer(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_edit_dimmer(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Edit an existing dimmer (full reconfiguration)."""
         return await self._dimmer_handler.async_step_edit_dimmer(user_input)
 
-    async def async_step_remove_dimmers(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_remove_dimmers(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Remove selected dimmers."""
         return await self._dimmer_handler.async_step_remove_dimmers(user_input)
 
     # ========== LED Binding Configuration Methods (v1.22.0+) ==========
 
-    async def async_step_led_binding_menu(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_led_binding_menu(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Show LED binding management menu."""
         return await self._led_binding_handler.async_step_led_binding_menu(user_input)
 
-    async def async_step_configure_dimmer_leds(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_configure_dimmer_leds(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Configure LED bindings for selected dimmer."""
         return await self._led_binding_handler.async_step_configure_dimmer_leds(user_input)

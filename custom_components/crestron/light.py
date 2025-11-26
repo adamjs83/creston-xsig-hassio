@@ -1,30 +1,28 @@
 """Platform for Crestron Light integration."""
+
+import logging
 from typing import Any
 
-import voluptuous as vol
-import logging
-
-import homeassistant.helpers.config_validation as cv
-from homeassistant.components.light import (
-    LightEntity,
-    ColorMode,
-)
+from homeassistant.components.light import ColorMode, LightEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_TYPE, STATE_ON
 from homeassistant.core import HomeAssistant
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+import voluptuous as vol
+
 from .const import (
-    HUB,
-    DOMAIN,
-    VERSION,
     CONF_BRIGHTNESS_JOIN,
-    CONF_LIGHTS,
     CONF_DIMMERS,
     CONF_HAS_LIGHTING_LOAD,
     CONF_LIGHT_BRIGHTNESS_JOIN,
+    CONF_LIGHTS,
+    DOMAIN,
+    HUB,
+    VERSION,
 )
 from .helpers import get_hub
 
@@ -34,10 +32,11 @@ PLATFORM_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
         vol.Required(CONF_TYPE): cv.string,
-        vol.Required(CONF_BRIGHTNESS_JOIN): cv.positive_int,           
+        vol.Required(CONF_BRIGHTNESS_JOIN): cv.positive_int,
     },
     extra=vol.ALLOW_EXTRA,
 )
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -80,13 +79,11 @@ async def async_setup_entry(
 
         # Parse brightness join (required, analog)
         brightness_join_str = light_config.get(CONF_BRIGHTNESS_JOIN)
-        if brightness_join_str and brightness_join_str[0] == 'a':
+        if brightness_join_str and brightness_join_str[0] == "a":
             parsed_config[CONF_BRIGHTNESS_JOIN] = int(brightness_join_str[1:])
         else:
             _LOGGER.warning(
-                "Skipping light %s: invalid brightness_join format %s",
-                light_config.get(CONF_NAME),
-                brightness_join_str
+                "Skipping light %s: invalid brightness_join format %s", light_config.get(CONF_NAME), brightness_join_str
             )
             continue
 
@@ -105,13 +102,11 @@ async def async_setup_entry(
             continue
 
         # Parse brightness join
-        if brightness_join_str[0] == 'a':
+        if brightness_join_str[0] == "a":
             brightness_join = int(brightness_join_str[1:])
         else:
             _LOGGER.warning(
-                "Skipping dimmer light for '%s': invalid brightness_join format %s",
-                dimmer_name,
-                brightness_join_str
+                "Skipping dimmer light for '%s': invalid brightness_join format %s", dimmer_name, brightness_join_str
             )
             continue
 
@@ -122,15 +117,7 @@ async def async_setup_entry(
             CONF_BRIGHTNESS_JOIN: brightness_join,
         }
 
-        entities.append(
-            CrestronLight(
-                hub,
-                light_config,
-                from_ui=True,
-                is_dimmer_light=True,
-                dimmer_name=dimmer_name
-            )
-        )
+        entities.append(CrestronLight(hub, light_config, from_ui=True, is_dimmer_light=True, dimmer_name=dimmer_name))
 
     if entities:
         async_add_entities(entities)
@@ -191,11 +178,8 @@ class CrestronLight(LightEntity, RestoreEntity):
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
             self._restored_state = last_state.state == STATE_ON
-            self._restored_brightness = last_state.attributes.get('brightness')
-            _LOGGER.debug(
-                f"Restored {self.name}: state={self._restored_state}, "
-                f"brightness={self._restored_brightness}"
-            )
+            self._restored_brightness = last_state.attributes.get("brightness")
+            _LOGGER.debug(f"Restored {self.name}: state={self._restored_state}, brightness={self._restored_brightness}")
 
         # Request current state from Crestron if connected
         if self._hub.is_available():

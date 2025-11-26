@@ -1,64 +1,55 @@
 """Platform for Crestron Thermostat integration (standard & floor-warming)."""
 
+import logging
 from typing import Any
 
-import voluptuous as vol
-import logging
-
-import homeassistant.helpers.config_validation as cv
-from homeassistant.core import HomeAssistant
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
+from homeassistant.components.climate.const import FAN_AUTO, FAN_ON, HVACAction, HVACMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.components.climate import (
-    ClimateEntity,
-    ClimateEntityFeature,
-)
-from homeassistant.components.climate.const import (
-    HVACMode,
-    HVACAction,
-    FAN_ON,
-    FAN_AUTO,
-)
 from homeassistant.const import CONF_NAME, CONF_TYPE
+from homeassistant.core import HomeAssistant
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+import voluptuous as vol
 
 from . import CrestronHub
-from .helpers import get_hub
 from .const import (
-    HUB,
-    DOMAIN,
-    VERSION,
-    CONF_CLIMATES,
-    # --- standard thermostat joins ---
-    CONF_HEAT_SP_JOIN,
-    CONF_COOL_SP_JOIN,
-    CONF_REG_TEMP_JOIN,
-    CONF_MODE_HEAT_JOIN,
-    CONF_MODE_COOL_JOIN,
-    CONF_MODE_AUTO_JOIN,
-    CONF_MODE_OFF_JOIN,
-    CONF_FAN_ON_JOIN,
-    CONF_FAN_AUTO_JOIN,
-    CONF_H1_JOIN,
-    CONF_H2_JOIN,
     CONF_C1_JOIN,
     CONF_C2_JOIN,
+    CONF_CLIMATES,
+    CONF_COOL_SP_JOIN,
     CONF_FA_JOIN,
-    CONF_MODE_HEAT_COOL_JOIN,
+    CONF_FAN_AUTO_JOIN,
     CONF_FAN_MODE_AUTO_JOIN,
     CONF_FAN_MODE_ON_JOIN,
-    CONF_HVAC_ACTION_HEAT_JOIN,
-    CONF_HVAC_ACTION_COOL_JOIN,
-    CONF_HVAC_ACTION_IDLE_JOIN,
+    CONF_FAN_ON_JOIN,
+    CONF_FLOOR_MODE_FB_JOIN,
     # --- floor warming joins ---
     CONF_FLOOR_MODE_JOIN,
-    CONF_FLOOR_MODE_FB_JOIN,
-    CONF_FLOOR_SP_JOIN,
     CONF_FLOOR_SP_FB_JOIN,
+    CONF_FLOOR_SP_JOIN,
     CONF_FLOOR_TEMP_JOIN,
+    CONF_H1_JOIN,
+    CONF_H2_JOIN,
+    # --- standard thermostat joins ---
+    CONF_HEAT_SP_JOIN,
+    CONF_HVAC_ACTION_COOL_JOIN,
+    CONF_HVAC_ACTION_HEAT_JOIN,
+    CONF_HVAC_ACTION_IDLE_JOIN,
+    CONF_MODE_AUTO_JOIN,
+    CONF_MODE_COOL_JOIN,
+    CONF_MODE_HEAT_COOL_JOIN,
+    CONF_MODE_HEAT_JOIN,
+    CONF_MODE_OFF_JOIN,
+    CONF_REG_TEMP_JOIN,
+    DOMAIN,
+    HUB,
+    VERSION,
 )
+from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,11 +89,11 @@ FLOOR_WARMING_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
         vol.Optional(CONF_TYPE, default="floor_warming"): vol.In(["standard", "floor_warming"]),
-        vol.Required(CONF_FLOOR_MODE_JOIN): cv.positive_int,      # analog set (1/2)
-        vol.Required(CONF_FLOOR_MODE_FB_JOIN): cv.positive_int,   # analog feedback (1/2)
-        vol.Required(CONF_FLOOR_SP_JOIN): cv.positive_int,        # analog setpoint x10
-        vol.Required(CONF_FLOOR_SP_FB_JOIN): cv.positive_int,     # analog setpoint feedback x10
-        vol.Required(CONF_FLOOR_TEMP_JOIN): cv.positive_int,      # analog floor temp x10
+        vol.Required(CONF_FLOOR_MODE_JOIN): cv.positive_int,  # analog set (1/2)
+        vol.Required(CONF_FLOOR_MODE_FB_JOIN): cv.positive_int,  # analog feedback (1/2)
+        vol.Required(CONF_FLOOR_SP_JOIN): cv.positive_int,  # analog setpoint x10
+        vol.Required(CONF_FLOOR_SP_FB_JOIN): cv.positive_int,  # analog setpoint feedback x10
+        vol.Required(CONF_FLOOR_TEMP_JOIN): cv.positive_int,  # analog floor temp x10
     },
     extra=vol.ALLOW_EXTRA,
 )
@@ -113,6 +104,7 @@ PLATFORM_SCHEMA = vol.Any(STANDARD_CLIMATE_SCHEMA, FLOOR_WARMING_SCHEMA)
 # ----------------------------
 # Setup
 # ----------------------------
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -169,15 +161,19 @@ async def async_setup_entry(
 
                 # Parse analog join strings
                 all_joins_valid: bool = True
-                for join_key in [CONF_FLOOR_MODE_JOIN, CONF_FLOOR_MODE_FB_JOIN,
-                                CONF_FLOOR_SP_JOIN, CONF_FLOOR_SP_FB_JOIN, CONF_FLOOR_TEMP_JOIN]:
+                for join_key in [
+                    CONF_FLOOR_MODE_JOIN,
+                    CONF_FLOOR_MODE_FB_JOIN,
+                    CONF_FLOOR_SP_JOIN,
+                    CONF_FLOOR_SP_FB_JOIN,
+                    CONF_FLOOR_TEMP_JOIN,
+                ]:
                     join_str = climate_cfg.get(join_key, "")
-                    if join_str and join_str[0] == 'a' and join_str[1:].isdigit():
+                    if join_str and join_str[0] == "a" and join_str[1:].isdigit():
                         config[join_key] = int(join_str[1:])
                     else:
                         _LOGGER.error(
-                            "Invalid join format for %s in %s: %s",
-                            join_key, climate_cfg.get(CONF_NAME), join_str
+                            "Invalid join format for %s in %s: %s", join_key, climate_cfg.get(CONF_NAME), join_str
                         )
                         all_joins_valid = False
                         break
@@ -201,12 +197,14 @@ async def async_setup_entry(
 
                 all_joins_valid = True
                 for join_key, join_str in analog_joins.items():
-                    if join_str and join_str[0] == 'a' and join_str[1:].isdigit():
+                    if join_str and join_str[0] == "a" and join_str[1:].isdigit():
                         config[join_key] = int(join_str[1:])
                     else:
                         _LOGGER.error(
                             "Invalid analog join format for %s in %s: %s",
-                            join_key, climate_cfg.get(CONF_NAME), join_str
+                            join_key,
+                            climate_cfg.get(CONF_NAME),
+                            join_str,
                         )
                         all_joins_valid = False
                         break
@@ -232,12 +230,14 @@ async def async_setup_entry(
 
                 if all_joins_valid:
                     for join_key, join_str in digital_joins.items():
-                        if join_str and join_str[0] == 'd' and join_str[1:].isdigit():
+                        if join_str and join_str[0] == "d" and join_str[1:].isdigit():
                             config[join_key] = int(join_str[1:])
                         else:
                             _LOGGER.error(
                                 "Invalid digital join format for %s in %s: %s",
-                                join_key, climate_cfg.get(CONF_NAME), join_str
+                                join_key,
+                                climate_cfg.get(CONF_NAME),
+                                join_str,
                             )
                             all_joins_valid = False
                             break
@@ -250,12 +250,14 @@ async def async_setup_entry(
                     }
                     for join_key, join_str in optional_joins.items():
                         if join_str:  # Only parse if provided
-                            if join_str[0] == 'd' and join_str[1:].isdigit():
+                            if join_str[0] == "d" and join_str[1:].isdigit():
                                 config[join_key] = int(join_str[1:])
                             else:
                                 _LOGGER.warning(
                                     "Invalid optional digital join format for %s in %s: %s (skipping)",
-                                    join_key, climate_cfg.get(CONF_NAME), join_str
+                                    join_key,
+                                    climate_cfg.get(CONF_NAME),
+                                    join_str,
                                 )
 
                 if all_joins_valid:
@@ -267,9 +269,11 @@ async def async_setup_entry(
 
     return True
 
+
 # ----------------------------
 # Standard HVAC Thermostat (unchanged functional logic)
 # ----------------------------
+
 
 class CrestronThermostat(ClimateEntity, RestoreEntity):
     """Standard HVAC Thermostat entity."""
@@ -376,14 +380,17 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
                     _LOGGER.warning("Invalid HVAC mode in restored state: %s", last_state.state)
                     self._restored_hvac_mode = None
 
-            self._restored_fan_mode = last_state.attributes.get('fan_mode')
-            self._restored_temp_low = last_state.attributes.get('target_temp_low')
-            self._restored_temp_high = last_state.attributes.get('target_temp_high')
-            self._restored_current_temp = last_state.attributes.get('current_temperature')
+            self._restored_fan_mode = last_state.attributes.get("fan_mode")
+            self._restored_temp_low = last_state.attributes.get("target_temp_low")
+            self._restored_temp_high = last_state.attributes.get("target_temp_high")
+            self._restored_current_temp = last_state.attributes.get("current_temperature")
             _LOGGER.debug(
                 "Restored %s: mode=%s, fan=%s, temps=%s/%s",
-                self.name, self._restored_hvac_mode, self._restored_fan_mode,
-                self._restored_temp_low, self._restored_temp_high
+                self.name,
+                self._restored_hvac_mode,
+                self._restored_fan_mode,
+                self._restored_temp_low,
+                self._restored_temp_high,
             )
 
     async def async_will_remove_from_hass(self) -> None:
@@ -524,10 +531,9 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
     def hvac_action(self) -> HVACAction:
         if self._hub.get_digital(self._h1_join) or self._hub.get_digital(self._h2_join):
             return HVACAction.HEATING
-        elif self._hub.get_digital(self._c1_join) or self._hub.get_digital(self._c2_join):
+        if self._hub.get_digital(self._c1_join) or self._hub.get_digital(self._c2_join):
             return HVACAction.COOLING
-        else:
-            return HVACAction.IDLE
+        return HVACAction.IDLE
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         if hvac_mode == HVACMode.HEAT_COOL:
@@ -564,9 +570,11 @@ class CrestronThermostat(ClimateEntity, RestoreEntity):
         await self._hub.async_set_analog(self._heat_sp_join, int(round(kwargs["target_temp_low"] * 10)))
         await self._hub.async_set_analog(self._cool_sp_join, int(round(kwargs["target_temp_high"] * 10)))
 
+
 # ----------------------------
 # Floor-Warming Thermostat
 # ----------------------------
+
 
 class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
     """Floor-warming-only thermostat: Off/Heat modes, single setpoint, floor temp readback."""
@@ -603,9 +611,7 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
 
         self._hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
         self._attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE
-            | ClimateEntityFeature.TURN_ON
-            | ClimateEntityFeature.TURN_OFF
+            ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
         )
 
         # State restoration variables
@@ -633,12 +639,14 @@ class CrestronFloorWarmingThermostat(ClimateEntity, RestoreEntity):
                     _LOGGER.warning("Invalid HVAC mode in restored state: %s", last_state.state)
                     self._restored_hvac_mode = None
 
-            self._restored_target_temp = last_state.attributes.get('temperature')
-            self._restored_current_temp = last_state.attributes.get('current_temperature')
+            self._restored_target_temp = last_state.attributes.get("temperature")
+            self._restored_current_temp = last_state.attributes.get("current_temperature")
             _LOGGER.debug(
                 "Restored %s: mode=%s, target=%s, current=%s",
-                self.name, self._restored_hvac_mode, self._restored_target_temp,
-                self._restored_current_temp
+                self.name,
+                self._restored_hvac_mode,
+                self._restored_target_temp,
+                self._restored_current_temp,
             )
 
     async def async_will_remove_from_hass(self) -> None:

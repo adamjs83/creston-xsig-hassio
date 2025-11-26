@@ -2,29 +2,29 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
-import voluptuous as vol
-import logging
-
-import homeassistant.helpers.config_validation as cv
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, STATE_ON
 from homeassistant.core import HomeAssistant
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.const import STATE_ON, CONF_NAME, CONF_DEVICE_CLASS
+import voluptuous as vol
+
 from .const import (
-    HUB,
-    DOMAIN,
-    VERSION,
-    CONF_SWITCH_JOIN,
-    CONF_SWITCHES,
-    CONF_DIMMERS,
     CONF_BASE_JOIN,
     CONF_BUTTON_COUNT,
+    CONF_DIMMERS,
+    CONF_SWITCH_JOIN,
+    CONF_SWITCHES,
+    DOMAIN,
+    HUB,
+    VERSION,
 )
 from .helpers import get_hub
 
@@ -34,10 +34,11 @@ PLATFORM_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
         vol.Optional(CONF_DEVICE_CLASS): cv.string,
-        vol.Required(CONF_SWITCH_JOIN): cv.positive_int,           
+        vol.Required(CONF_SWITCH_JOIN): cv.positive_int,
     },
     extra=vol.ALLOW_EXTRA,
 )
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -80,13 +81,11 @@ async def async_setup_entry(
 
         # Parse switch join (required, digital)
         switch_join_str: str | None = switch_config.get(CONF_SWITCH_JOIN)
-        if switch_join_str and switch_join_str[0] == 'd':
+        if switch_join_str and switch_join_str[0] == "d":
             parsed_config[CONF_SWITCH_JOIN] = int(switch_join_str[1:])
         else:
             _LOGGER.warning(
-                "Skipping switch %s: invalid switch_join format %s",
-                switch_config.get(CONF_NAME),
-                switch_join_str
+                "Skipping switch %s: invalid switch_join format %s", switch_config.get(CONF_NAME), switch_join_str
             )
             continue
 
@@ -136,7 +135,9 @@ async def async_setup_entry(
                 CONF_DEVICE_CLASS: "switch",
             }
 
-            led_entity: CrestronSwitch = CrestronSwitch(hub, led_config, from_ui=True, is_led=True, dimmer_name=dimmer_name)
+            led_entity: CrestronSwitch = CrestronSwitch(
+                hub, led_config, from_ui=True, is_led=True, dimmer_name=dimmer_name
+            )
             led_entities.append(led_entity)
 
     if led_entities:
@@ -190,9 +191,7 @@ class CrestronSwitch(SwitchEntity, RestoreEntity):
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
             self._restored_is_on = last_state.state == STATE_ON
-            _LOGGER.debug(
-                "Restored %s: is_on=%s", self.name, self._restored_is_on
-            )
+            _LOGGER.debug("Restored %s: is_on=%s", self.name, self._restored_is_on)
 
         # Request current state from Crestron if connected
         if self._hub.is_available():

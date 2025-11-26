@@ -1,18 +1,15 @@
 """LED Binding Manager for Crestron Integration."""
-import logging
+
 from collections.abc import Callable
+import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, Event, callback
-from homeassistant.helpers.event import async_track_state_change_event, EventStateChangedData
+from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers.event import EventStateChangedData, async_track_state_change_event
 from homeassistant.util import slugify
 
-from .const import (
-    CONF_LED_BINDINGS,
-    CONF_DIMMERS,
-    STATE_TO_LED,
-)
+from .const import CONF_DIMMERS, CONF_LED_BINDINGS, STATE_TO_LED
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,9 +81,7 @@ class LEDBindingManager:
             await self._sync_led_state(led_entity_id, binding)
 
         self._listeners[led_entity_id] = async_track_state_change_event(
-            self.hass,
-            [bound_entity_id],
-            state_change_handler
+            self.hass, [bound_entity_id], state_change_handler
         )
 
         _LOGGER.debug(

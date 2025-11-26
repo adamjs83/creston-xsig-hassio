@@ -1,16 +1,13 @@
 """Join sync handler for Crestron XSIG integration."""
+
 import logging
 from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
-
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+import voluptuous as vol
 
-from ..const import (
-    CONF_TO_HUB,
-    CONF_FROM_HUB,
-)
+from ..const import CONF_FROM_HUB, CONF_TO_HUB
 
 if TYPE_CHECKING:
     from .base import BaseOptionsFlow
@@ -27,11 +24,9 @@ class JoinSyncHandler:
         Args:
             flow: The options flow handler instance
         """
-        self.flow: "BaseOptionsFlow" = flow
+        self.flow: BaseOptionsFlow = flow
 
-    async def async_step_add_to_join(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_to_join(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a single to_join with entity picker.
 
         Args:
@@ -51,7 +46,7 @@ class JoinSyncHandler:
                 value_template: str = user_input.get("value_template", "").strip()
 
                 # Validate join format
-                if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
+                if not join_num or not (join_num[0] in ["d", "a", "s"] and join_num[1:].isdigit()):
                     errors["join"] = "invalid_join_format"
 
                 # Check for duplicate join (exclude current join if editing)
@@ -74,8 +69,7 @@ class JoinSyncHandler:
                     if is_editing:
                         # Replace existing join
                         updated_to_joins: list[dict[str, Any]] = [
-                            new_join if j.get("join") == old_join_num else j
-                            for j in current_to_joins
+                            new_join if j.get("join") == old_join_num else j for j in current_to_joins
                         ]
                         _LOGGER.info("Updated to_join %s for %s", join_num, entity_id)
                     else:
@@ -87,9 +81,7 @@ class JoinSyncHandler:
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_TO_HUB] = updated_to_joins
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -141,9 +133,7 @@ class JoinSyncHandler:
             errors=errors,
         )
 
-    async def async_step_add_from_join(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_from_join(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a single from_join.
 
         Args:
@@ -162,7 +152,7 @@ class JoinSyncHandler:
                 target_entity: str | None = user_input.get("target_entity")
 
                 # Validate join format
-                if not join_num or not (join_num[0] in ['d', 'a', 's'] and join_num[1:].isdigit()):
+                if not join_num or not (join_num[0] in ["d", "a", "s"] and join_num[1:].isdigit()):
                     errors["join"] = "invalid_join_format"
 
                 # Check for duplicate join (exclude current join if editing)
@@ -180,16 +170,12 @@ class JoinSyncHandler:
                         script_action["target"] = {"entity_id": target_entity}
 
                     # Build new join entry
-                    new_join: dict[str, Any] = {
-                        "join": join_num,
-                        "script": [script_action]
-                    }
+                    new_join: dict[str, Any] = {"join": join_num, "script": [script_action]}
 
                     if is_editing:
                         # Replace existing join
                         updated_from_joins: list[dict[str, Any]] = [
-                            new_join if j.get("join") == old_join_num else j
-                            for j in current_from_joins
+                            new_join if j.get("join") == old_join_num else j for j in current_from_joins
                         ]
                         _LOGGER.info("Updated from_join %s with service %s", join_num, service)
                     else:
@@ -201,9 +187,7 @@ class JoinSyncHandler:
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_FROM_HUB] = updated_from_joins
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -219,7 +203,9 @@ class JoinSyncHandler:
         # Pre-fill form if editing
         default_values: dict[str, str] = {}
         if is_editing:
-            script_action: dict[str, Any] = self.flow._editing_join.get("script", [{}])[0] if self.flow._editing_join.get("script") else {}
+            script_action: dict[str, Any] = (
+                self.flow._editing_join.get("script", [{}])[0] if self.flow._editing_join.get("script") else {}
+            )
             default_values = {
                 "join": self.flow._editing_join.get("join", ""),
                 "service": script_action.get("service", ""),
@@ -239,7 +225,9 @@ class JoinSyncHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional("target_entity", default=default_values.get("target_entity", "")): selector.EntitySelector(),
+                vol.Optional(
+                    "target_entity", default=default_values.get("target_entity", "")
+                ): selector.EntitySelector(),
             }
         )
 
@@ -249,9 +237,7 @@ class JoinSyncHandler:
             errors=errors,
         )
 
-    async def async_step_remove_joins(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_remove_joins(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Remove joins by selecting from a list.
 
         Args:
@@ -271,17 +257,19 @@ class JoinSyncHandler:
                     current_from_joins: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_FROM_HUB, [])
 
                     # Filter out selected joins
-                    updated_to_joins: list[dict[str, Any]] = [j for j in current_to_joins if j.get("join") not in joins_to_remove]
-                    updated_from_joins: list[dict[str, Any]] = [j for j in current_from_joins if j.get("join") not in joins_to_remove]
+                    updated_to_joins: list[dict[str, Any]] = [
+                        j for j in current_to_joins if j.get("join") not in joins_to_remove
+                    ]
+                    updated_from_joins: list[dict[str, Any]] = [
+                        j for j in current_from_joins if j.get("join") not in joins_to_remove
+                    ]
 
                     # Update config entry
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_TO_HUB] = updated_to_joins
                     new_data[CONF_FROM_HUB] = updated_from_joins
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -302,17 +290,11 @@ class JoinSyncHandler:
         join_options: list[dict[str, str]] = []
         for j in current_to_joins:
             entity: str = j.get("entity_id", j.get("value_template", "N/A"))
-            join_options.append({
-                "label": f"{j.get('join')} → {entity} (to_join)",
-                "value": j.get("join")
-            })
+            join_options.append({"label": f"{j.get('join')} → {entity} (to_join)", "value": j.get("join")})
 
         for j in current_from_joins:
             script_info: str = "script" if "script" in j else "N/A"
-            join_options.append({
-                "label": f"{j.get('join')} → {script_info} (from_join)",
-                "value": j.get("join")
-            })
+            join_options.append({"label": f"{j.get('join')} → {script_info} (from_join)", "value": j.get("join")})
 
         if not join_options:
             # No joins to remove, return to menu
@@ -337,9 +319,7 @@ class JoinSyncHandler:
             errors=errors,
         )
 
-    async def async_step_select_join_to_edit(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_select_join_to_edit(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select which join to edit.
 
         Args:
@@ -377,17 +357,11 @@ class JoinSyncHandler:
         join_options: list[dict[str, str]] = []
         for j in current_to_joins:
             entity: str = j.get("entity_id", j.get("value_template", "N/A"))
-            join_options.append({
-                "label": f"{j.get('join')} → {entity} (to_join)",
-                "value": j.get("join")
-            })
+            join_options.append({"label": f"{j.get('join')} → {entity} (to_join)", "value": j.get("join")})
 
         for j in current_from_joins:
             script_info: str = "script" if "script" in j else "N/A"
-            join_options.append({
-                "label": f"{j.get('join')} → {script_info} (from_join)",
-                "value": j.get("join")
-            })
+            join_options.append({"label": f"{j.get('join')} → {script_info} (from_join)", "value": j.get("join")})
 
         if not join_options:
             # No joins to edit, return to menu

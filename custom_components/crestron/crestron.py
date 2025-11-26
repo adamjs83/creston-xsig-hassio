@@ -1,14 +1,15 @@
 import asyncio
-import struct
+from collections.abc import Callable, Coroutine
 import logging
-from typing import Callable, Any
-from collections.abc import Coroutine
+import struct
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class CrestronXsig:
     def __init__(self) -> None:
-        """ Initialize CrestronXsig object """
+        """Initialize CrestronXsig object"""
         self._digital: dict[int, bool] = {}
         self._analog: dict[int, int] = {}
         self._serial: dict[int, str] = {}
@@ -24,7 +25,7 @@ class CrestronXsig:
         self.port: int | None = None
 
     async def listen(self, port: int) -> None:
-        """ Start TCP XSIG server listening on configured port """
+        """Start TCP XSIG server listening on configured port"""
         self.port = port
         server = await asyncio.start_server(self.handle_connection, "0.0.0.0", port)
         self._server = server
@@ -34,7 +35,7 @@ class CrestronXsig:
         asyncio.create_task(server.serve_forever())
 
     async def stop(self) -> None:
-        """ Stop TCP XSIG server """
+        """Stop TCP XSIG server"""
         self._available = False
         for callback in self._callbacks:
             await callback("available", "False")
@@ -57,20 +58,20 @@ class CrestronXsig:
             _LOGGER.debug("Server closed successfully")
 
     def register_sync_all_joins_callback(self, callback: Callable[[], Coroutine[Any, Any, None]]) -> None:
-        """ Allow callback to be registred for when control system requests an update to all joins """
+        """Allow callback to be registred for when control system requests an update to all joins"""
         _LOGGER.debug("Sync-all-joins callback registered")
         self._sync_all_joins_callback = callback
 
     def register_callback(self, callback: Callable[[str, str], Coroutine[Any, Any, None]]) -> None:
-        """ Allow callbacks to be registered for when dict entries change """
+        """Allow callbacks to be registered for when dict entries change"""
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callable[[str, str], Coroutine[Any, Any, None]]) -> None:
-        """ Allow callbacks to be de-registered """
+        """Allow callbacks to be de-registered"""
         self._callbacks.discard(callback)
 
     async def handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        """ Parse packets from Crestron XSIG symbol """
+        """Parse packets from Crestron XSIG symbol"""
         self._writer = writer
         peer = writer.get_extra_info("peername")
         _LOGGER.info("Control system connection from %s", peer)
@@ -93,30 +94,22 @@ class CrestronXsig:
                 else:
                     data += await reader.read(1)
                     # Digital Join
-                    if (
-                        data[0] & 0b11000000 == 0b10000000
-                        and data[1] & 0b10000000 == 0b00000000
-                    ):
+                    if data[0] & 0b11000000 == 0b10000000 and data[1] & 0b10000000 == 0b00000000:
                         header = struct.unpack("BB", data)
                         join = ((header[0] & 0b00011111) << 7 | header[1]) + 1
                         value = ~header[0] >> 5 & 0b1
-                        self._digital[join] = True if value == 1 else False
+                        self._digital[join] = value == 1
                         self._digital_received.add(join)  # Mark as received
                         # Removed excessive debug logging that floods logs
                         # _LOGGER.debug(f"Got Digital: {join} = {value}")
                         for callback in self._callbacks:
                             await callback(f"d{join}", str(value))
                     # Analog Join
-                    elif (
-                        data[0] & 0b11001000 == 0b11000000
-                        and data[1] & 0b10000000 == 0b00000000
-                    ):
+                    elif data[0] & 0b11001000 == 0b11000000 and data[1] & 0b10000000 == 0b00000000:
                         data += await reader.read(2)
                         header = struct.unpack("BBBB", data)
                         join = ((header[0] & 0b00000111) << 7 | header[1]) + 1
-                        value = (
-                            (header[0] & 0b00110000) << 10 | header[2] << 7 | header[3]
-                        )
+                        value = (header[0] & 0b00110000) << 10 | header[2] << 7 | header[3]
                         self._analog[join] = value
                         self._analog_received.add(join)  # Mark as received
                         # Removed excessive debug logging that floods logs
@@ -124,10 +117,7 @@ class CrestronXsig:
                         for callback in self._callbacks:
                             await callback(f"a{join}", str(value))
                     # Serial Join
-                    elif (
-                        data[0] & 0b11111000 == 0b11001000
-                        and data[1] & 0b10000000 == 0b00000000
-                    ):
+                    elif data[0] & 0b11111000 == 0b11001000 and data[1] & 0b10000000 == 0b00000000:
                         data += await reader.readuntil(b"\xff")
                         header = struct.unpack("BB", data[:2])
                         join = ((header[0] & 0b00000111) << 7 | header[1]) + 1
@@ -152,31 +142,31 @@ class CrestronXsig:
         return self._available
 
     def get_analog(self, join: int) -> int:
-        """ Return analog value for join"""
+        """Return analog value for join"""
         return self._analog.get(join, 0)
 
     def get_digital(self, join: int) -> bool:
-        """ Return digital value for join"""
+        """Return digital value for join"""
         return self._digital.get(join, False)
 
     def get_serial(self, join: int) -> str:
-        """ Return serial value for join"""
+        """Return serial value for join"""
         return self._serial.get(join, "")
 
     def has_analog_value(self, join: int) -> bool:
-        """ Check if analog join has received valid data from Crestron """
+        """Check if analog join has received valid data from Crestron"""
         return join in self._analog_received
 
     def has_digital_value(self, join: int) -> bool:
-        """ Check if digital join has received valid data from Crestron """
+        """Check if digital join has received valid data from Crestron"""
         return join in self._digital_received
 
     def has_serial_value(self, join: int) -> bool:
-        """ Check if serial join has received valid data from Crestron """
+        """Check if serial join has received valid data from Crestron"""
         return join in self._serial_received
 
     def set_analog(self, join: int, value: int) -> None:
-        """ Send Analog Join to Crestron XSIG symbol """
+        """Send Analog Join to Crestron XSIG symbol"""
         if self._writer:
             try:
                 data = struct.pack(
@@ -197,7 +187,7 @@ class CrestronXsig:
             _LOGGER.debug("Could not send analog. No connection to hub")
 
     async def async_set_analog(self, join: int, value: int) -> None:
-        """ Send Analog Join to Crestron XSIG symbol and ensure it's transmitted """
+        """Send Analog Join to Crestron XSIG symbol and ensure it's transmitted"""
         if self._writer:
             try:
                 data = struct.pack(
@@ -217,7 +207,7 @@ class CrestronXsig:
             _LOGGER.debug("Could not send analog. No connection to hub")
 
     def set_digital(self, join: int, value: int) -> None:
-        """ Send Digital Join to Crestron XSIG symbol """
+        """Send Digital Join to Crestron XSIG symbol"""
         if self._writer:
             try:
                 data = struct.pack(
@@ -236,7 +226,7 @@ class CrestronXsig:
             _LOGGER.debug("Could not send digital. No connection to hub")
 
     async def async_set_digital(self, join: int, value: int) -> None:
-        """ Send Digital Join to Crestron XSIG symbol and ensure it's transmitted """
+        """Send Digital Join to Crestron XSIG symbol and ensure it's transmitted"""
         if self._writer:
             try:
                 data = struct.pack(
@@ -256,15 +246,13 @@ class CrestronXsig:
             _LOGGER.debug("Could not send digital. No connection to hub")
 
     def set_serial(self, join: int, string: str) -> None:
-        """ Send String Join to Crestron XSIG symbol """
+        """Send String Join to Crestron XSIG symbol"""
         if len(string) > 252:
             _LOGGER.warning("Could not send serial. String too long (%d>252)", len(string))
             return
-        elif self._writer:
+        if self._writer:
             try:
-                data = struct.pack(
-                    ">BB", 0b11001000 | ((join - 1) >> 7), (join - 1) & 0b01111111
-                )
+                data = struct.pack(">BB", 0b11001000 | ((join - 1) >> 7), (join - 1) & 0b01111111)
                 data += string.encode()
                 data += b"\xff"
                 self._writer.write(data)
@@ -278,7 +266,7 @@ class CrestronXsig:
             _LOGGER.debug("Could not send serial. No connection to hub")
 
     def request_update(self) -> None:
-        """ Request Crestron to send current state of all joins """
+        """Request Crestron to send current state of all joins"""
         if self._writer:
             try:
                 self._writer.write(b"\xfd")

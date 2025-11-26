@@ -1,12 +1,12 @@
 """Validation utilities for Crestron XSIG config flow."""
+
 import logging
 import socket
 from typing import Any
 
-import voluptuous as vol
-
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+import voluptuous as vol
 
 from ..const import CONF_PORT, DOMAIN
 
@@ -15,9 +15,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Port validation schema
 STEP_USER_DATA_SCHEMA: vol.Schema = vol.Schema(
     {
-        vol.Required(CONF_PORT, default=16384): vol.All(
-            vol.Coerce(int), vol.Range(min=1024, max=65535)
-        ),
+        vol.Required(CONF_PORT, default=16384): vol.All(vol.Coerce(int), vol.Range(min=1024, max=65535)),
     }
 )
 
@@ -45,12 +43,11 @@ async def validate_port(hass: HomeAssistant, port: int) -> dict[str, Any]:
     yaml_using_port = False
     if DOMAIN in hass.data and "hub" in hass.data[DOMAIN]:
         yaml_hub = hass.data[DOMAIN]["hub"]
-        if hasattr(yaml_hub, 'port') and yaml_hub.port == port:
+        if hasattr(yaml_hub, "port") and yaml_hub.port == port:
             yaml_using_port = True
             _LOGGER.info(
-                "Port %d is in use by YAML configuration. "
-                "Config entry will be created but YAML will take precedence.",
-                port
+                "Port %d is in use by YAML configuration. Config entry will be created but YAML will take precedence.",
+                port,
             )
 
     # Only check port availability if NOT used by our YAML config

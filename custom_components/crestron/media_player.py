@@ -1,48 +1,38 @@
 """Platform for Crestron Media Player integration."""
 
+import logging
 from typing import Any
 
-import voluptuous as vol
-import logging
-
-import homeassistant.helpers.config_validation as cv
-from homeassistant.core import HomeAssistant
+from homeassistant.components.media_player import MediaPlayerEntity, MediaPlayerEntityFeature
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.components.media_player import (
-    MediaPlayerEntity,
-    MediaPlayerEntityFeature,
-)
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, STATE_OFF, STATE_ON
+from homeassistant.core import HomeAssistant
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
-
-from homeassistant.const import (
-    CONF_NAME,
-    STATE_OFF,
-    STATE_ON,
-)
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+import voluptuous as vol
 
 from .const import (
-    HUB,
-    DOMAIN,
-    VERSION,
-    CONF_MUTE_JOIN,
-    CONF_VOLUME_JOIN,
-    CONF_SOURCE_NUM_JOIN,
-    CONF_SOURCES,
     CONF_MEDIA_PLAYERS,
-    CONF_POWER_ON_JOIN,
-    CONF_POWER_OFF_JOIN,
-    CONF_PLAY_JOIN,
-    CONF_PAUSE_JOIN,
-    CONF_STOP_JOIN,
+    CONF_MUTE_JOIN,
     CONF_NEXT_JOIN,
+    CONF_PAUSE_JOIN,
+    CONF_PLAY_JOIN,
+    CONF_POWER_OFF_JOIN,
+    CONF_POWER_ON_JOIN,
     CONF_PREVIOUS_JOIN,
     CONF_REPEAT_JOIN,
     CONF_SHUFFLE_JOIN,
+    CONF_SOURCE_NUM_JOIN,
+    CONF_SOURCES,
+    CONF_STOP_JOIN,
+    CONF_VOLUME_JOIN,
+    DOMAIN,
+    HUB,
+    VERSION,
 )
-from homeassistant.const import CONF_DEVICE_CLASS
 from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +47,7 @@ PLATFORM_SCHEMA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -92,21 +83,21 @@ async def async_setup_entry(
 
         # Parse source_num_join (required, analog)
         source_num_join_str = mp_config.get(CONF_SOURCE_NUM_JOIN, "")
-        if source_num_join_str and source_num_join_str[0] == 'a':
+        if source_num_join_str and source_num_join_str[0] == "a":
             parsed_config[CONF_SOURCE_NUM_JOIN] = int(source_num_join_str[1:])
 
         # Parse optional joins
         join_mappings = [
-            (CONF_POWER_ON_JOIN, 'd'),
-            (CONF_MUTE_JOIN, 'd'),
-            (CONF_VOLUME_JOIN, 'a'),
-            (CONF_PLAY_JOIN, 'd'),
-            (CONF_PAUSE_JOIN, 'd'),
-            (CONF_STOP_JOIN, 'd'),
-            (CONF_NEXT_JOIN, 'd'),
-            (CONF_PREVIOUS_JOIN, 'd'),
-            (CONF_REPEAT_JOIN, 'd'),
-            (CONF_SHUFFLE_JOIN, 'd'),
+            (CONF_POWER_ON_JOIN, "d"),
+            (CONF_MUTE_JOIN, "d"),
+            (CONF_VOLUME_JOIN, "a"),
+            (CONF_PLAY_JOIN, "d"),
+            (CONF_PAUSE_JOIN, "d"),
+            (CONF_STOP_JOIN, "d"),
+            (CONF_NEXT_JOIN, "d"),
+            (CONF_PREVIOUS_JOIN, "d"),
+            (CONF_REPEAT_JOIN, "d"),
+            (CONF_SHUFFLE_JOIN, "d"),
         ]
 
         for join_key, expected_type in join_mappings:
@@ -200,9 +191,9 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
             self._restored_state = last_state.state
-            self._restored_source = last_state.attributes.get('source')
-            self._restored_volume = last_state.attributes.get('volume_level')
-            self._restored_is_muted = last_state.attributes.get('is_volume_muted')
+            self._restored_source = last_state.attributes.get("source")
+            self._restored_volume = last_state.attributes.get("volume_level")
+            self._restored_is_muted = last_state.attributes.get("is_volume_muted")
             _LOGGER.debug(
                 f"Restored {self.name}: state={self._restored_state}, "
                 f"source={self._restored_source}, volume={self._restored_volume}"
@@ -295,8 +286,7 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         if self._hub.has_analog_value(self._source_number_join):
             if self._hub.get_analog(self._source_number_join) == 0:
                 return STATE_OFF
-            else:
-                return STATE_ON
+            return STATE_ON
         return self._restored_state
 
     @property

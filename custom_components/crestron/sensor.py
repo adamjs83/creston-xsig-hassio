@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any
-import voluptuous as vol
 import logging
+from typing import Any
 
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, CONF_UNIT_OF_MEASUREMENT
+from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+import voluptuous as vol
 
-from .const import HUB, DOMAIN, VERSION, CONF_VALUE_JOIN, CONF_DIVISOR, CONF_SENSORS
+from .const import CONF_DIVISOR, CONF_SENSORS, CONF_VALUE_JOIN, DOMAIN, HUB, VERSION
 from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,13 +24,14 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORM_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
-        vol.Required(CONF_VALUE_JOIN): cv.positive_int,           
+        vol.Required(CONF_VALUE_JOIN): cv.positive_int,
         vol.Required(CONF_DEVICE_CLASS): cv.string,
         vol.Required(CONF_UNIT_OF_MEASUREMENT): cv.string,
         vol.Required(CONF_DIVISOR): int,
     },
     extra=vol.ALLOW_EXTRA,
 )
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -67,13 +68,10 @@ async def async_setup_entry(
         for sensor_cfg in sensors_config:
             # Parse join string to integer (e.g., "a10" -> 10)
             value_join_str: str = sensor_cfg.get(CONF_VALUE_JOIN, "")
-            if value_join_str and value_join_str[0] == 'a' and value_join_str[1:].isdigit():
+            if value_join_str and value_join_str[0] == "a" and value_join_str[1:].isdigit():
                 value_join: int = int(value_join_str[1:])
             else:
-                _LOGGER.error(
-                    "Invalid value join format for sensor %s: %s",
-                    sensor_cfg.get(CONF_NAME), value_join_str
-                )
+                _LOGGER.error("Invalid value join format for sensor %s: %s", sensor_cfg.get(CONF_NAME), value_join_str)
                 continue
 
             # Create config dict with integer join
@@ -129,9 +127,7 @@ class CrestronSensor(SensorEntity, RestoreEntity):
             if last_state.state not in (None, "unknown", "unavailable"):
                 try:
                     self._restored_value = float(last_state.state)
-                    _LOGGER.debug(
-                        "Restored %s: value=%s", self.name, self._restored_value
-                    )
+                    _LOGGER.debug("Restored %s: value=%s", self.name, self._restored_value)
                 except (ValueError, TypeError):
                     pass
 

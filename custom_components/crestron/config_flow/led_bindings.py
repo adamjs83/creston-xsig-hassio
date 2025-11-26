@@ -1,20 +1,15 @@
 """LED Binding configuration handler."""
+
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
-
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+import voluptuous as vol
 
-from ..const import (
-    DOMAIN,
-    CONF_DIMMERS,
-    CONF_LED_BINDINGS,
-    BINDABLE_DOMAINS,
-)
+from ..const import BINDABLE_DOMAINS, CONF_DIMMERS, CONF_LED_BINDINGS, DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -31,9 +26,7 @@ class LEDBindingHandler:
         """Initialize the LED binding handler."""
         self.flow = options_flow
 
-    async def async_step_led_binding_menu(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_led_binding_menu(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Show LED binding management menu."""
         dimmers: list[dict[str, Any]] = self.flow.config_entry.data.get(CONF_DIMMERS, [])
 
@@ -49,30 +42,26 @@ class LEDBindingHandler:
 
         # Build dimmer selection
         dimmer_options: list[dict[str, str]] = [
-            {
-                "label": f"{d.get('name')} ({d.get('button_count')} buttons)",
-                "value": d.get("name")
-            }
-            for d in dimmers
+            {"label": f"{d.get('name')} ({d.get('button_count')} buttons)", "value": d.get("name")} for d in dimmers
         ]
 
-        schema: vol.Schema = vol.Schema({
-            vol.Required("dimmer_to_configure"): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=dimmer_options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
-        })
+        schema: vol.Schema = vol.Schema(
+            {
+                vol.Required("dimmer_to_configure"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=dimmer_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
 
         return self.flow.async_show_form(
             step_id="led_binding_menu",
             data_schema=schema,
         )
 
-    async def async_step_configure_dimmer_leds(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_configure_dimmer_leds(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Configure LED bindings for selected dimmer."""
         dimmer_name: str = self.flow._selected_dimmer
 
@@ -103,7 +92,9 @@ class LEDBindingHandler:
 
             # Save to config entry data (consistent with other entity handlers)
             # Get fresh entry to ensure we're updating the latest version
-            fresh_entry: ConfigEntry | None = self.flow.hass.config_entries.async_get_entry(self.flow.config_entry.entry_id)
+            fresh_entry: ConfigEntry | None = self.flow.hass.config_entries.async_get_entry(
+                self.flow.config_entry.entry_id
+            )
             if not fresh_entry:
                 _LOGGER.error("Config entry not found, cannot save LED bindings")
                 return self.flow.async_abort(reason="entry_not_found")
@@ -113,15 +104,12 @@ class LEDBindingHandler:
             led_bindings[dimmer_name] = bindings
             new_data[CONF_LED_BINDINGS] = led_bindings
 
-            self.flow.hass.config_entries.async_update_entry(
-                fresh_entry,
-                data=new_data
-            )
+            self.flow.hass.config_entries.async_update_entry(fresh_entry, data=new_data)
 
             _LOGGER.info(
                 "Updated LED bindings for dimmer '%s': %d buttons configured",
                 dimmer_name,
-                sum(1 for b in bindings.values() if b is not None)
+                sum(1 for b in bindings.values() if b is not None),
             )
 
             # Reload LED binding manager
@@ -150,20 +138,12 @@ class LEDBindingHandler:
             existing_entity: str | None = existing.get("entity_id") if existing else None
             if existing_entity:
                 schema_fields[vol.Optional(f"button_{btn_num}_entity", default=existing_entity)] = (
-                    selector.EntitySelector(
-                        selector.EntitySelectorConfig(
-                            domain=list(BINDABLE_DOMAINS.keys())
-                        )
-                    )
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain=list(BINDABLE_DOMAINS.keys())))
                 )
             else:
                 # No default - field starts blank and can be left blank
-                schema_fields[vol.Optional(f"button_{btn_num}_entity")] = (
-                    selector.EntitySelector(
-                        selector.EntitySelectorConfig(
-                            domain=list(BINDABLE_DOMAINS.keys())
-                        )
-                    )
+                schema_fields[vol.Optional(f"button_{btn_num}_entity")] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain=list(BINDABLE_DOMAINS.keys()))
                 )
 
             # Invert checkbox

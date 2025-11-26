@@ -1,23 +1,23 @@
 """Cover entity configuration handler for Crestron XSIG integration."""
+
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
-
+from homeassistant.const import CONF_NAME, CONF_TYPE
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+import voluptuous as vol
 
 from ...const import (
     CONF_COVERS,
-    CONF_POS_JOIN,
-    CONF_IS_OPENING_JOIN,
-    CONF_IS_CLOSING_JOIN,
     CONF_IS_CLOSED_JOIN,
+    CONF_IS_CLOSING_JOIN,
+    CONF_IS_OPENING_JOIN,
+    CONF_POS_JOIN,
     CONF_STOP_JOIN,
 )
-from homeassistant.const import CONF_NAME, CONF_TYPE
 
 if TYPE_CHECKING:
     from ..options_flow import OptionsFlowHandler
@@ -34,9 +34,7 @@ class CoverEntityHandler:
         """Initialize the cover entity handler."""
         self.flow = flow
 
-    async def async_step_add_cover(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_cover(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a cover entity."""
         errors: dict[str, str] = {}
         is_editing = self.flow._editing_join is not None
@@ -52,7 +50,7 @@ class CoverEntityHandler:
                 stop_join: str = user_input.get(CONF_STOP_JOIN, "").strip()
 
                 # Validate pos_join format (must be analog)
-                if not pos_join or not (pos_join[0] == 'a' and pos_join[1:].isdigit()):
+                if not pos_join or not (pos_join[0] == "a" and pos_join[1:].isdigit()):
                     errors[CONF_POS_JOIN] = "invalid_join_format"
 
                 # Validate optional joins format (must be digital if provided)
@@ -62,7 +60,7 @@ class CoverEntityHandler:
                     (CONF_IS_CLOSED_JOIN, is_closed_join),
                     (CONF_STOP_JOIN, stop_join),
                 ]:
-                    if join_value and not (join_value[0] == 'd' and join_value[1:].isdigit()):
+                    if join_value and not (join_value[0] == "d" and join_value[1:].isdigit()):
                         errors[join_field] = "invalid_join_format"
 
                 # Check for duplicate entity name
@@ -92,8 +90,7 @@ class CoverEntityHandler:
                     if is_editing:
                         # Replace existing cover
                         updated_covers: list[dict[str, Any]] = [
-                            new_cover if c.get(CONF_NAME) == old_name else c
-                            for c in current_covers
+                            new_cover if c.get(CONF_NAME) == old_name else c for c in current_covers
                         ]
                         _LOGGER.info("Updated cover %s", name)
                     else:
@@ -105,9 +102,7 @@ class CoverEntityHandler:
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_COVERS] = updated_covers
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -152,17 +147,23 @@ class CoverEntityHandler:
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Optional(CONF_IS_OPENING_JOIN, default=default_values.get(CONF_IS_OPENING_JOIN, "")): selector.TextSelector(
+                vol.Optional(
+                    CONF_IS_OPENING_JOIN, default=default_values.get(CONF_IS_OPENING_JOIN, "")
+                ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional(CONF_IS_CLOSING_JOIN, default=default_values.get(CONF_IS_CLOSING_JOIN, "")): selector.TextSelector(
+                vol.Optional(
+                    CONF_IS_CLOSING_JOIN, default=default_values.get(CONF_IS_CLOSING_JOIN, "")
+                ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional(CONF_IS_CLOSED_JOIN, default=default_values.get(CONF_IS_CLOSED_JOIN, "")): selector.TextSelector(
+                vol.Optional(
+                    CONF_IS_CLOSED_JOIN, default=default_values.get(CONF_IS_CLOSED_JOIN, "")
+                ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )

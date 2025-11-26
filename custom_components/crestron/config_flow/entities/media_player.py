@@ -1,26 +1,26 @@
 """Media player entity configuration handler for Crestron XSIG integration."""
+
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
-
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+import voluptuous as vol
 
 from ...const import (
     CONF_MEDIA_PLAYERS,
+    CONF_MUTE_JOIN,
+    CONF_NEXT_JOIN,
+    CONF_PAUSE_JOIN,
+    CONF_PLAY_JOIN,
+    CONF_POWER_ON_JOIN,
+    CONF_PREVIOUS_JOIN,
     CONF_SOURCE_NUM_JOIN,
     CONF_SOURCES,
-    CONF_MUTE_JOIN,
-    CONF_VOLUME_JOIN,
-    CONF_POWER_ON_JOIN,
-    CONF_PLAY_JOIN,
-    CONF_PAUSE_JOIN,
     CONF_STOP_JOIN,
-    CONF_NEXT_JOIN,
-    CONF_PREVIOUS_JOIN,
+    CONF_VOLUME_JOIN,
 )
-from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS
 
 if TYPE_CHECKING:
     from ..base import BaseOptionsFlow
@@ -39,9 +39,7 @@ class MediaPlayerEntityHandler:
         """
         self.flow: BaseOptionsFlow = flow
 
-    async def async_step_add_media_player(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_media_player(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a media player entity.
 
         Args:
@@ -71,23 +69,23 @@ class MediaPlayerEntityHandler:
                 previous_join: str = user_input.get(CONF_PREVIOUS_JOIN, "")
 
                 # Validate source_num_join (required, analog)
-                if not source_num_join or not (source_num_join[0] == 'a' and source_num_join[1:].isdigit()):
+                if not source_num_join or not (source_num_join[0] == "a" and source_num_join[1:].isdigit()):
                     errors[CONF_SOURCE_NUM_JOIN] = "invalid_join_format"
 
                 # Parse and validate sources (required, min 1 source)
                 sources_dict: dict[int, str] = {}
                 if sources_text.strip():
-                    for line in sources_text.strip().split('\n'):
+                    for line in sources_text.strip().split("\n"):
                         line = line.strip()
                         if not line:
                             continue
-                        if ':' not in line:
+                        if ":" not in line:
                             errors[CONF_SOURCES] = "invalid_source_format"
                             break
                         try:
                             num_str: str
                             name_str: str
-                            num_str, name_str = line.split(':', 1)
+                            num_str, name_str = line.split(":", 1)
                             source_num: int = int(num_str.strip())
                             source_name: str = name_str.strip()
                             if source_num < 1 or source_num > 99:
@@ -103,14 +101,14 @@ class MediaPlayerEntityHandler:
 
                 # Validate optional joins
                 optional_joins: list[tuple[str, str, str]] = [
-                    (CONF_POWER_ON_JOIN, power_on_join, 'd'),
-                    (CONF_MUTE_JOIN, mute_join, 'd'),
-                    (CONF_VOLUME_JOIN, volume_join, 'a'),
-                    (CONF_PLAY_JOIN, play_join, 'd'),
-                    (CONF_PAUSE_JOIN, pause_join, 'd'),
-                    (CONF_STOP_JOIN, stop_join, 'd'),
-                    (CONF_NEXT_JOIN, next_join, 'd'),
-                    (CONF_PREVIOUS_JOIN, previous_join, 'd'),
+                    (CONF_POWER_ON_JOIN, power_on_join, "d"),
+                    (CONF_MUTE_JOIN, mute_join, "d"),
+                    (CONF_VOLUME_JOIN, volume_join, "a"),
+                    (CONF_PLAY_JOIN, play_join, "d"),
+                    (CONF_PAUSE_JOIN, pause_join, "d"),
+                    (CONF_STOP_JOIN, stop_join, "d"),
+                    (CONF_NEXT_JOIN, next_join, "d"),
+                    (CONF_PREVIOUS_JOIN, previous_join, "d"),
                 ]
 
                 join_field: str
@@ -157,8 +155,7 @@ class MediaPlayerEntityHandler:
                     if is_editing:
                         # Replace existing media player
                         updated_media_players = [
-                            new_media_player if mp.get(CONF_NAME) == old_name else mp
-                            for mp in current_media_players
+                            new_media_player if mp.get(CONF_NAME) == old_name else mp for mp in current_media_players
                         ]
                         _LOGGER.info("Updated media player %s", name)
                     else:
@@ -170,9 +167,7 @@ class MediaPlayerEntityHandler:
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_MEDIA_PLAYERS] = updated_media_players
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -190,7 +185,7 @@ class MediaPlayerEntityHandler:
         if is_editing:
             # Convert sources dict to text format
             sources_dict_edit: dict[int, str] = self.flow._editing_join.get(CONF_SOURCES, {})
-            sources_text_edit: str = '\n'.join(f"{num}: {name}" for num, name in sorted(sources_dict_edit.items()))
+            sources_text_edit: str = "\n".join(f"{num}: {name}" for num, name in sorted(sources_dict_edit.items()))
 
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),
@@ -215,7 +210,9 @@ class MediaPlayerEntityHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional(CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "speaker")): selector.SelectSelector(
+                vol.Optional(
+                    CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "speaker")
+                ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": "TV", "value": "tv"},
@@ -225,7 +222,9 @@ class MediaPlayerEntityHandler:
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Required(CONF_SOURCE_NUM_JOIN, default=default_values.get(CONF_SOURCE_NUM_JOIN, "")): selector.TextSelector(
+                vol.Required(
+                    CONF_SOURCE_NUM_JOIN, default=default_values.get(CONF_SOURCE_NUM_JOIN, "")
+                ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
@@ -236,7 +235,9 @@ class MediaPlayerEntityHandler:
                         multiline=True,
                     )
                 ),
-                vol.Optional(CONF_POWER_ON_JOIN, default=default_values.get(CONF_POWER_ON_JOIN, "")): selector.TextSelector(
+                vol.Optional(
+                    CONF_POWER_ON_JOIN, default=default_values.get(CONF_POWER_ON_JOIN, "")
+                ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )
@@ -271,7 +272,9 @@ class MediaPlayerEntityHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional(CONF_PREVIOUS_JOIN, default=default_values.get(CONF_PREVIOUS_JOIN, "")): selector.TextSelector(
+                vol.Optional(
+                    CONF_PREVIOUS_JOIN, default=default_values.get(CONF_PREVIOUS_JOIN, "")
+                ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )

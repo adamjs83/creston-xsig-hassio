@@ -1,4 +1,5 @@
 """Base classes and utilities for Crestron XSIG config flow."""
+
 import logging
 from typing import Any
 
@@ -55,11 +56,7 @@ class EntityConfigHelper:
         self.hass = hass
         self.config_entry = config_entry
 
-    async def cleanup_entity(
-        self,
-        platform: str,
-        unique_id: str
-    ) -> None:
+    async def cleanup_entity(self, platform: str, unique_id: str) -> None:
         """Remove entity from entity registry.
 
         Args:
@@ -75,10 +72,7 @@ class EntityConfigHelper:
             _LOGGER.debug("Removed %s entity %s from registry", platform, entity_id)
 
     def check_duplicate_name(
-        self,
-        entities_list: list[dict[str, Any]],
-        new_name: str,
-        exclude_index: int | None = None
+        self, entities_list: list[dict[str, Any]], new_name: str, exclude_index: int | None = None
     ) -> bool:
         """Check if entity name already exists in list.
 

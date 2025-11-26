@@ -1,18 +1,14 @@
 """Sensor entity configuration handler for Crestron XSIG integration."""
+
 import logging
 from typing import Any
 
-import voluptuous as vol
-
+from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, CONF_UNIT_OF_MEASUREMENT
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+import voluptuous as vol
 
-from ...const import (
-    CONF_SENSORS,
-    CONF_VALUE_JOIN,
-    CONF_DIVISOR,
-)
-from homeassistant.const import CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIT_OF_MEASUREMENT
+from ...const import CONF_DIVISOR, CONF_SENSORS, CONF_VALUE_JOIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,9 +22,7 @@ class SensorEntityHandler:
         """Initialize the sensor entity handler."""
         self.flow = flow
 
-    async def async_step_add_sensor(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_add_sensor(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add or edit a sensor entity."""
         errors: dict[str, str] = {}
         is_editing = self.flow._editing_join is not None
@@ -42,7 +36,7 @@ class SensorEntityHandler:
                 divisor: int = user_input.get(CONF_DIVISOR, 1)
 
                 # Validate value_join format (must be analog)
-                if not value_join or not (value_join[0] == 'a' and value_join[1:].isdigit()):
+                if not value_join or not (value_join[0] == "a" and value_join[1:].isdigit()):
                     errors[CONF_VALUE_JOIN] = "invalid_join_format"
 
                 # Check for duplicate entity name
@@ -64,8 +58,7 @@ class SensorEntityHandler:
                     if is_editing:
                         # Replace existing sensor
                         updated_sensors: list[dict[str, Any]] = [
-                            new_sensor if s.get(CONF_NAME) == old_name else s
-                            for s in current_sensors
+                            new_sensor if s.get(CONF_NAME) == old_name else s for s in current_sensors
                         ]
                         _LOGGER.info("Updated sensor %s", name)
                     else:
@@ -77,9 +70,7 @@ class SensorEntityHandler:
                     new_data: dict[str, Any] = dict(self.flow.config_entry.data)
                     new_data[CONF_SENSORS] = updated_sensors
 
-                    self.flow.hass.config_entries.async_update_entry(
-                        self.flow.config_entry, data=new_data
-                    )
+                    self.flow.hass.config_entries.async_update_entry(self.flow.config_entry, data=new_data)
 
                     # Reload the integration
                     await self.flow._async_reload_integration()
@@ -116,7 +107,9 @@ class SensorEntityHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Required(CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "temperature")): selector.SelectSelector(
+                vol.Required(
+                    CONF_DEVICE_CLASS, default=default_values.get(CONF_DEVICE_CLASS, "temperature")
+                ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": "Temperature", "value": "temperature"},
@@ -133,7 +126,9 @@ class SensorEntityHandler:
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Required(CONF_UNIT_OF_MEASUREMENT, default=default_values.get(CONF_UNIT_OF_MEASUREMENT, "")): selector.TextSelector(
+                vol.Required(
+                    CONF_UNIT_OF_MEASUREMENT, default=default_values.get(CONF_UNIT_OF_MEASUREMENT, "")
+                ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.TEXT,
                     )

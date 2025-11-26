@@ -1,24 +1,17 @@
 """Support for Crestron button press events."""
+
+from collections.abc import Callable
 import logging
 from typing import Any
-from collections.abc import Callable
 
-from homeassistant.components.event import (
-    EventEntity,
-    EventDeviceClass,
-)
+from homeassistant.components.event import EventDeviceClass, EventEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import (
-    DOMAIN,
-    CONF_DIMMERS,
-    CONF_BASE_JOIN,
-    CONF_BUTTON_COUNT,
-)
+from .const import CONF_BASE_JOIN, CONF_BUTTON_COUNT, CONF_DIMMERS, DOMAIN
 from .helpers import get_hub
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +29,7 @@ async def async_setup_entry(
     hub = get_hub(hass, config_entry)
     if hub is None:
         _LOGGER.error("No Crestron hub found for event entities")
-        return False
+        return
 
     dimmers: list[dict[str, Any]] = config_entry.data.get(CONF_DIMMERS, [])
 
@@ -197,9 +190,7 @@ class CrestronButtonEvent(EventEntity):
             # Fire event on the bus for automations
             self.hass.bus.async_fire("crestron_button", event_data)
 
-            _LOGGER.debug(
-                "%s button %d: press event", self._dimmer_name, self._button_num
-            )
+            _LOGGER.debug("%s button %d: press event", self._dimmer_name, self._button_num)
 
     @callback
     def _handle_double_press(self, value: str) -> None:
@@ -217,9 +208,7 @@ class CrestronButtonEvent(EventEntity):
             # Fire event on the bus for automations
             self.hass.bus.async_fire("crestron_button", event_data)
 
-            _LOGGER.debug(
-                "%s button %d: double press event", self._dimmer_name, self._button_num
-            )
+            _LOGGER.debug("%s button %d: double press event", self._dimmer_name, self._button_num)
 
     @callback
     def _handle_hold(self, value: str) -> None:
@@ -237,6 +226,4 @@ class CrestronButtonEvent(EventEntity):
             # Fire event on the bus for automations
             self.hass.bus.async_fire("crestron_button", event_data)
 
-            _LOGGER.debug(
-                "%s button %d: hold event", self._dimmer_name, self._button_num
-            )
+            _LOGGER.debug("%s button %d: hold event", self._dimmer_name, self._button_num)
