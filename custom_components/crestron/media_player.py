@@ -150,6 +150,9 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         self._restored_volume: float | None = None
         self._restored_is_muted: bool | None = None
 
+        # Callback reference for proper deregistration
+        self._callback_ref = None
+
     def _calculate_supported_features(self) -> MediaPlayerEntityFeature:
         """Calculate supported features based on configured joins."""
         features: int = 0
@@ -186,7 +189,8 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
-        self._hub.register_callback(self.process_callback)
+        self._callback_ref = self.process_callback
+        self._hub.register_callback(self._callback_ref)
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
@@ -200,7 +204,8 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
             )
 
     async def async_will_remove_from_hass(self) -> None:
-        self._hub.remove_callback(self.process_callback)
+        if self._callback_ref is not None:
+            self._hub.remove_callback(self._callback_ref)
 
     async def process_callback(self, cbtype: str, value: Any) -> None:
         # Only update if this is one of our joins or connection state changed

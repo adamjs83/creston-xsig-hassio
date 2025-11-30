@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.4] - 2025-11-30
+
+### Fixed
+- **Memory Leak Fix** - Fixed incorrect cleanup of template trackers in `__init__.py`
+  - `async_track_template_result` returns a callable, not an object with `async_remove()`
+  - Changed cleanup to call the returned function directly
+  - Standardized callback cleanup pattern in `sensor.py` and `media_player.py` to match other platforms
+
 ## [1.25.3] - 2025-11-25
 
 ### Fixed

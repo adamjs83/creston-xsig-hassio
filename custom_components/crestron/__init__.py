@@ -496,7 +496,7 @@ class CrestronHub:
 
         # Only remove tracker if it was created
         if self.tracker is not None:
-            self.tracker.async_remove()
+            self.tracker()
 
         await self.hub.stop()
 

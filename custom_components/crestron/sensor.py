@@ -117,10 +117,14 @@ class CrestronSensor(SensorEntity, RestoreEntity):
         # State restoration variable
         self._restored_value = None
 
+        # Callback reference for proper deregistration
+        self._callback_ref = None
+
     async def async_added_to_hass(self) -> None:
         """Register callbacks and restore state."""
         await super().async_added_to_hass()
-        self._hub.register_callback(self.process_callback)
+        self._callback_ref = self.process_callback
+        self._hub.register_callback(self._callback_ref)
 
         # Restore last state if available
         if (last_state := await self.async_get_last_state()) is not None:
@@ -138,7 +142,8 @@ class CrestronSensor(SensorEntity, RestoreEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove callbacks when entity is removed."""
-        self._hub.remove_callback(self.process_callback)
+        if self._callback_ref is not None:
+            self._hub.remove_callback(self._callback_ref)
 
     async def process_callback(self, cbtype: str, value: Any) -> None:
         """Process callback from hub."""
