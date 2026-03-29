@@ -208,7 +208,7 @@ class JoinSyncHandler:
             )
             default_values = {
                 "join": self.flow._editing_join.get("join", ""),
-                "service": script_action.get("service", ""),
+                "service": script_action.get("service", script_action.get("action", "")),
                 "target_entity": script_action.get("target", {}).get("entity_id", ""),
             }
 

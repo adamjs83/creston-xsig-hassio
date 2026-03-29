@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
+from copy import deepcopy
 import logging
 from typing import Any
 
@@ -26,7 +27,7 @@ from homeassistant.helpers.script import Script
 from homeassistant.helpers.template import Template
 import voluptuous as vol
 
-from .const import CONF_FROM_HUB, CONF_JOIN, CONF_PORT, CONF_SCRIPT, CONF_TO_HUB, DOMAIN, HUB, VERSION
+from .const import CONF_FROM_HUB, CONF_JOIN, CONF_PORT, CONF_SCRIPT, CONF_TO_HUB, DOMAIN, HUB, STATE_TO_LED, VERSION
 from .crestron import CrestronXsig
 from .led_binding_manager import LEDBindingManager
 
@@ -482,7 +483,7 @@ class CrestronHub:
             # Build reverse lookup for O(1) template-to-join mapping
             self._template_to_join = {template: join for join, template in self.to_hub.items()}
         if CONF_FROM_HUB in config:
-            self.from_hub = config[CONF_FROM_HUB]
+            self.from_hub = self._normalize_script_config(deepcopy(config[CONF_FROM_HUB]))
             self.hub.register_callback(self.join_change_callback)
 
     async def start(self) -> None:
@@ -500,28 +501,92 @@ class CrestronHub:
 
         await self.hub.stop()
 
+    @staticmethod
+    def _normalize_script_config(value: Any) -> Any:
+        """Normalize script actions for broad HA version compatibility.
+
+        Some Home Assistant versions/config paths may store service calls as
+        `action: domain.service` instead of `service: domain.service`.
+        The Script helper expects service keys during execution, so normalize
+        these action dictionaries recursively at runtime.
+        """
+        if isinstance(value, list):
+            return [CrestronHub._normalize_script_config(item) for item in value]
+
+        if isinstance(value, dict):
+            normalized = {key: CrestronHub._normalize_script_config(val) for key, val in value.items()}
+
+            if (
+                "action" in normalized
+                and CONF_SERVICE not in normalized
+                and "service_template" not in normalized
+                and isinstance(normalized["action"], str)
+            ):
+                normalized[CONF_SERVICE] = normalized["action"]
+
+            if "service_data" in normalized and "data" not in normalized:
+                normalized["data"] = normalized["service_data"]
+
+            return normalized
+
+        return value
+
     async def join_change_callback(self, cbtype: str, value: str) -> None:
         """Call service for tracked join change (from_hub)"""
+        if not self.from_hub:
+            return
+
         for join in self.from_hub:
             if cbtype == join[CONF_JOIN]:
                 # For digital joins, ignore on>off transitions  (avoids double calls to service for momentary presses)
                 if cbtype[:1] == "d" and value == "0":
                     pass
                 else:
-                    if CONF_SERVICE in join and CONF_SERVICE_DATA in join:
-                        data = dict(join[CONF_SERVICE_DATA])
-                        _LOGGER.debug(
-                            f"join_change_callback calling service {join[CONF_SERVICE]} with data = {data} from join {cbtype} = {value}"
+                    try:
+                        if CONF_SERVICE in join:
+                            data = dict(join.get(CONF_SERVICE_DATA, {}))
+                            _LOGGER.debug(
+                                "join_change_callback calling service %s with data = %s from join %s = %s",
+                                join[CONF_SERVICE],
+                                data,
+                                cbtype,
+                                value,
+                            )
+                            domain, service = join[CONF_SERVICE].split(".")
+                            await self.hass.services.async_call(domain, service, data)
+                        elif CONF_SCRIPT in join:
+                            sequence = join[CONF_SCRIPT]
+                            script = Script(self.hass, sequence, "Crestron Join Change", DOMAIN)
+                            await script.async_run({"value": value}, self.context)
+                            _LOGGER.debug(
+                                "join_change_callback calling script %s from join %s = %s",
+                                sequence,
+                                cbtype,
+                                value,
+                            )
+                    except Exception as err:
+                        _LOGGER.exception(
+                            "join_change_callback failed for join %s = %s with config %s: %s",
+                            cbtype,
+                            value,
+                            join,
+                            err,
                         )
-                        domain, service = join[CONF_SERVICE].split(".")
-                        await self.hass.services.async_call(domain, service, data)
-                    elif CONF_SCRIPT in join:
-                        sequence = join[CONF_SCRIPT]
-                        script = Script(self.hass, sequence, "Crestron Join Change", DOMAIN)
-                        await script.async_run({"value": value}, self.context)
-                        _LOGGER.debug(
-                            f"join_change_callback calling script {join[CONF_SCRIPT]} from join {cbtype} = {value}"
-                        )
+
+    @staticmethod
+    def _coerce_analog_value(value: Any) -> int:
+        """Convert template output to a valid analog integer.
+
+        Supports numeric values plus common textual states (including
+        media player states) by mapping them to 0/1.
+        """
+        try:
+            return int(float(value))
+        except (ValueError, TypeError):
+            value_str = str(value).strip().lower()
+            if value_str in STATE_TO_LED:
+                return 1 if STATE_TO_LED[value_str] else 0
+            raise ValueError(f"Unsupported analog value: {value!r}")
 
     @callback
     def template_change_callback(self, event: Event | None, updates: list[TrackTemplateResult]) -> None:
@@ -553,8 +618,7 @@ class CrestronHub:
             # Analog Join
             elif join[:1] == "a":
                 try:
-                    # Handle float strings like "1.0" by converting to float first
-                    analog_value = int(float(update_result))
+                    analog_value = self._coerce_analog_value(update_result)
                     _LOGGER.debug(f"template_change_callback setting analog join {int(join[1:])} to {analog_value}")
                     self.hub.set_analog(int(join[1:]), analog_value)
                 except (ValueError, TypeError) as err:
@@ -589,8 +653,7 @@ class CrestronHub:
             # Analog Join
             elif join[:1] == "a":
                 try:
-                    # Handle float strings like "1.0" by converting to float first
-                    analog_value = int(float(result))
+                    analog_value = self._coerce_analog_value(result)
                     _LOGGER.debug(f"sync_joins_to_hub setting analog join {int(join[1:])} to {analog_value}")
                     await self.hub.async_set_analog(int(join[1:]), analog_value)
                 except (ValueError, TypeError) as err:
