@@ -160,10 +160,13 @@ class JoinSyncHandler:
                 old_join_num: str | None = self.flow._editing_join.get("join") if is_editing else None
                 if join_num != old_join_num and any(j.get("join") == join_num for j in current_from_joins):
                     errors["join"] = "join_already_exists"
+                if not service:
+                    errors["service"] = "required"
 
                 if not errors:
                     # Build script action
                     script_action: dict[str, Any] = {
+                        "action": service,
                         "service": service,
                     }
                     if target_entity:

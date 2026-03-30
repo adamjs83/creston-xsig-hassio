@@ -43,6 +43,13 @@ class TestScriptNormalization:
 
         assert normalized[0]["service"] == "light.toggle"
 
+    def test_normalize_service_to_action(self):
+        """`service` should be converted to `action` for newer HA script syntax."""
+        source = [{"service": "light.toggle"}]
+        normalized = CrestronHub._normalize_script_config(source)
+
+        assert normalized[0]["action"] == "light.toggle"
+
     def test_normalize_service_data_to_data(self):
         """`service_data` should also be available as `data`."""
         source = [{"action": "light.turn_on", "service_data": {"entity_id": "light.kitchen"}}]
@@ -67,3 +74,10 @@ class TestScriptNormalization:
 
         assert normalized[0]["choose"][0]["sequence"][0]["service"] == "switch.turn_on"
         assert normalized[0]["default"][0]["service"] == "switch.turn_off"
+
+    def test_does_not_promote_non_service_action_payload(self):
+        """Payload action values (e.g. action: press) should not become service calls."""
+        source = [{"action": "notify.send_message", "data": {"action": "press"}}]
+        normalized = CrestronHub._normalize_script_config(source)
+
+        assert "service" not in normalized[0]["data"]
