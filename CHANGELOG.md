@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.5] - 2026-09-29
+
+> **Manual installs:** delete `custom_components/crestron` before copying in this version.
+> The config flow moved from a `config_flow/` folder to `config_flow.py`; a leftover
+> `config_flow/` folder would shadow the new file. HACS updates are unaffected.
+
+### Moved
+- **New public repository** - Releases now publish to
+  [adamjs83/crestron-xsig-hassio](https://github.com/adamjs83/crestron-xsig-hassio).
+  HACS users: remove the old `creston-xsig-hassio` custom repository and add the new one.
+  The integration domain (`crestron`) is unchanged; existing config entries carry over.
+
+### Fixed
+- **from_join scripts on HA 2024.8+** - UI-created from_join scripts are now validated
+  through Home Assistant's script schema at load, so `service`/`action` back-compat is
+  handled by core. Invalid joins are skipped and logged instead of failing at runtime.
+- **service_template migration** - Fixed migration of scripts using `service_template`.
+- **LED/state enums** - Template values that map to LED states are converted correctly.
+- **Media player sources** - Source numbers stored as strings after a config round-trip
+  are normalized to integers; sources are sorted numerically when editing.
+
+### Changed
+- Config flow code moved to `flow_handlers/` with a `config_flow.py` entry point
+  (required by hassfest).
+- Added brand icons (`brand/icon.png`, `brand/icon@2x.png`).
+- Removed eager JSON debug logging from the join callback hot path.
+
 ## [1.25.4] - 2025-11-30
 
 ### Fixed
