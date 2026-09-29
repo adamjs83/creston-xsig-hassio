@@ -38,7 +38,7 @@ jobs:
         run: |
           curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
             | tar -xz gitleaks
-          rsync -a --exclude .git public/ scan/
+          cp -a public/. scan/ && rm -rf scan/.git
           ./gitleaks detect --no-git --source scan --redact --exit-code 1
 
       - name: Push to public repo
