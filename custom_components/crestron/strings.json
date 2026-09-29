@@ -48,16 +48,18 @@
       },
       "add_from_join": {
         "title": "Add from_join (Crestron → HA)",
-        "description": "Run a Home Assistant service when Crestron triggers this join. Useful for button presses and macros.",
+        "description": "Run a Home Assistant action when Crestron triggers this join. Useful for button presses and macros.",
         "data": {
           "join": "Join Number",
           "service": "Service",
-          "target_entity": "Target Entity (optional)"
+          "target": "Target (optional)",
+          "data": "Action Data (optional)"
         },
         "data_description": {
           "join": "Join number (e.g., d100 for digital button press)",
           "service": "Service to call (e.g., light.toggle, script.goodnight)",
-          "target_entity": "Entity to target (optional, e.g., light.kitchen)"
+          "target": "Entities, devices, or areas to target",
+          "data": "Extra action data as YAML, e.g. brightness_pct: 100 and transition: 4"
         }
       },
       "select_join_to_edit": {
@@ -267,6 +269,28 @@
           "button_6_entity": "Entity to bind to Button 6 LED (blank for no binding)",
           "button_6_invert": "LED on when entity is off (reverse logic)"
         }
+      },
+      "add_media_player": {
+        "title": "Add Media Player",
+        "description": "Map a Crestron analog join to a source selector.\n\nEnter one source per line as `number: name`, e.g.\n```\n10: Streaming\n11: Cable\n```\nThe source number join is the analog join (e.g. a5) that carries the selected source number.",
+        "data": {
+          "name": "Name",
+          "device_class": "Device Class",
+          "source_number_join": "Source Number Join (analog)",
+          "sources": "Sources (one per line: number: name)",
+          "power_on_join": "Power On Join (optional, digital)",
+          "mute_join": "Mute Join (optional, digital)",
+          "volume_join": "Volume Join (optional, analog)",
+          "play_join": "Play Join (optional, digital)",
+          "pause_join": "Pause Join (optional, digital)",
+          "stop_join": "Stop Join (optional, digital)",
+          "next_join": "Next Join (optional, digital)",
+          "previous_join": "Previous Join (optional, digital)"
+        },
+        "data_description": {
+          "source_number_join": "Analog join, e.g. a5. Not the source list.",
+          "sources": "Source number, colon, name. Example: 10: Streaming"
+        }
       }
     },
     "error": {
@@ -277,7 +301,10 @@
       "name_required": "Name is required.",
       "service_required": "Service is required (e.g., light.toggle).",
       "entity_already_exists": "An entity with this name already exists. Choose a different name.",
-      "unknown": "An unexpected error occurred. Check the logs for details."
+      "unknown": "An unexpected error occurred. Check the logs for details.",
+      "no_sources_configured": "Add at least one source, one per line, in the format `number: name` (e.g. 10: Streaming).",
+      "invalid_source_format": "Each source line must be `number: name` (e.g. 10: Streaming).",
+      "source_number_out_of_range": "Source numbers must be between 1 and 99."
     },
     "abort": {
       "no_dimmers_configured": "No dimmers/keypads configured. Please add a dimmer/keypad first.",

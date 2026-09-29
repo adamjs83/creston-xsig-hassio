@@ -96,7 +96,7 @@ class MediaPlayerEntityHandler:
                             errors[CONF_SOURCES] = "invalid_source_format"
                             break
 
-                if not sources_dict:
+                if not sources_dict and CONF_SOURCES not in errors:
                     errors[CONF_SOURCES] = "no_sources_configured"
 
                 # Validate optional joins
@@ -203,6 +203,10 @@ class MediaPlayerEntityHandler:
                 CONF_NEXT_JOIN: self.flow._editing_join.get(CONF_NEXT_JOIN, ""),
                 CONF_PREVIOUS_JOIN: self.flow._editing_join.get(CONF_PREVIOUS_JOIN, ""),
             }
+
+        # After a validation error, keep what the user typed instead of clearing the form
+        if user_input is not None:
+            default_values.update(user_input)
 
         # Show form
         add_media_player_schema: vol.Schema = vol.Schema(

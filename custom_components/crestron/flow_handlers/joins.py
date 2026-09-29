@@ -149,7 +149,8 @@ class JoinSyncHandler:
             try:
                 join_num: str | None = user_input.get("join")
                 service: str | None = user_input.get("service")
-                target_entity: str | None = user_input.get("target_entity")
+                target: dict[str, Any] = {k: v for k, v in (user_input.get("target") or {}).items() if v}
+                action_data: dict[str, Any] = user_input.get("data") or {}
 
                 # Validate join format
                 if not join_num or not (join_num[0] in ["d", "a", "s"] and join_num[1:].isdigit()):
@@ -168,8 +169,10 @@ class JoinSyncHandler:
                     script_action: dict[str, Any] = {
                         "service": service,
                     }
-                    if target_entity:
-                        script_action["target"] = {"entity_id": target_entity}
+                    if target:
+                        script_action["target"] = target
+                    if action_data:
+                        script_action["data"] = action_data
 
                     # Build new join entry
                     new_join: dict[str, Any] = {"join": join_num, "script": [script_action]}
@@ -202,8 +205,8 @@ class JoinSyncHandler:
                 _LOGGER.exception("Error adding/editing from_join: %s", err)
                 errors["base"] = "unknown"
 
-        # Pre-fill form if editing
-        default_values: dict[str, str] = {}
+        # Pre-fill form: user input (after a validation error) wins over the stored join
+        default_values: dict[str, Any] = {}
         if is_editing:
             script_action: dict[str, Any] = (
                 self.flow._editing_join.get("script", [{}])[0] if self.flow._editing_join.get("script") else {}
@@ -211,8 +214,11 @@ class JoinSyncHandler:
             default_values = {
                 "join": self.flow._editing_join.get("join", ""),
                 "service": script_action.get("service", script_action.get("action", "")),
-                "target_entity": script_action.get("target", {}).get("entity_id", ""),
+                "target": script_action.get("target", {}),
+                "data": script_action.get("data", {}),
             }
+        if user_input is not None:
+            default_values.update(user_input)
 
         # Show form
         add_from_join_schema: vol.Schema = vol.Schema(
@@ -227,9 +233,12 @@ class JoinSyncHandler:
                         type=selector.TextSelectorType.TEXT,
                     )
                 ),
-                vol.Optional(
-                    "target_entity", default=default_values.get("target_entity", "")
-                ): selector.EntitySelector(),
+                vol.Optional("target", description={"suggested_value": default_values.get("target") or None}): (
+                    selector.TargetSelector()
+                ),
+                vol.Optional("data", description={"suggested_value": default_values.get("data") or None}): (
+                    selector.ObjectSelector()
+                ),
             }
         )
 
