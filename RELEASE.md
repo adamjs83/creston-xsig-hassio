@@ -4,7 +4,36 @@ This document describes the automated release process for the Crestron XSIG Inte
 
 ## Overview
 
-This project uses automated releases via GitHub Actions (`.github/workflows/release.yml`). The automation is triggered when a git tag matching `v*` is pushed to the repository.
+This repo (`adamjs83/creston-xsig-hassio`) is the **dev repo**. Public releases are published to
+**`adamjs83/crestron-xsig-hassio`**, which is what HACS and users see.
+
+Pushing a `v*` tag here triggers `.github/workflows/publish-public.yml`, which:
+
+1. Validates the tag matches `manifest.json`
+2. Exports only the paths listed in `.publish-include` (git-tracked files only)
+3. Strips `<!-- dev-only:start -->` … `<!-- dev-only:end -->` blocks from Markdown
+4. Commits the snapshot to the public repo as a single `Release vX.Y.Z` commit and tags it
+5. Runs gitleaks against the published tree, then pushes
+6. Creates the GitHub release on the public repo (notes from CHANGELOG.md)
+
+Dev history, tests, agent files and notes never reach the public repo. Public history is one
+commit per release.
+
+### One-time setup
+
+- Create a fine-grained PAT with **Contents: read/write** on `adamjs83/crestron-xsig-hassio` only
+- Add it to this repo as the Actions secret `PUBLIC_REPO_TOKEN`
+
+### Publishing new files
+
+Anything not in `.publish-include` stays private. Add a path there to publish it.
+Wrap dev-only Markdown in `<!-- dev-only:start -->` / `<!-- dev-only:end -->`.
+
+### Community PRs
+
+PRs land on the public repo. Apply them here (e.g. `git am` from the PR's `.patch` URL),
+then close the public PR referencing the release that includes it. The next release
+overwrites the public tree.
 
 ## Semantic Versioning
 
@@ -22,7 +51,7 @@ Follow semantic versioning: **MAJOR.MINOR.PATCH**
 ### 1. README.md
 Update version badge on line 3:
 ```markdown
-[![Version](https://img.shields.io/badge/version-X.Y.Z-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
+[![Version](https://img.shields.io/badge/version-X.Y.Z-blue.svg)](https://github.com/adamjs83/crestron-xsig-hassio/releases)
 ```
 
 ### 2. custom_components/crestron/manifest.json
@@ -125,7 +154,7 @@ git push --tags
 ### Step 5: Verify Automation
 - GitHub Actions will trigger automatically
 - Check workflow: https://github.com/adamjs83/creston-xsig-hassio/actions
-- Release appears: https://github.com/adamjs83/creston-xsig-hassio/releases
+- Release appears: https://github.com/adamjs83/crestron-xsig-hassio/releases
 - Should complete in ~2-3 minutes
 
 ## Commit Message Format
@@ -173,6 +202,10 @@ git push --tags
 
 The automation will trigger again with the corrected files.
 
+If the publish job already pushed to the public repo, also delete the public tag and release
+(`gh release delete vX.Y.Z --repo adamjs83/crestron-xsig-hassio --cleanup-tag`) and reset the
+public `main` to the previous release commit before re-tagging.
+
 ## Pre-release Versions
 
 For alpha, beta, or release candidate versions:
@@ -200,6 +233,12 @@ Before creating a release, verify:
 - Check that manifest.json version matches the git tag (without 'v' prefix)
 - Tag: `v1.10.0` → manifest.json: `"version": "1.10.0"`
 
+### "tag vX.Y.Z already exists in public repo"
+- The public repo already has this release. Bump the version.
+
+### Secret scan failed
+- gitleaks found a secret in a published file. Remove it from dev, rotate it, re-tag.
+
 ### "No changelog found for version X.Y.Z"
 - Verify CHANGELOG.md has a section: `## [X.Y.Z] - YYYY-MM-DD`
 - Check formatting matches exactly (with square brackets)
@@ -211,6 +250,8 @@ Before creating a release, verify:
 
 ## Additional Resources
 
-- GitHub Actions Workflow: `.github/workflows/release.yml`
+- GitHub Actions Workflow: `.github/workflows/publish-public.yml`
+- Publish allowlist: `.publish-include`
+- Publish script: `.github/publish/publish-public.sh`
 - CHANGELOG format: https://keepachangelog.com/
 - Semantic Versioning: https://semver.org/

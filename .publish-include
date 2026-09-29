@@ -1,0 +1,11 @@
+# Paths published to the public repo on release. Everything else stays in dev.
+# One path per line, relative to repo root. Must be tracked in git.
+custom_components/crestron
+blueprints
+docs/images
+README.md
+CHANGELOG.md
+LICENSE
+hacs.json
+info.md
+.github/workflows/validate.yml

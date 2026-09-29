@@ -21,9 +21,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/adamjs83/creston-xsig-hassio"
-Repository = "https://github.com/adamjs83/creston-xsig-hassio"
-Issues = "https://github.com/adamjs83/creston-xsig-hassio/issues"
+Homepage = "https://github.com/adamjs83/crestron-xsig-hassio"
+Repository = "https://github.com/adamjs83/crestron-xsig-hassio"
+Issues = "https://github.com/adamjs83/crestron-xsig-hassio/issues"
 
 [build-system]
 requires = ["setuptools>=61.0"]

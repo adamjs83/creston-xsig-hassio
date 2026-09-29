@@ -1,6 +1,21 @@
 # Crestron XSIG Integration for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-1.25.4-blue.svg)](https://github.com/adamjs83/creston-xsig-hassio/releases)
+<!-- dev-only:start -->
+> [!IMPORTANT]
+> **This repository has moved.** Releases are now published to
+> **[adamjs83/crestron-xsig-hassio](https://github.com/adamjs83/crestron-xsig-hassio)**.
+> This repo is now the development repo and will stop receiving releases.
+>
+> **HACS users:** in HACS → ⋮ → Custom repositories, remove
+> `https://github.com/adamjs83/creston-xsig-hassio`, add
+> `https://github.com/adamjs83/crestron-xsig-hassio` (category: Integration),
+> then redownload and restart Home Assistant. The integration domain is unchanged
+> (`crestron`), so your existing config entries and entities carry over.
+>
+> Please open new issues on the new repo.
+<!-- dev-only:end -->
+
+[![Version](https://img.shields.io/badge/version-1.25.4-blue.svg)](https://github.com/adamjs83/crestron-xsig-hassio/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -65,7 +80,7 @@ Complete support for Crestron keypads and dimmers:
 1. Open HACS in Home Assistant
 2. Go to **Integrations**
 3. Click the three dots (⋮) → **Custom repositories**
-4. Add: `https://github.com/adamjs83/creston-xsig-hassio`
+4. Add: `https://github.com/adamjs83/crestron-xsig-hassio`
 5. Category: **Integration**
 6. Click **Add**
 7. Find **Crestron XSIG Integration** and click **Download**
@@ -740,8 +755,8 @@ Pull requests and issues welcome! Please test thoroughly before submitting.
 
 ## Links
 
-- **GitHub:** https://github.com/adamjs83/creston-xsig-hassio
+- **GitHub:** https://github.com/adamjs83/crestron-xsig-hassio
 - **Original Integration:** https://github.com/npope/home-assistant-crestron-component
 - **Home Assistant Docs:** https://www.home-assistant.io/docs/
 - **Switch Manager:** https://github.com/Sian-Lee-SA/Home-Assistant-Switch-Manager
-- **Issues:** https://github.com/adamjs83/creston-xsig-hassio/issues
+- **Issues:** https://github.com/adamjs83/crestron-xsig-hassio/issues
