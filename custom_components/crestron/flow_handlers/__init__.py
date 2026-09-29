@@ -1,4 +1,4 @@
-"""Config flow modules for Crestron XSIG integration."""
+"""Config flow handler modules for Crestron XSIG integration."""
 
 from .base import BaseOptionsFlow, EntityConfigHelper
 from .dimmers import DimmerHandler
