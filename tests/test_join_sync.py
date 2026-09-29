@@ -8,7 +8,7 @@ import pytest
 # Add custom_components to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from custom_components.crestron import CrestronHub
+from custom_components.crestron import CrestronHub, _validate_from_joins
 
 
 class TestJoinSyncCoercion:
@@ -33,51 +33,65 @@ class TestJoinSyncCoercion:
             CrestronHub._coerce_analog_value("not_a_number")
 
 
-class TestScriptNormalization:
-    """Tests for script action normalization compatibility helper."""
+class TestFromJoinValidation:
+    """Tests for from_join script validation at config entry load."""
 
-    def test_normalize_action_to_service(self):
-        """`action` should be converted to `service` for script calls."""
-        source = [{"action": "light.toggle"}]
-        normalized = CrestronHub._normalize_script_config(source)
+    def test_service_step_validates(self):
+        """UI-stored `service` steps should validate into a runnable script."""
+        from_joins = [{"join": "d1", "script": [{"service": "light.toggle", "target": {"entity_id": "light.kitchen"}}]}]
 
-        assert normalized[0]["service"] == "light.toggle"
+        validated = _validate_from_joins(from_joins)
 
-    def test_normalize_service_to_action(self):
-        """`service` should be converted to `action` for newer HA script syntax."""
-        source = [{"service": "light.toggle"}]
-        normalized = CrestronHub._normalize_script_config(source)
+        assert len(validated) == 1
+        assert validated[0]["join"] == "d1"
+        step = validated[0]["script"][0]
+        assert step.get("action", step.get("service")) == "light.toggle"
 
-        assert normalized[0]["action"] == "light.toggle"
+    def test_dual_key_step_is_repaired(self):
+        """Steps stored with both `action` and `service` should still validate."""
+        from_joins = [{"join": "d2", "script": [{"action": "light.toggle", "service": "light.toggle"}]}]
 
-    def test_normalize_service_data_to_data(self):
-        """`service_data` should also be available as `data`."""
-        source = [{"action": "light.turn_on", "service_data": {"entity_id": "light.kitchen"}}]
-        normalized = CrestronHub._normalize_script_config(source)
+        validated = _validate_from_joins(from_joins)
 
-        assert normalized[0]["data"] == {"entity_id": "light.kitchen"}
+        assert len(validated) == 1
 
-    def test_normalize_nested_sequences(self):
-        """Nested action entries in choose/default blocks should be normalized."""
-        source = [
+    def test_invalid_script_is_skipped(self):
+        """An invalid join should be dropped without affecting the others."""
+        from_joins = [
+            {"join": "d3", "script": [{"not_a_real_action": True}]},
+            {"join": "d4", "script": [{"service": "light.toggle"}]},
+        ]
+
+        validated = _validate_from_joins(from_joins)
+
+        assert [j["join"] for j in validated] == ["d4"]
+
+    def test_service_payload_not_modified(self):
+        """Nested `action` keys inside service data must pass through untouched."""
+        actions = [{"action": "garage.open", "title": "Open"}]
+        from_joins = [
             {
-                "choose": [
-                    {
-                        "conditions": [],
-                        "sequence": [{"action": "switch.turn_on"}],
-                    }
-                ],
-                "default": [{"action": "switch.turn_off"}],
+                "join": "d5",
+                "script": [{"service": "notify.mobile_app_phone", "data": {"message": "Hi", "data": {"actions": actions}}}],
             }
         ]
-        normalized = CrestronHub._normalize_script_config(source)
 
-        assert normalized[0]["choose"][0]["sequence"][0]["service"] == "switch.turn_on"
-        assert normalized[0]["default"][0]["service"] == "switch.turn_off"
+        validated = _validate_from_joins(from_joins)
 
-    def test_does_not_promote_non_service_action_payload(self):
-        """Payload action values (e.g. action: press) should not become service calls."""
-        source = [{"action": "notify.send_message", "data": {"action": "press"}}]
-        normalized = CrestronHub._normalize_script_config(source)
+        nested = validated[0]["script"][0]["data"]["data"]
+        assert "service" not in str(nested)
 
-        assert "service" not in normalized[0]["data"]
+    def test_does_not_mutate_stored_config(self):
+        """Validation must not mutate the config entry data."""
+        step = {"action": "light.toggle", "service": "light.toggle"}
+        from_joins = [{"join": "d6", "script": [step]}]
+
+        _validate_from_joins(from_joins)
+
+        assert step == {"action": "light.toggle", "service": "light.toggle"}
+
+    def test_legacy_service_join_passthrough(self):
+        """Top-level service/data joins are dispatched directly and left as-is."""
+        from_joins = [{"join": "a1", "service": "light.turn_on", "data": {"entity_id": "light.kitchen"}}]
+
+        assert _validate_from_joins(from_joins) == from_joins

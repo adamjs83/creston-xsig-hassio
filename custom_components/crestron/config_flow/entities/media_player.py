@@ -185,7 +185,9 @@ class MediaPlayerEntityHandler:
         if is_editing:
             # Convert sources dict to text format
             sources_dict_edit: dict[int, str] = self.flow._editing_join.get(CONF_SOURCES, {})
-            sources_text_edit: str = "\n".join(f"{num}: {name}" for num, name in sorted(sources_dict_edit.items()))
+            sources_text_edit: str = "\n".join(
+                f"{num}: {name}" for num, name in sorted(sources_dict_edit.items(), key=lambda item: int(item[0]))
+            )
 
             default_values = {
                 CONF_NAME: self.flow._editing_join.get(CONF_NAME, ""),

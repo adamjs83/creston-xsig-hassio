@@ -3,7 +3,6 @@
 import asyncio
 from collections.abc import Callable
 from copy import deepcopy
-import json
 import logging
 from typing import Any
 
@@ -260,7 +259,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Preserve from_joins (if configured)
     if CONF_FROM_HUB in entry.data:
-        hub_config[CONF_FROM_HUB] = entry.data[CONF_FROM_HUB]
+        hub_config[CONF_FROM_HUB] = _validate_from_joins(entry.data[CONF_FROM_HUB])
         _LOGGER.info("Config entry has %d from_joins - Crestron→HA scripts enabled", len(entry.data[CONF_FROM_HUB]))
 
     # Check if hub already exists from previous load (during reload)
@@ -441,6 +440,35 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     _LOGGER.info("Crestron config entry removal complete for port %s", entry.data[CONF_PORT])
 
 
+def _validate_from_joins(from_joins: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Validate stored from_join scripts against the running HA version.
+
+    Config entry data is persisted as raw JSON and passed to Script() unvalidated.
+    Running it through cv.SCRIPT_SCHEMA applies core's own service/action back-compat
+    (HA 2024.8+ only understands `action` at runtime) and compiles templates.
+    Invalid joins are logged and skipped so one bad entry doesn't disable the rest.
+    """
+    validated: list[dict[str, Any]] = []
+    for join in from_joins:
+        if CONF_SCRIPT not in join:
+            # Legacy service/data format is dispatched directly by join_change_callback
+            validated.append(join)
+            continue
+
+        script = deepcopy(join[CONF_SCRIPT])
+        for step in script if isinstance(script, list) else [script]:
+            # Steps saved with both keys (pre-release builds) fail validation; keep `service`
+            if isinstance(step, dict) and CONF_SERVICE in step and "action" in step:
+                step.pop("action")
+
+        try:
+            validated.append({**join, CONF_SCRIPT: cv.SCRIPT_SCHEMA(script)})
+        except vol.Invalid as err:
+            _LOGGER.error("Skipping from_join %s: invalid script %s (%s)", join.get(CONF_JOIN), join[CONF_SCRIPT], err)
+
+    return validated
+
+
 class CrestronHub:
     """Wrapper for the CrestronXsig library"""
 
@@ -484,8 +512,7 @@ class CrestronHub:
             # Build reverse lookup for O(1) template-to-join mapping
             self._template_to_join = {template: join for join, template in self.to_hub.items()}
         if CONF_FROM_HUB in config:
-            self.from_hub = self._normalize_script_config(deepcopy(config[CONF_FROM_HUB]))
-            _LOGGER.debug("Normalized Crestron from_hub config loaded: %s", self._json_for_log(self.from_hub))
+            self.from_hub = config[CONF_FROM_HUB]
             self.hub.register_callback(self.join_change_callback)
 
     async def start(self) -> None:
@@ -503,55 +530,6 @@ class CrestronHub:
 
         await self.hub.stop()
 
-    @staticmethod
-    def _json_for_log(value: Any) -> str:
-        """Best-effort JSON rendering for deterministic debug logging."""
-        return json.dumps(value, default=str, separators=(",", ":"), sort_keys=True)
-
-    @staticmethod
-    def _looks_like_service_call(value: str) -> bool:
-        """Return True when a value resembles a service reference/template."""
-        stripped = value.strip()
-        return "." in stripped or "{{" in stripped or "{%" in stripped
-
-    @staticmethod
-    def _normalize_script_config(value: Any) -> Any:
-        """Normalize script actions for broad HA version compatibility.
-
-        Home Assistant versions may use either `service` or `action` for
-        service-call steps. Normalize in both directions so persisted config
-        keeps working across core upgrades/downgrades.
-        """
-        if isinstance(value, list):
-            return [CrestronHub._normalize_script_config(item) for item in value]
-
-        if isinstance(value, dict):
-            normalized = {key: CrestronHub._normalize_script_config(val) for key, val in value.items()}
-
-            if (
-                "action" in normalized
-                and CONF_SERVICE not in normalized
-                and "service_template" not in normalized
-                and isinstance(normalized["action"], str)
-                and CrestronHub._looks_like_service_call(normalized["action"])
-            ):
-                normalized[CONF_SERVICE] = normalized["action"]
-
-            if (
-                CONF_SERVICE in normalized
-                and "action" not in normalized
-                and isinstance(normalized[CONF_SERVICE], str)
-                and CrestronHub._looks_like_service_call(normalized[CONF_SERVICE])
-            ):
-                normalized["action"] = normalized[CONF_SERVICE]
-
-            if "service_data" in normalized and "data" not in normalized:
-                normalized["data"] = normalized["service_data"]
-
-            return normalized
-
-        return value
-
     async def join_change_callback(self, cbtype: str, value: str) -> None:
         """Call service for tracked join change (from_hub)"""
         if not self.from_hub:
@@ -567,18 +545,6 @@ class CrestronHub:
                         if CONF_SERVICE in join:
                             data = dict(join.get(CONF_SERVICE_DATA, {}))
                             _LOGGER.debug(
-                                "Crestron dispatch -> hass.services.async_call payload: %s",
-                                self._json_for_log(
-                                    {
-                                        "cbtype": cbtype,
-                                        "value": value,
-                                        "service": join[CONF_SERVICE],
-                                        "data": data,
-                                        "context_id": getattr(self.context, "id", None),
-                                    }
-                                ),
-                            )
-                            _LOGGER.debug(
                                 "join_change_callback calling service %s with data = %s from join %s = %s",
                                 join[CONF_SERVICE],
                                 data,
@@ -589,21 +555,8 @@ class CrestronHub:
                             await self.hass.services.async_call(domain, service, data)
                         elif CONF_SCRIPT in join:
                             sequence = join[CONF_SCRIPT]
-                            script_run_variables: dict[str, Any] = {"value": value}
-                            _LOGGER.debug(
-                                "Crestron dispatch -> Script.async_run payload: %s",
-                                self._json_for_log(
-                                    {
-                                        "cbtype": cbtype,
-                                        "value": value,
-                                        "sequence": sequence,
-                                        "variables": script_run_variables,
-                                        "context_id": getattr(self.context, "id", None),
-                                    }
-                                ),
-                            )
                             script = Script(self.hass, sequence, "Crestron Join Change", DOMAIN)
-                            await script.async_run(script_run_variables, self.context)
+                            await script.async_run({"value": value}, self.context)
                             _LOGGER.debug(
                                 "join_change_callback calling script %s from join %s = %s",
                                 sequence,

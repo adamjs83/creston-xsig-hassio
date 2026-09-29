@@ -161,12 +161,11 @@ class JoinSyncHandler:
                 if join_num != old_join_num and any(j.get("join") == join_num for j in current_from_joins):
                     errors["join"] = "join_already_exists"
                 if not service:
-                    errors["service"] = "required"
+                    errors["service"] = "service_required"
 
                 if not errors:
                     # Build script action
                     script_action: dict[str, Any] = {
-                        "action": service,
                         "service": service,
                     }
                     if target_entity:
