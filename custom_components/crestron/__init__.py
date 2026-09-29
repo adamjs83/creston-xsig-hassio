@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
+from copy import deepcopy
 import logging
 from typing import Any
 
@@ -26,7 +27,7 @@ from homeassistant.helpers.script import Script
 from homeassistant.helpers.template import Template
 import voluptuous as vol
 
-from .const import CONF_FROM_HUB, CONF_JOIN, CONF_PORT, CONF_SCRIPT, CONF_TO_HUB, DOMAIN, HUB, VERSION
+from .const import CONF_FROM_HUB, CONF_JOIN, CONF_PORT, CONF_SCRIPT, CONF_TO_HUB, DOMAIN, HUB, STATE_TO_LED, VERSION
 from .crestron import CrestronXsig
 from .led_binding_manager import LEDBindingManager
 
@@ -258,7 +259,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Preserve from_joins (if configured)
     if CONF_FROM_HUB in entry.data:
-        hub_config[CONF_FROM_HUB] = entry.data[CONF_FROM_HUB]
+        hub_config[CONF_FROM_HUB] = _validate_from_joins(entry.data[CONF_FROM_HUB])
         _LOGGER.info("Config entry has %d from_joins - Crestron→HA scripts enabled", len(entry.data[CONF_FROM_HUB]))
 
     # Check if hub already exists from previous load (during reload)
@@ -439,6 +440,35 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     _LOGGER.info("Crestron config entry removal complete for port %s", entry.data[CONF_PORT])
 
 
+def _validate_from_joins(from_joins: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Validate stored from_join scripts against the running HA version.
+
+    Config entry data is persisted as raw JSON and passed to Script() unvalidated.
+    Running it through cv.SCRIPT_SCHEMA applies core's own service/action back-compat
+    (HA 2024.8+ only understands `action` at runtime) and compiles templates.
+    Invalid joins are logged and skipped so one bad entry doesn't disable the rest.
+    """
+    validated: list[dict[str, Any]] = []
+    for join in from_joins:
+        if CONF_SCRIPT not in join:
+            # Legacy service/data format is dispatched directly by join_change_callback
+            validated.append(join)
+            continue
+
+        script = deepcopy(join[CONF_SCRIPT])
+        for step in script if isinstance(script, list) else [script]:
+            # Steps saved with both keys (pre-release builds) fail validation; keep `service`
+            if isinstance(step, dict) and CONF_SERVICE in step and "action" in step:
+                step.pop("action")
+
+        try:
+            validated.append({**join, CONF_SCRIPT: cv.SCRIPT_SCHEMA(script)})
+        except vol.Invalid as err:
+            _LOGGER.error("Skipping from_join %s: invalid script %s (%s)", join.get(CONF_JOIN), join[CONF_SCRIPT], err)
+
+    return validated
+
+
 class CrestronHub:
     """Wrapper for the CrestronXsig library"""
 
@@ -502,26 +532,60 @@ class CrestronHub:
 
     async def join_change_callback(self, cbtype: str, value: str) -> None:
         """Call service for tracked join change (from_hub)"""
+        if not self.from_hub:
+            return
+
         for join in self.from_hub:
             if cbtype == join[CONF_JOIN]:
                 # For digital joins, ignore on>off transitions  (avoids double calls to service for momentary presses)
                 if cbtype[:1] == "d" and value == "0":
                     pass
                 else:
-                    if CONF_SERVICE in join and CONF_SERVICE_DATA in join:
-                        data = dict(join[CONF_SERVICE_DATA])
-                        _LOGGER.debug(
-                            f"join_change_callback calling service {join[CONF_SERVICE]} with data = {data} from join {cbtype} = {value}"
+                    try:
+                        if CONF_SERVICE in join:
+                            data = dict(join.get(CONF_SERVICE_DATA, {}))
+                            _LOGGER.debug(
+                                "join_change_callback calling service %s with data = %s from join %s = %s",
+                                join[CONF_SERVICE],
+                                data,
+                                cbtype,
+                                value,
+                            )
+                            domain, service = join[CONF_SERVICE].split(".")
+                            await self.hass.services.async_call(domain, service, data)
+                        elif CONF_SCRIPT in join:
+                            sequence = join[CONF_SCRIPT]
+                            script = Script(self.hass, sequence, "Crestron Join Change", DOMAIN)
+                            await script.async_run({"value": value}, self.context)
+                            _LOGGER.debug(
+                                "join_change_callback calling script %s from join %s = %s",
+                                sequence,
+                                cbtype,
+                                value,
+                            )
+                    except Exception as err:
+                        _LOGGER.exception(
+                            "join_change_callback failed for join %s = %s with config %s: %s",
+                            cbtype,
+                            value,
+                            join,
+                            err,
                         )
-                        domain, service = join[CONF_SERVICE].split(".")
-                        await self.hass.services.async_call(domain, service, data)
-                    elif CONF_SCRIPT in join:
-                        sequence = join[CONF_SCRIPT]
-                        script = Script(self.hass, sequence, "Crestron Join Change", DOMAIN)
-                        await script.async_run({"value": value}, self.context)
-                        _LOGGER.debug(
-                            f"join_change_callback calling script {join[CONF_SCRIPT]} from join {cbtype} = {value}"
-                        )
+
+    @staticmethod
+    def _coerce_analog_value(value: Any) -> int:
+        """Convert template output to a valid analog integer.
+
+        Supports numeric values plus common textual states (including
+        media player states) by mapping them to 0/1.
+        """
+        try:
+            return int(float(value))
+        except (ValueError, TypeError):
+            value_str = str(value).strip().lower()
+            if value_str in STATE_TO_LED:
+                return 1 if STATE_TO_LED[value_str] else 0
+            raise ValueError(f"Unsupported analog value: {value!r}")
 
     @callback
     def template_change_callback(self, event: Event | None, updates: list[TrackTemplateResult]) -> None:
@@ -553,8 +617,7 @@ class CrestronHub:
             # Analog Join
             elif join[:1] == "a":
                 try:
-                    # Handle float strings like "1.0" by converting to float first
-                    analog_value = int(float(update_result))
+                    analog_value = self._coerce_analog_value(update_result)
                     _LOGGER.debug(f"template_change_callback setting analog join {int(join[1:])} to {analog_value}")
                     self.hub.set_analog(int(join[1:]), analog_value)
                 except (ValueError, TypeError) as err:
@@ -589,8 +652,7 @@ class CrestronHub:
             # Analog Join
             elif join[:1] == "a":
                 try:
-                    # Handle float strings like "1.0" by converting to float first
-                    analog_value = int(float(result))
+                    analog_value = self._coerce_analog_value(result)
                     _LOGGER.debug(f"sync_joins_to_hub setting analog join {int(join[1:])} to {analog_value}")
                     await self.hub.async_set_analog(int(join[1:]), analog_value)
                 except (ValueError, TypeError) as err:

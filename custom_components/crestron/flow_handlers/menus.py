@@ -10,7 +10,7 @@ from homeassistant.helpers import selector
 import voluptuous as vol
 
 if TYPE_CHECKING:
-    from ..config_flow import OptionsFlowHandler
+    from .flow import OptionsFlowHandler
 
 from ..const import (
     CONF_BINARY_SENSORS,

@@ -12,7 +12,7 @@ import voluptuous as vol
 import yaml
 
 if TYPE_CHECKING:
-    from ..config_flow import OptionsFlowHandler
+    from .flow import OptionsFlowHandler
 
 from ..const import (
     CONF_ACTION,

@@ -128,7 +128,7 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
 
         # Join configuration
         self._source_number_join: int | None = config.get(CONF_SOURCE_NUM_JOIN)
-        self._sources: dict[int, str] = config.get(CONF_SOURCES, {})
+        self._sources: dict[int, str] = self._normalize_sources(config.get(CONF_SOURCES, {}))
         self._mute_join: int | None = config.get(CONF_MUTE_JOIN)
         self._volume_join: int | None = config.get(CONF_VOLUME_JOIN)
         self._power_on_join: int | None = config.get(CONF_POWER_ON_JOIN)
@@ -153,9 +153,29 @@ class CrestronRoom(MediaPlayerEntity, RestoreEntity):
         # Callback reference for proper deregistration
         self._callback_ref = None
 
+    @staticmethod
+    def _normalize_sources(raw_sources: Any) -> dict[int, str]:
+        """Normalize source keys to integers for runtime lookups.
+
+        Config entry persistence can round-trip dict keys as strings.
+        """
+        if not isinstance(raw_sources, dict):
+            return {}
+
+        normalized: dict[int, str] = {}
+        for source_num, source_name in raw_sources.items():
+            if source_name is None:
+                continue
+            try:
+                normalized[int(source_num)] = str(source_name)
+            except (TypeError, ValueError):
+                _LOGGER.warning("Skipping invalid media player source key: %s", source_num)
+
+        return normalized
+
     def _calculate_supported_features(self) -> MediaPlayerEntityFeature:
         """Calculate supported features based on configured joins."""
-        features: int = 0
+        features: MediaPlayerEntityFeature = MediaPlayerEntityFeature(0)
 
         # Source selection (required)
         if self._source_number_join and self._sources:

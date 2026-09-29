@@ -18,14 +18,14 @@ Comprehensive automation blueprint for configuring Crestron dimmer/keypad button
 
 ### Method 1: Import URL (Recommended)
 
-[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fadamjs83%2Fcreston-xsig-hassio%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fcrestron_dimmer_button_controller.yaml)
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fadamjs83%2Fcrestron-xsig-hassio%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fcrestron_dimmer_button_controller.yaml)
 
 Or manually:
 1. In Home Assistant, go to **Settings** → **Automations & Scenes** → **Blueprints**
 2. Click **Import Blueprint**
 3. Paste this URL:
    ```
-   https://github.com/adamjs83/creston-xsig-hassio/blob/main/blueprints/automation/crestron_dimmer_button_controller.yaml
+   https://github.com/adamjs83/crestron-xsig-hassio/blob/main/blueprints/automation/crestron_dimmer_button_controller.yaml
    ```
 4. Click **Preview** → **Import**
 
@@ -148,5 +148,5 @@ LED binding is now configured directly in the blueprint automation:
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/adamjs83/creston-xsig-hassio/issues
-- Discussion: https://github.com/adamjs83/creston-xsig-hassio/discussions
+- GitHub Issues: https://github.com/adamjs83/crestron-xsig-hassio/issues
+- Discussion: https://github.com/adamjs83/crestron-xsig-hassio/discussions

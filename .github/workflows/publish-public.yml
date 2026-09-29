@@ -1,0 +1,106 @@
+name: Publish Public Release
+
+# Tag push in the dev repo -> allowlisted snapshot committed to the public repo
+# as one "Release vX.Y.Z" commit, tagged, and released there (HACS reads it).
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  PUBLIC_REPO: adamjs83/crestron-xsig-hassio
+  GITLEAKS_VERSION: 8.21.2
+
+jobs:
+  publish:
+    name: Publish to public repo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          path: dev
+
+      - name: Clone public repo
+        env:
+          TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TOKEN}@github.com/${PUBLIC_REPO}.git" public
+          git -C public config user.name "github-actions[bot]"
+          git -C public config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Build and commit release snapshot
+        working-directory: dev
+        run: .github/publish/publish-public.sh "${GITHUB_REF_NAME}" ../public
+
+      - name: Secret scan published tree
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          cp -a public/. scan/ && rm -rf scan/.git
+          ./gitleaks detect --no-git --source scan --redact --exit-code 1
+
+      - name: Push to public repo
+        run: git -C public push origin main "refs/tags/${GITHUB_REF_NAME}"
+
+      - name: Build release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES=$(awk -v v="${VERSION}" '$0 ~ "^## \\[" v "\\]" {f=1; next} /^## \[/ {f=0} f' dev/CHANGELOG.md)
+          cat > notes.md <<NOTES_EOF
+          # Crestron XSIG Integration v${VERSION}
+
+          ${NOTES:-Release ${VERSION}}
+
+          ---
+
+          ## Installation
+
+          ### Via HACS (Recommended)
+
+          1. Open HACS in Home Assistant
+          2. Go to Integrations → ⋮ → Custom repositories
+          3. Add: \`https://github.com/${PUBLIC_REPO}\`
+          4. Category: Integration
+          5. Search for "Crestron XSIG Integration"
+          6. Click "Download"
+          7. Restart Home Assistant
+
+          ### Manual Installation
+
+          1. Download the [Source Code (zip)](https://github.com/${PUBLIC_REPO}/archive/refs/tags/${GITHUB_REF_NAME}.zip)
+          2. Extract the archive
+          3. Copy \`custom_components/crestron\` to your Home Assistant \`custom_components\` directory
+          4. Restart Home Assistant
+
+          ## Documentation
+
+          - [README](https://github.com/${PUBLIC_REPO}/blob/main/README.md)
+          - [CHANGELOG](https://github.com/${PUBLIC_REPO}/blob/main/CHANGELOG.md)
+
+          ## Support
+
+          - [Report Issues](https://github.com/${PUBLIC_REPO}/issues)
+
+          ---
+
+          **Credits:** Forked from [@npope's work](https://github.com/npope/home-assistant-crestron-component)
+          NOTES_EOF
+
+      - name: Create GitHub release on public repo
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          PRERELEASE=""
+          if [[ "${GITHUB_REF_NAME}" =~ (alpha|beta|rc) ]]; then PRERELEASE="--prerelease"; fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${PUBLIC_REPO}" \
+            --title "Crestron XSIG ${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            ${PRERELEASE}
+
+      - name: Summary
+        run: |
+          echo "## Published ${GITHUB_REF_NAME} 🚀" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Release: https://github.com/${PUBLIC_REPO}/releases/tag/${GITHUB_REF_NAME}" >> "$GITHUB_STEP_SUMMARY"

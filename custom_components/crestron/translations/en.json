@@ -275,6 +275,7 @@
       "join_conflict": "One or more joins conflict with existing configurations.",
       "join_range_exceeded": "Base join too high. Need room for button_count × 3 sequential joins (max d4096).",
       "name_required": "Name is required.",
+      "service_required": "Service is required (e.g., light.toggle).",
       "entity_already_exists": "An entity with this name already exists. Choose a different name.",
       "unknown": "An unexpected error occurred. Check the logs for details."
     },
