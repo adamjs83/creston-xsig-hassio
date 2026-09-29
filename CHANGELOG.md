@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.6] - 2026-09-29
+
+### Fixed
+- **Media player form** - A malformed source line now reports "each line must be
+  `number: name`" instead of the generic "no sources configured" error, and the form keeps
+  what you typed after a validation error instead of clearing every field.
+- **Missing translations** - Added the media player step labels/help text and its source
+  error messages to `strings.json` and `translations/en.json`.
+
+### Added
+- **from_join UI: action data and targets** - The from_join form now accepts optional
+  action data (YAML, e.g. `brightness_pct`, `transition`) and a full target selector
+  (entities, devices or areas), so scripts that were previously YAML-only can be built in the UI.
+
 ## [1.25.5] - 2026-09-29
 
 > **Manual installs:** delete `custom_components/crestron` before copying in this version.
