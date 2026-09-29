@@ -1,19 +1,29 @@
-# Crestron XSIG Integration for Home Assistant
-
 <!-- dev-only:start -->
-> [!IMPORTANT]
-> **This repository has moved.** Releases are now published to
-> **[adamjs83/crestron-xsig-hassio](https://github.com/adamjs83/crestron-xsig-hassio)**.
-> This repo is now the development repo and will stop receiving releases.
+<div align="center">
+
+# 🚚 THIS REPOSITORY HAS MOVED 🚚
+
+## ➡️ [adamjs83/crestron-xsig-hassio](https://github.com/adamjs83/crestron-xsig-hassio) ⬅️
+
+**All releases, issues and HACS installs now live at the new repository.**<br>
+This repo is the development repo and **will not receive new releases.**
+
+</div>
+
+> [!CAUTION]
+> **HACS users — switch now to keep getting updates:**
+> 1. HACS → ⋮ → **Custom repositories**
+> 2. Remove `https://github.com/adamjs83/creston-xsig-hassio`
+> 3. Add `https://github.com/adamjs83/crestron-xsig-hassio` (category: **Integration**)
+> 4. Download **Crestron XSIG Integration** and restart Home Assistant
 >
-> **HACS users:** in HACS → ⋮ → Custom repositories, remove
-> `https://github.com/adamjs83/creston-xsig-hassio`, add
-> `https://github.com/adamjs83/crestron-xsig-hassio` (category: Integration),
-> then redownload and restart Home Assistant. The integration domain is unchanged
-> (`crestron`), so your existing config entries and entities carry over.
->
-> Please open new issues on the new repo.
+> The integration domain is unchanged (`crestron`), so your existing config entries and entities carry over.
+> Please open new issues on the [new repo](https://github.com/adamjs83/crestron-xsig-hassio/issues).
+
+---
 <!-- dev-only:end -->
+
+# Crestron XSIG Integration for Home Assistant
 
 [![Version](https://img.shields.io/badge/version-1.25.4-blue.svg)](https://github.com/adamjs83/crestron-xsig-hassio/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
